@@ -1,5 +1,9 @@
 # /assemble — Tool Concierge for Claude Code
 
+[![tests](https://github.com/etinpres/assemble/actions/workflows/test.yml/badge.svg)](https://github.com/etinpres/assemble/actions/workflows/test.yml)
+[![license](https://img.shields.io/github/license/etinpres/assemble)](LICENSE)
+[![python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
+
 A Claude Code skill that scans your installed skills / plugins / agents, recommends a per-stage workflow for a task, and lets you pick which tool runs at each stage.
 
 ## What it does
