@@ -1,0 +1,58 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [3.0.0] — 2026-04-21
+
+First public release. Classification is now installation-aware and the skill
+ships with an English baseline + Korean locale overlay.
+
+### Added
+- `config/i18n/en.json` + `config/i18n/ko.json` locale files.
+- `server/i18n.py` locale loader driven by the `ASSEMBLE_LOCALE` env var, with
+  `en` fallback when a key is missing.
+- Frontmatter-based heuristic classifier (`_classify_heuristic` in `inventory.py`).
+- `unclassified_entries()` returns both skill and agent buckets; `bin/classify-inventory`
+  now handles agents as well as skills.
+- Corrupt-cache quarantine: a bad `inventory.json` is renamed to
+  `inventory.json.bad-<timestamp>` and rebuilt instead of being silently overwritten.
+- Illegal transition guard in `mark_stage`: driving `done` back to `in_progress`
+  raises `ValueError`.
+- Regression test suite for architecture-review findings (`tests/unit/test_codex_findings.py`).
+- `LICENSE` (MIT), `README.md`, `VERSION`.
+
+### Changed
+- SKILL.md rewritten in English. Korean-language UX is preserved via the
+  locale overlay plus Claude's own language adaptation.
+- `server/menu.py` now resolves meta-action labels through the locale layer
+  instead of hardcoding Korean strings (`물어보기`, `직접`, etc.).
+- `config/stages.json` holds stage ids only; display labels and descriptions
+  live in the locale files.
+- `load_stages()` merges ids with the active locale on every call.
+- LLM prompts in `server/classify.py` and `server/sequence.py` translated to
+  English (LLMs handle either language; English is more portable).
+- User skills now win over plugin skills when names collide — fixed a
+  first-wins dedupe bug where plugin paths could beat user paths.
+- `scan()` and `apply_classification()` share `update_json_locked`, closing a
+  race condition where concurrent writers could lose a classification.
+- Menu dedupe: a skill mapped both as a stage tool and as a meta/safety helper
+  is surfaced only once under the `tool` kind.
+- `back` no longer persists as a stage status; it only rewinds the cursor.
+  Earlier builds broke wrap-up counts and `find_resumable` by stamping
+  `status='back'` on the record.
+- All internal comments and docstrings translated to English.
+
+### Removed
+- `config/pre_mapping.json` — the hand-maintained name→stage table. The
+  design was fundamentally broken because it pre-mapped tools that might
+  not be installed on the user's machine.
+- Legacy `pre-mapped` source value from inventory entries. Current sources
+  are `heuristic-classified`, `llm-classified`, `unclassified`.
+
+### Fixed
+- Personalization leak: removed session-id references and per-user phrasing
+  that was baked into the original codebase; honorifics neutralized.
+- `.context/` added to `.gitignore` so Codex session artifacts don't ship.
