@@ -187,3 +187,15 @@ def test_apply_classification_updates_cache(tmp_path, monkeypatch):
     assert e["mappings"] == [{"stage": "execute", "role": "tdd-implementation"}]
     assert e["source"] == "llm-classified"
     assert e["classification"]["confidence"] == "high"
+
+
+def test_unclassified_lists_only_unmapped(tmp_path, monkeypatch):
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    _touch(tmp_path / ".claude/skills/writing-plans/SKILL.md",
+           "---\nname: writing-plans\n---\n")
+    _touch(tmp_path / ".claude/skills/odd-tool/SKILL.md",
+           "---\nname: odd-tool\n---\n")
+    scan()
+    from server.inventory import unclassified_names
+    names = unclassified_names()
+    assert names == ["odd-tool"]

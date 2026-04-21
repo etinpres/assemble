@@ -218,3 +218,10 @@ def apply_classification(name: str, mappings: list[dict],
     skill["classification"] = {"confidence": confidence, "reasoning": reasoning}
     inv["watched_mtime"] = _max_mtime(home)
     write_json_atomic(cache, inv)
+
+
+def unclassified_names() -> list[str]:
+    home = _home_for_scan()
+    inv = read_json(_inventory_path(home)) or {"skills": {}}
+    return sorted(name for name, e in inv["skills"].items()
+                  if e.get("source") == "unclassified")
