@@ -23,6 +23,18 @@ Reload Claude Code and run:
 /assemble build a small CLI for parsing CSV files
 ```
 
+## First-run optimization (optional)
+
+The heuristic classifier is conservative by design — anything it can't confidently map is left `unclassified` and handled by an inline LLM pass on demand. If you have many plugins installed (Vercel, gstack, context7, etc.), the first `/assemble` run can spend noticeable time classifying.
+
+To pre-warm the cache once, after install:
+
+```bash
+~/.claude/skills/assemble/bin/classify-inventory --apply
+```
+
+This bulk-classifies everything in the background. Subsequent `/assemble` runs start instantly because classifications are persisted in `~/.claude/channels/assemble/inventory.json`.
+
 ## Language / locale
 
 Everything is English by default. A Korean locale is bundled:
@@ -79,6 +91,7 @@ Expected: `56 passed` in under a second.
 - **Corrupt cache is quarantined, not silently destroyed.** A bad `inventory.json` is renamed `inventory.json.bad-<ts>` and rebuilt. You can inspect the bad file later.
 - **Concurrent writers are safe.** `scan()` and `apply_classification()` share `update_json_locked`, so an `/assemble` run and a background `classify-inventory` don't clobber each other.
 - **No skill bodies in the menu.** `build_stage_options()` returns only `{label, kind, description(≤80), tool_path}` — bodies load lazily when `Skill` actually invokes the tool.
+- **Plays well with other plugins.** SessionStart and file-pattern hooks from installed plugins (Vercel, gstack, etc.) are Claude Code runtime behavior; they don't interfere with the `/assemble` stage loop. Instead, those plugins' skills get classified into stages and become candidate tools — e.g. `vercel-cli` shows up under `ship`, `vercel-agent` under `review`/`debug`.
 
 ## Contributing
 
