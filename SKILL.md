@@ -28,7 +28,7 @@ build_classify_prompt, parse_classify_response,
 build_sequence_prompt, parse_sequence_response,
 ```
 
-`unclassified_entries` returns both skill + agent buckets (`{kind, name, path}`). `unclassified_names` is kept for back-compat as skills-only.
+`unclassified_entries()` returns a **flat list** of unclassified items — each entry is `{'kind': 'skill'|'agent', 'name': ..., 'path': ...}`. It is **not** bucketed by kind; the `kind` field lives on each row. `unclassified_names()` is kept for back-compat as skills-only (returns a list of names).
 
 ### Language
 
@@ -61,9 +61,37 @@ Earlier builds shipped `config/pre_mapping.json` — a name→stage table. That 
 
 1. **Heuristic (first pass)** — `_classify_heuristic` in `inventory.py` requires ≥2 stage-keyword hits in the description to mark a skill `heuristic-classified`. Safety/meta skills also get a role hint so `contextual_helpers` picks them up.
 2. **Heuristic miss → `unclassified`** — the skill isn't visible in any stage menu yet.
-3. **Task-relevance inline (LLM, second pass)** — score unclassified entries against the `/assemble <task>` string by token overlap on name/description. For the **top 2** only, build the classify prompt, reply with JSON yourself (you are the LLM — no external call), then:
-   - `confidence == high` → call `apply_classification` directly
-   - `confidence in {medium, low}` → one `AskUserQuestion` to confirm
+3. **Task-relevance inline (LLM, second pass)** — score unclassified entries against the `/assemble <task>` string by token overlap on name/description. For the **top 2** only, build the classify prompt, reply with JSON yourself (you are the LLM — no external call), then validate and apply.
+
+   Canonical invocation (works for both skills and agents — no `kind` argument; the facade keys on `name`):
+
+   ```python
+   from pathlib import Path
+   from server import (
+       parse_skill_frontmatter,
+       build_classify_prompt,
+       parse_classify_response,
+       apply_classification,
+   )
+
+   fm = parse_skill_frontmatter(Path(entry['path']))  # entry from unclassified_entries()
+   prompt = build_classify_prompt(
+       name=fm['name'],
+       description=fm.get('description', ''),
+       body_excerpt=fm.get('body_excerpt', ''),
+   )
+   # Reply to `prompt` yourself with the JSON format it specifies.
+   parsed = parse_classify_response(your_json_reply)
+   apply_classification(
+       name=fm['name'],
+       mappings=parsed['mappings'],
+       confidence=parsed['confidence'],
+       reasoning=parsed['reasoning'],
+   )
+   ```
+
+   - `confidence == high` → apply directly as shown above
+   - `confidence in {medium, low}` → one `AskUserQuestion` to confirm before applying
 4. **Everything else is left alone.** If a tie or zero-score set means nothing qualified, tell the user once:
 
    > "{n} skill(s) are unclassified and won't appear in this run's menus. To bulk-classify, run:\n  `~/.claude/skills/assemble/bin/classify-inventory`"
