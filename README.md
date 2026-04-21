@@ -13,7 +13,7 @@ A Claude Code skill that scans your installed skills / plugins / agents, recomme
 ## Install
 
 ```bash
-git clone https://github.com/<your-fork>/assemble ~/.claude/skills/assemble
+git clone https://github.com/etinpres/assemble ~/.claude/skills/assemble
 # Python 3, stdlib only — no pip install required.
 ```
 
@@ -23,17 +23,11 @@ Reload Claude Code and run:
 /assemble build a small CLI for parsing CSV files
 ```
 
-## First-run optimization (optional)
+## How classification works
 
-The heuristic classifier is conservative by design — anything it can't confidently map is left `unclassified` and handled by an inline LLM pass on demand. If you have many plugins installed (Vercel, gstack, context7, etc.), the first `/assemble` run can spend noticeable time classifying.
+The heuristic classifier is conservative — anything it can't confidently map is left `unclassified`. Instead of a bulk pre-warm pass, the inline LLM classifier picks up the top-2 unclassified entries most relevant to the current `/assemble <task>` and classifies them on the spot. Results persist across runs in `~/.claude/channels/assemble/inventory.json`, so each task only pays for its relevant classifications — never the whole inventory.
 
-To pre-warm the cache once, after install:
-
-```bash
-~/.claude/skills/assemble/bin/classify-inventory --apply
-```
-
-This bulk-classifies everything in the background. Subsequent `/assemble` runs start instantly because classifications are persisted in `~/.claude/channels/assemble/inventory.json`.
+There's also a CLI at `bin/classify-inventory` for dedicated bulk runs; it emits a JSONL prompt bundle on stdout and applies JSONL responses via `--apply <file>`. Most users never need it.
 
 ## Language / locale
 
