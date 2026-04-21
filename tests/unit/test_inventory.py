@@ -110,3 +110,63 @@ def test_load_stage_roles():
     assert "edit-scope-limit" in r["execute"]
     assert "dangerous-cmd-warn" in r["debug"]
     assert "skill-discovery" in r["discover"]
+
+
+import os
+import time
+from server.inventory import scan, INVENTORY_REL
+
+
+def test_scan_writes_inventory(tmp_path, monkeypatch):
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    _touch(tmp_path / ".claude/skills/writing-plans/SKILL.md",
+           "---\nname: writing-plans\ndescription: spec\n---\nbody")
+    inv = scan()
+    assert "writing-plans" in inv["skills"]
+    entry = inv["skills"]["writing-plans"]
+    assert entry["mappings"] == [{"stage": "plan", "role": "requirements-spec"}]
+    assert entry["source"] == "pre-mapped"
+
+
+def test_scan_marks_unknown(tmp_path, monkeypatch):
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    _touch(tmp_path / ".claude/skills/some-new-skill/SKILL.md",
+           "---\nname: some-new-skill\ndescription: who knows\n---\n")
+    inv = scan()
+    e = inv["skills"]["some-new-skill"]
+    assert e["mappings"] == []
+    assert e["source"] == "unclassified"
+
+
+def test_scan_uses_cache_when_mtime_unchanged(tmp_path, monkeypatch):
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    _touch(tmp_path / ".claude/skills/x/SKILL.md", "---\nname: x\n---\n")
+    first = scan()
+    cache = tmp_path / ".claude/channels/assemble/inventory.json"
+    cache_mtime = cache.stat().st_mtime
+    time.sleep(0.05)
+    second = scan()
+    cache_mtime2 = cache.stat().st_mtime
+    assert cache_mtime == cache_mtime2  # cache reused, no rewrite
+    assert first == second
+
+
+def test_scan_rebuilds_when_skills_dir_changes(tmp_path, monkeypatch):
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    _touch(tmp_path / ".claude/skills/x/SKILL.md", "---\nname: x\n---\n")
+    scan()
+    time.sleep(0.05)
+    _touch(tmp_path / ".claude/skills/y/SKILL.md", "---\nname: y\n---\n")
+    inv = scan()
+    assert "y" in inv["skills"]
+
+
+def test_force_flag_bypasses_cache(tmp_path, monkeypatch):
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    _touch(tmp_path / ".claude/skills/x/SKILL.md", "---\nname: x\n---\n")
+    scan()
+    cache = tmp_path / ".claude/channels/assemble/inventory.json"
+    before = cache.stat().st_mtime
+    time.sleep(0.05)
+    scan(force=True)
+    assert cache.stat().st_mtime > before

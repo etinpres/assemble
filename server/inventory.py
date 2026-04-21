@@ -109,3 +109,95 @@ def load_stages() -> dict:
 
 def load_stage_roles() -> dict[str, list[str]]:
     return json.loads((CONFIG_DIR / "stage_roles.json").read_text())
+
+
+import os
+from datetime import datetime
+from server.state_store import write_json_atomic, read_json
+
+INVENTORY_REL = ".claude/channels/assemble/inventory.json"
+
+WATCH_PATHS = [
+    ".claude/skills",
+    ".claude/agents",
+    ".claude/plugins/installed_plugins.json",
+]
+
+
+def _home_for_scan() -> Path:
+    env = os.environ.get("ASSEMBLE_HOME")
+    return Path(env) if env else Path.home()
+
+
+def _inventory_path(home: Path) -> Path:
+    return home / INVENTORY_REL
+
+
+def _max_mtime(home: Path) -> float:
+    best = 0.0
+    for rel in WATCH_PATHS:
+        p = home / rel
+        if not p.exists():
+            continue
+        try:
+            best = max(best, p.stat().st_mtime)
+        except OSError:
+            continue
+        if p.is_dir():
+            for sub in p.rglob("*"):
+                try:
+                    best = max(best, sub.stat().st_mtime)
+                except OSError:
+                    continue
+    return best
+
+
+def scan(force: bool = False) -> dict:
+    home = _home_for_scan()
+    cache = _inventory_path(home)
+    if not force and cache.exists():
+        cached = read_json(cache)
+        if cached and cached.get("watched_mtime", 0) >= _max_mtime(home):
+            return cached
+
+    pre = load_pre_mapping()
+    skills: dict[str, dict] = {}
+    for path in enumerate_skill_paths(home):
+        meta = parse_skill_frontmatter(path)
+        name = meta["name"] or path.parent.name
+        if name in skills:
+            continue  # earliest path wins (user > plugin)
+        if name in pre:
+            mappings = pre[name]
+            source = "pre-mapped"
+        else:
+            mappings = []
+            source = "unclassified"
+        skills[name] = {
+            "name": name,
+            "description": meta["description"],
+            "body_excerpt": meta["body_excerpt"],
+            "path": str(path),
+            "mappings": mappings,
+            "source": source,
+        }
+
+    agents: dict[str, dict] = {}
+    for path in enumerate_agent_paths(home):
+        name = path.stem
+        agents[name] = {
+            "name": name,
+            "path": str(path),
+            "mappings": pre.get(name, []),
+            "source": "pre-mapped" if name in pre else "unclassified",
+        }
+
+    inv = {
+        "version": 1,
+        "generated_at": datetime.now().isoformat(),
+        "watched_mtime": _max_mtime(home),
+        "skills": skills,
+        "agents": agents,
+    }
+    write_json_atomic(cache, inv)
+    return inv
