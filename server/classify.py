@@ -37,3 +37,40 @@ def build_prompt(name: str, description: str | None, body_excerpt: str) -> str:
         description=description or "(설명 없음)",
         body_excerpt=body_excerpt[:500] or "(본문 없음)",
     )
+
+import json
+import re
+
+VALID_STAGES = {"discover","plan","design","execute","debug","review","verify","ship","safety","meta"}
+VALID_CONFIDENCE = {"high","medium","low"}
+
+_FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
+
+
+def parse_response(raw: str) -> dict:
+    cleaned = _FENCE.sub("", raw.strip()).strip()
+    try:
+        data = json.loads(cleaned)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"not valid JSON: {e}") from e
+
+    mappings = data.get("mappings")
+    if not isinstance(mappings, list) or not mappings:
+        raise ValueError("mappings must be a non-empty list")
+    for m in mappings:
+        if not isinstance(m, dict):
+            raise ValueError("each mapping must be an object")
+        if "stage" not in m or "role" not in m:
+            raise ValueError("mapping missing stage or role")
+        if m["stage"] not in VALID_STAGES:
+            raise ValueError(f"invalid stage: {m['stage']}")
+
+    confidence = data.get("confidence", "low")
+    if confidence not in VALID_CONFIDENCE:
+        confidence = "low"
+
+    return {
+        "mappings": mappings,
+        "confidence": confidence,
+        "reasoning": str(data.get("reasoning", "")).strip(),
+    }
