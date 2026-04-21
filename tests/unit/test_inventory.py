@@ -170,3 +170,20 @@ def test_force_flag_bypasses_cache(tmp_path, monkeypatch):
     time.sleep(0.05)
     scan(force=True)
     assert cache.stat().st_mtime > before
+
+
+from server.inventory import apply_classification
+
+
+def test_apply_classification_updates_cache(tmp_path, monkeypatch):
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    _touch(tmp_path / ".claude/skills/new-thing/SKILL.md",
+           "---\nname: new-thing\n---\n")
+    scan()
+    apply_classification("new-thing", [{"stage": "execute", "role": "tdd-implementation"}],
+                         confidence="high", reasoning="looks like TDD")
+    inv = scan()
+    e = inv["skills"]["new-thing"]
+    assert e["mappings"] == [{"stage": "execute", "role": "tdd-implementation"}]
+    assert e["source"] == "llm-classified"
+    assert e["classification"]["confidence"] == "high"

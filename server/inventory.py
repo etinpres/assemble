@@ -201,3 +201,20 @@ def scan(force: bool = False) -> dict:
     }
     write_json_atomic(cache, inv)
     return inv
+
+
+def apply_classification(name: str, mappings: list[dict],
+                         confidence: str, reasoning: str) -> None:
+    home = _home_for_scan()
+    cache = _inventory_path(home)
+    inv = read_json(cache)
+    if not inv:
+        return
+    skill = inv["skills"].get(name)
+    if not skill:
+        return
+    skill["mappings"] = mappings
+    skill["source"] = "llm-classified"
+    skill["classification"] = {"confidence": confidence, "reasoning": reasoning}
+    inv["watched_mtime"] = _max_mtime(home)
+    write_json_atomic(cache, inv)
