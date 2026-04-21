@@ -46,3 +46,22 @@ def test_contextual_helpers_for_execute(tmp_path, monkeypatch):
     helpers = [h["name"] for h in contextual_helpers("execute")]
     assert "freeze" in helpers and "careful" in helpers and "checkpoint" in helpers
     assert "learn" not in helpers  # learning-capture not requested by execute
+
+
+from server.menu import build_stage_options
+
+
+def test_build_stage_options_includes_meta_actions(tmp_path, monkeypatch):
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    _touch(tmp_path / ".claude/skills/writing-plans/SKILL.md",
+           "---\nname: writing-plans\ndescription: write plan from spec\n---\n")
+    _touch(tmp_path / ".claude/skills/checkpoint/SKILL.md",
+           "---\nname: checkpoint\ndescription: save state\n---\n")
+    scan()
+    options = build_stage_options("plan")
+    labels = [o["label"] for o in options]
+    assert "writing-plans" in labels
+    assert "checkpoint" in labels
+    for required in ["물어보기", "skip", "직접", "back", "done"]:
+        assert required in labels
+    assert all("description" in o for o in options)
