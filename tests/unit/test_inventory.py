@@ -41,3 +41,47 @@ def test_enumerate_agents(tmp_path):
         ".claude/agents/ios-checker.md",
         ".claude/plugins/cache/m1/p1/v/agents/codex-rescue.md",
     ]
+
+
+from server.inventory import parse_skill_frontmatter
+
+
+def test_parse_simple(tmp_path):
+    f = tmp_path / "SKILL.md"
+    f.write_text(
+        "---\n"
+        "name: writing-plans\n"
+        'description: Use when you have a spec\n'
+        "---\n"
+        "Body text\n"
+    )
+    meta = parse_skill_frontmatter(f)
+    assert meta["name"] == "writing-plans"
+    assert meta["description"].startswith("Use when")
+    assert meta["body_excerpt"].startswith("Body text")
+
+
+def test_parse_block_description(tmp_path):
+    """gstack uses `description: |` block style."""
+    f = tmp_path / "SKILL.md"
+    f.write_text(
+        "---\n"
+        "name: office-hours\n"
+        "description: |\n"
+        "  YC Office Hours — two modes.\n"
+        "  Detailed second line.\n"
+        "---\n"
+    )
+    meta = parse_skill_frontmatter(f)
+    assert meta["name"] == "office-hours"
+    assert "YC Office Hours" in meta["description"]
+    assert "Detailed second line" in meta["description"]
+
+
+def test_parse_missing_frontmatter(tmp_path):
+    f = tmp_path / "SKILL.md"
+    f.write_text("Just a plain markdown file\n")
+    meta = parse_skill_frontmatter(f)
+    assert meta["name"] is None
+    assert meta["description"] is None
+    assert meta["body_excerpt"].startswith("Just a plain")
