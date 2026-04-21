@@ -12,21 +12,27 @@ def _touch(p: Path, body: str):
 def test_concierge_happy_path(tmp_path, monkeypatch):
     monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
 
-    # Pre-populate the user's machine with a few known + unknown skills
-    _touch(tmp_path / ".claude/skills/writing-plans/SKILL.md",
-           "---\nname: writing-plans\ndescription: write plans\n---\n")
+    # Pre-populate with richly-described skills (heuristic catches stages) + 1 ambiguous
+    _touch(tmp_path / ".claude/skills/my-planner/SKILL.md",
+           "---\nname: my-planner\n"
+           "description: Plan from a spec or requirements before writing code\n"
+           "---\n")
     _touch(tmp_path / ".claude/skills/freeze/SKILL.md",
-           "---\nname: freeze\ndescription: scope edits\n---\n")
+           "---\nname: freeze\n"
+           "description: Freeze edits, restrict edits to a folder, lock down\n"
+           "---\n")
     _touch(tmp_path / ".claude/skills/checkpoint/SKILL.md",
-           "---\nname: checkpoint\ndescription: save state\n---\n")
+           "---\nname: checkpoint\n"
+           "description: Save state and save progress, checkpoint and resume\n"
+           "---\n")
     _touch(tmp_path / ".claude/skills/odd-skill/SKILL.md",
-           "---\nname: odd-skill\ndescription: mystery\n---\n")
+           "---\nname: odd-skill\ndescription: mystery unclear purpose\n---\n")
 
     inv = scan()
-    assert "writing-plans" in inv["skills"]
+    assert "my-planner" in inv["skills"]
     assert inv["skills"]["odd-skill"]["source"] == "unclassified"
 
-    # Simulate the LLM classifying odd-skill
+    # Simulate the LLM classifying odd-skill (heuristic missed it → LLM falls through)
     apply_classification("odd-skill",
                          [{"stage": "execute", "role": "mystery-helper"}],
                          confidence="medium",
@@ -35,11 +41,11 @@ def test_concierge_happy_path(tmp_path, monkeypatch):
     # Approve a sequence
     rid = create_run(task="prototype tool", sequence=["plan","execute"])
 
-    # Plan stage — pick writing-plans
+    # Plan stage — heuristic puts my-planner in the plan stage
     plan_opts = [o["label"] for o in build_stage_options("plan")]
-    assert "writing-plans" in plan_opts
-    assert "checkpoint" in plan_opts  # contextual helper for plan
-    mark_stage(rid, "plan", status="done", tool_used="writing-plans")
+    assert "my-planner" in plan_opts
+    assert "checkpoint" in plan_opts  # contextual helper via state-save role
+    mark_stage(rid, "plan", status="done", tool_used="my-planner")
 
     # Execute stage — odd-skill (just classified) should now appear
     exec_opts = [o["label"] for o in build_stage_options("execute")]

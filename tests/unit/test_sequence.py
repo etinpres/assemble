@@ -3,10 +3,10 @@ from server.sequence import build_prompt, parse_response
 
 
 def test_prompt_lists_all_stages():
-    p = build_prompt(task="iOS 계산기 앱 만들기")
+    p = build_prompt(task="build an iOS calculator app")
     for s in ["discover","plan","design","execute","debug","review","verify","ship"]:
         assert s in p
-    assert "iOS 계산기" in p
+    assert "iOS calculator" in p
     assert "JSON" in p
 
 

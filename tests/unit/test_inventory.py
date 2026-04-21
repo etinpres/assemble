@@ -87,14 +87,7 @@ def test_parse_missing_frontmatter(tmp_path):
     assert meta["body_excerpt"].startswith("Just a plain")
 
 
-from server.inventory import load_pre_mapping, load_stages, load_stage_roles
-
-
-def test_load_pre_mapping():
-    m = load_pre_mapping()
-    assert m["writing-plans"] == [{"stage": "plan", "role": "requirements-spec"}]
-    assert {"stage": "review", "role": "second-opinion-review"} in m["codex"]
-    assert {"stage": "debug",  "role": "second-opinion"} in m["codex"]
+from server.inventory import load_stages, load_stage_roles
 
 
 def test_load_stages():
@@ -117,18 +110,21 @@ import time
 from server.inventory import scan, INVENTORY_REL
 
 
-def test_scan_writes_inventory(tmp_path, monkeypatch):
+def test_scan_heuristic_classifies_rich_description(tmp_path, monkeypatch):
+    """Multiple stage keywords in a description → heuristic classifies immediately."""
     monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
-    _touch(tmp_path / ".claude/skills/writing-plans/SKILL.md",
-           "---\nname: writing-plans\ndescription: spec\n---\nbody")
+    _touch(tmp_path / ".claude/skills/my-planner/SKILL.md",
+           "---\nname: my-planner\n"
+           "description: Use when you have a spec or requirements to plan before code\n"
+           "---\n")
     inv = scan()
-    assert "writing-plans" in inv["skills"]
-    entry = inv["skills"]["writing-plans"]
-    assert entry["mappings"] == [{"stage": "plan", "role": "requirements-spec"}]
-    assert entry["source"] == "pre-mapped"
+    entry = inv["skills"]["my-planner"]
+    assert entry["source"] == "heuristic-classified"
+    assert any(m["stage"] == "plan" for m in entry["mappings"])
 
 
 def test_scan_marks_unknown(tmp_path, monkeypatch):
+    """If the heuristic can't match, leave as unclassified (defer to LLM pass)."""
     monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
     _touch(tmp_path / ".claude/skills/some-new-skill/SKILL.md",
            "---\nname: some-new-skill\ndescription: who knows\n---\n")
@@ -190,12 +186,73 @@ def test_apply_classification_updates_cache(tmp_path, monkeypatch):
 
 
 def test_unclassified_lists_only_unmapped(tmp_path, monkeypatch):
+    """Rich planner description → heuristic-classified; vague odd-tool stays unclassified."""
     monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
-    _touch(tmp_path / ".claude/skills/writing-plans/SKILL.md",
-           "---\nname: writing-plans\n---\n")
+    _touch(tmp_path / ".claude/skills/planner/SKILL.md",
+           "---\nname: planner\n"
+           "description: Use when you have a spec or requirements to plan\n"
+           "---\n")
     _touch(tmp_path / ".claude/skills/odd-tool/SKILL.md",
-           "---\nname: odd-tool\n---\n")
+           "---\nname: odd-tool\ndescription: mystery purpose\n---\n")
     scan()
     from server.inventory import unclassified_names
-    names = unclassified_names()
-    assert names == ["odd-tool"]
+    assert unclassified_names() == ["odd-tool"]
+
+
+# -------------------------------------------------------------------------
+# Heuristic-classifier regression tests (post pre_mapping.json retirement)
+# -------------------------------------------------------------------------
+
+def test_heuristic_catches_ship_description(tmp_path, monkeypatch):
+    """Clear deploy/ship keywords → classified to ship stage immediately."""
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    _touch(tmp_path / ".claude/skills/shipper/SKILL.md",
+           "---\nname: shipper\n"
+           "description: Ship and deploy to production, push to main, release\n"
+           "---\n")
+    inv = scan()
+    e = inv["skills"]["shipper"]
+    assert e["source"] == "heuristic-classified"
+    assert any(m["stage"] == "ship" for m in e["mappings"])
+
+
+def test_heuristic_defers_on_vague_description(tmp_path, monkeypatch):
+    """When not confident, leave unclassified so the LLM loop can handle it."""
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    _touch(tmp_path / ".claude/skills/vague/SKILL.md",
+           "---\nname: vague\ndescription: does something maybe\n---\n")
+    inv = scan()
+    e = inv["skills"]["vague"]
+    assert e["source"] == "unclassified"
+    assert e["mappings"] == []
+
+
+def test_heuristic_assigns_proper_role_for_safety(tmp_path, monkeypatch):
+    """A safety skill's role must match a stage_roles.json key for contextual_helper to pick it up."""
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    _touch(tmp_path / ".claude/skills/my-freezer/SKILL.md",
+           "---\nname: my-freezer\n"
+           "description: Freeze project edits, restrict edits to a folder, lock down\n"
+           "---\n")
+    inv = scan()
+    mappings = inv["skills"]["my-freezer"]["mappings"]
+    assert any(m["stage"] == "safety" and m["role"] == "edit-scope-limit"
+               for m in mappings)
+
+
+def test_prior_llm_classification_beats_heuristic(tmp_path, monkeypatch):
+    """User/LLM classifications survive rebuilds; the heuristic does not overwrite them."""
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    _touch(tmp_path / ".claude/skills/dual-signal/SKILL.md",
+           "---\nname: dual-signal\n"
+           "description: Ship and deploy, push to main, release changelog\n"
+           "---\n")
+    scan()
+    # User overrides with "actually this is a plan tool"
+    apply_classification("dual-signal",
+                         [{"stage": "plan", "role": "custom"}],
+                         confidence="high", reasoning="user override")
+    inv = scan(force=True)
+    e = inv["skills"]["dual-signal"]
+    assert e["source"] == "llm-classified"
+    assert e["mappings"] == [{"stage": "plan", "role": "custom"}]

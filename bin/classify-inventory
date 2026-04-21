@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+"""classify-inventory — emit LLM classification prompts for unclassified skills/agents.
+
+Running bulk classification inline via /assemble is slow and burns tokens.
+Use this script as a one-shot in a dedicated session (e.g. `claude -p < bin/classify-inventory`),
+feed the JSON back via `--apply`, and the inventory picks it up.
+
+Usage:
+  bin/classify-inventory              # emit prompt bundle as JSONL (skill + agent)
+  bin/classify-inventory --list       # list unclassified names only (kind<TAB>name)
+  bin/classify-inventory --apply FILE # apply LLM responses (JSONL) in bulk
+  bin/classify-inventory --status     # print classification state summary (skills vs agents)
+"""
+import json
+import sys
+from pathlib import Path
+
+# Add project root to sys.path for `from server import ...`
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+from server import (
+    scan, unclassified_names, unclassified_entries, apply_classification,
+    parse_skill_frontmatter, build_classify_prompt, parse_classify_response,
+)
+
+
+def cmd_list():
+    for e in unclassified_entries():
+        print(f"{e['kind']}\t{e['name']}")
+
+
+def cmd_status():
+    inv = scan()
+    from collections import Counter
+    skill_sources = Counter(e.get("source", "unknown")
+                            for e in (inv.get("skills") or {}).values())
+    agent_sources = Counter(e.get("source", "unknown")
+                            for e in (inv.get("agents") or {}).values())
+    print(f"skills:  {len(inv.get('skills') or {})}")
+    for src, n in skill_sources.most_common():
+        print(f"  {src}: {n}")
+    print(f"agents:  {len(inv.get('agents') or {})}")
+    for src, n in agent_sources.most_common():
+        print(f"  {src}: {n}")
+    entries = unclassified_entries()
+    print(f"unclassified (skills+agents): {len(entries)}")
+
+
+def cmd_prompts():
+    """Emit one classification prompt per unclassified skill/agent as JSONL.
+
+    Each line: {"name": ..., "kind": "skill"|"agent", "prompt": ...}
+
+    For each prompt, the LLM should reply with JSON shaped like:
+      {"name": ..., "kind": ..., "mappings": [...], "confidence": ..., "reasoning": ...}
+    Feed those lines back via `--apply`.
+    """
+    scan()
+    for e in unclassified_entries():
+        path = Path(e["path"])
+        meta = parse_skill_frontmatter(path)
+        prompt = build_classify_prompt(
+            name=e["name"],
+            description=meta.get("description"),
+            body_excerpt=meta.get("body_excerpt", ""),
+        )
+        sys.stdout.write(json.dumps(
+            {"name": e["name"], "kind": e["kind"], "prompt": prompt},
+            ensure_ascii=False,
+        ) + "\n")
+
+
+def cmd_apply(path: str):
+    """Apply a JSONL response file via repeated calls to apply_classification.
+
+    apply_classification looks up the name in both skill and agent buckets,
+    so the `kind` field isn't strictly required — but keeping it in the
+    payload helps with log readability.
+    """
+    applied = 0
+    errors = 0
+    with open(path) as f:
+        for i, line in enumerate(f, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                d = json.loads(line)
+                name = d["name"]
+                payload = d.get("response") or d
+                parsed = (parse_classify_response(json.dumps(payload))
+                          if isinstance(payload, dict)
+                          else parse_classify_response(payload))
+                apply_classification(
+                    name,
+                    parsed["mappings"],
+                    parsed["confidence"],
+                    parsed["reasoning"],
+                )
+                applied += 1
+            except Exception as e:
+                print(f"[line {i}] ERROR: {e}", file=sys.stderr)
+                errors += 1
+    print(f"applied={applied} errors={errors}")
+
+
+def main():
+    args = sys.argv[1:]
+    if not args:
+        cmd_prompts()
+        return
+    cmd = args[0]
+    if cmd == "--list":
+        cmd_list()
+    elif cmd == "--status":
+        cmd_status()
+    elif cmd == "--apply":
+        if len(args) < 2:
+            print("usage: classify-inventory --apply <responses.jsonl>",
+                  file=sys.stderr)
+            sys.exit(2)
+        cmd_apply(args[1])
+    elif cmd in {"-h", "--help"}:
+        print(__doc__)
+    else:
+        print(f"unknown command: {cmd}", file=sys.stderr)
+        sys.exit(2)
+
+
+if __name__ == "__main__":
+    main()

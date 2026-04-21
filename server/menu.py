@@ -1,4 +1,5 @@
 from server.inventory import scan, load_stage_roles
+from server.i18n import tdict, t
 
 
 def _all_skills() -> dict:
@@ -14,39 +15,62 @@ def tools_for_stage(stage: str) -> list[dict]:
             if m.get("stage") == stage:
                 out.append({**entry, "role_in_stage": m.get("role")})
                 break
-    return sorted(out, key=lambda t: t["name"])
+    return sorted(out, key=lambda x: x["name"])
 
 
-META_ACTIONS = [
-    {"label": "물어보기", "kind": "ask",
-     "description": "자유 입력으로 Claude한테 추천 받기"},
-    {"label": "skip",     "kind": "skip",
-     "description": "이 단계 건너뛰기"},
-    {"label": "직접",     "kind": "manual",
-     "description": "내가 손으로 처리, 다음 stage로 진행"},
-    {"label": "back",     "kind": "back",
-     "description": "이전 stage로 돌아가기"},
-    {"label": "done",     "kind": "done",
-     "description": "여기서 종료"},
-]
+_META_KINDS = ["ask", "skip", "manual", "back", "done"]
+
+
+def _meta_actions() -> list[dict]:
+    """Localized meta-action menu entries.
+
+    Rebuilt each call so a locale change (e.g. tests switching env vars)
+    is observed without reimporting.
+    """
+    actions: list[dict] = []
+    for kind in _META_KINDS:
+        entry = tdict(f"menu.{kind}")
+        actions.append({
+            "label": entry.get("label") or kind,
+            "kind": kind,
+            "description": entry.get("description") or "",
+        })
+    return actions
 
 
 def build_stage_options(stage: str) -> list[dict]:
+    """Tool + meta actions + safety/meta helpers, merged into one menu.
+
+    If the same skill is both directly mapped to this stage AND tagged as a
+    contextual helper (via meta/safety role), surface it once under `tool`
+    and drop the helper duplicate.
+    """
+    no_desc = t("menu.no_description")
+    helper_suffix = t("menu.helper_suffix")
     options: list[dict] = []
-    for t in tools_for_stage(stage):
+    seen_keys: set[str] = set()
+    for tool in tools_for_stage(stage):
+        key = tool.get("path") or tool["name"]
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
         options.append({
-            "label": t["name"],
+            "label": tool["name"],
             "kind": "tool",
-            "description": (t.get("description") or "(설명 없음)")[:80],
-            "tool_path": t.get("path"),
+            "description": (tool.get("description") or no_desc)[:80],
+            "tool_path": tool.get("path"),
         })
-    options.extend(META_ACTIONS)
-    for h in contextual_helpers(stage):
+    options.extend(_meta_actions())
+    for helper in contextual_helpers(stage):
+        key = helper.get("path") or helper["name"]
+        if key in seen_keys:
+            continue  # already surfaced as a tool — avoid duplicate
+        seen_keys.add(key)
         options.append({
-            "label": h["name"],
+            "label": helper["name"],
             "kind": "helper",
-            "description": (h.get("description") or "(설명 없음)")[:80] + "  [보조]",
-            "tool_path": h.get("path"),
+            "description": (helper.get("description") or no_desc)[:80] + helper_suffix,
+            "tool_path": helper.get("path"),
         })
     return options
 
@@ -65,4 +89,4 @@ def contextual_helpers(stage: str) -> list[dict]:
                     out.append({**entry, "role_in_stage": m["role"]})
                     seen.add(name)
                 break
-    return sorted(out, key=lambda t: t["name"])
+    return sorted(out, key=lambda x: x["name"])

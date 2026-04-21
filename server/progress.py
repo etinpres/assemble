@@ -41,9 +41,18 @@ def load_progress(run_id: str) -> dict | None:
     return read_json(_progress_path(run_id))
 
 
+VALID_STATUS = {"pending","in_progress","done","skipped","manual","back"}
+TERMINAL_STATUS = {"done","skipped","manual"}
+
+
 def mark_stage(run_id: str, stage: str, status: str,
                tool_used: str | None = None, notes: str = "") -> dict:
-    if status not in {"pending","in_progress","done","skipped","manual","back"}:
+    """Update a stage's status with transition guards.
+
+    'back' is a cursor command, not a persisted status — it moves
+    current_stage_index without overwriting the stage's recorded status.
+    """
+    if status not in VALID_STATUS:
         raise ValueError(f"bad status: {status}")
 
     def upd(p: dict) -> dict:
@@ -52,15 +61,32 @@ def mark_stage(run_id: str, stage: str, status: str,
             raise ValueError(f"stage {stage} not in sequence")
         st = p["stages"][idx]
         now = datetime.now().isoformat()
+
+        if status == "back":
+            # `back` is cursor-only. The stage's recorded status
+            # (pending/in_progress/done/...) is preserved. Earlier versions
+            # stamped status='back', which broke wrap-up counts and
+            # find_resumable.
+            p["current_stage_index"] = max(idx - 1, 0)
+            p["updated_at"] = now
+            return p
+
+        current = st.get("status", "pending")
+        if current in TERMINAL_STATUS and status == "in_progress":
+            raise ValueError(
+                f"illegal transition: stage '{stage}' already '{current}'. "
+                "Use 'back' to revisit, not 'in_progress'."
+            )
+
         if status == "in_progress" and st["started_at"] is None:
             st["started_at"] = now
-        if status in {"done","skipped","manual"}:
+        if status in TERMINAL_STATUS:
+            if st["started_at"] is None:
+                st["started_at"] = now
             st["ended_at"] = now
             if tool_used:
                 st["tool_used"] = tool_used
             p["current_stage_index"] = min(idx + 1, len(p["sequence"]) - 1)
-        elif status == "back":
-            p["current_stage_index"] = max(idx - 1, 0)
         st["status"] = status
         if notes:
             st["notes"] = notes

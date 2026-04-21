@@ -1,0 +1,40 @@
+{
+  "stages": {
+    "discover": {"label": "Discover", "desc": "idea exploration, problem definition"},
+    "plan":     {"label": "Plan",     "desc": "spec / review"},
+    "design":   {"label": "Design",   "desc": "UI / visual design"},
+    "execute":  {"label": "Execute",  "desc": "code implementation"},
+    "debug":    {"label": "Debug",    "desc": "bug tracking"},
+    "review":   {"label": "Review",   "desc": "code review"},
+    "verify":   {"label": "Verify",   "desc": "QA / validation"},
+    "ship":     {"label": "Ship",     "desc": "deploy / release"},
+    "safety":   {"label": "Safety",   "desc": "mistake prevention"},
+    "meta":     {"label": "Meta",     "desc": "workspace management"}
+  },
+  "menu": {
+    "ask":    {"label": "ask",    "description": "free-text recommendation from Claude"},
+    "skip":   {"label": "skip",   "description": "skip this stage"},
+    "manual": {"label": "manual", "description": "I'll handle it by hand, move on"},
+    "back":   {"label": "back",   "description": "go back to previous stage"},
+    "done":   {"label": "done",   "description": "end here"},
+    "no_description": "(no description)",
+    "helper_suffix": "  [helper]"
+  },
+  "progress": {
+    "resume_announce": "Resuming: {task}. Current stage: {stage} ({idx}/{total})",
+    "wrap_up": "Done. run_id={rid} · {m}m {s}s · stages: done={done} skipped={skipped} manual={manual} · tools: {tools}",
+    "no_tools": "none",
+    "progress_path": "Progress record: {path}"
+  },
+  "sequence": {
+    "confirm_question": "Go with this sequence? {stages}",
+    "options": {
+      "approve": "approve",
+      "edit":    "edit",
+      "cancel":  "cancel"
+    }
+  },
+  "notices": {
+    "unclassified_hint": "{n} skill(s) are unclassified and won't appear in this run's menus. To bulk-classify, run:\n  ~/.claude/skills/assemble/bin/classify-inventory"
+  }
+}

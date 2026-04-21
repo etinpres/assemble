@@ -6,10 +6,10 @@ from server.progress import (
 
 def test_create_run_writes_skeleton(tmp_path, monkeypatch):
     monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
-    rid = create_run(task="iOS 계산기", sequence=["plan","execute","ship"])
+    rid = create_run(task="iOS calculator", sequence=["plan","execute","ship"])
     assert rid.startswith("20")
     p = load_progress(rid)
-    assert p["task"] == "iOS 계산기"
+    assert p["task"] == "iOS calculator"
     assert p["sequence"] == ["plan","execute","ship"]
     assert p["current_stage_index"] == 0
     assert [s["status"] for s in p["stages"]] == ["pending","pending","pending"]

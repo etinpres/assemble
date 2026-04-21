@@ -1,0 +1,40 @@
+{
+  "stages": {
+    "discover": {"label": "Discover", "desc": "아이디어 탐색·문제 정의"},
+    "plan":     {"label": "Plan",     "desc": "spec / 리뷰"},
+    "design":   {"label": "Design",   "desc": "UI / 시각 디자인"},
+    "execute":  {"label": "Execute",  "desc": "코드 구현"},
+    "debug":    {"label": "Debug",    "desc": "버그 추적"},
+    "review":   {"label": "Review",   "desc": "코드 리뷰"},
+    "verify":   {"label": "Verify",   "desc": "QA·검증"},
+    "ship":     {"label": "Ship",     "desc": "배포·릴리스"},
+    "safety":   {"label": "Safety",   "desc": "실수 방지"},
+    "meta":     {"label": "Meta",     "desc": "워크스페이스 관리"}
+  },
+  "menu": {
+    "ask":    {"label": "물어보기", "description": "자유 입력으로 Claude한테 추천 받기"},
+    "skip":   {"label": "skip",     "description": "이 단계 건너뛰기"},
+    "manual": {"label": "직접",     "description": "내가 손으로 처리, 다음 stage로 진행"},
+    "back":   {"label": "back",     "description": "이전 stage로 돌아가기"},
+    "done":   {"label": "done",     "description": "여기서 종료"},
+    "no_description": "(설명 없음)",
+    "helper_suffix": "  [보조]"
+  },
+  "progress": {
+    "resume_announce": "이어서: {task}. 현재 stage: {stage} ({idx}/{total})",
+    "wrap_up": "완료. run_id={rid} · {m}분 {s}초 · stages: done={done} skipped={skipped} manual={manual} · tools: {tools}",
+    "no_tools": "없음",
+    "progress_path": "진행 기록: {path}"
+  },
+  "sequence": {
+    "confirm_question": "이 시퀀스로 갈까? {stages}",
+    "options": {
+      "approve": "approve",
+      "edit":    "edit",
+      "cancel":  "cancel"
+    }
+  },
+  "notices": {
+    "unclassified_hint": "미분류 {n}건이 이번 작업 메뉴에 안 나옵니다. 원하면\n  `~/.claude/skills/assemble/bin/classify-inventory` 로 일괄 처리하세요."
+  }
+}

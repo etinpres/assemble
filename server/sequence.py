@@ -5,20 +5,20 @@ SEQUENTIAL_ORDER = ["discover","plan","design","execute","debug","review","verif
 ORDER_INDEX = {s: i for i, s in enumerate(SEQUENTIAL_ORDER)}
 
 PROMPT_TEMPLATE = """\
-사용자 작업: {task}
+User task: {task}
 
-8개 sequential stage가 있어:
-  discover → plan → design → execute → debug → review → verify → ship
+There are 8 sequential stages:
+  discover -> plan -> design -> execute -> debug -> review -> verify -> ship
 
-이 작업에 *필요한 stage만* 골라서 순서대로 배열로 만들어줘.
-- 순서는 위 흐름을 어기지 마 (skip은 OK, 순서 뒤집기 금지)
-- safety / meta는 직교 카테고리라 sequence에 포함하지 마
-- 단순한 작업이면 1~2개 stage만 골라도 돼
+Pick *only the stages this task needs* and list them in order.
+- Preserve the flow above (skipping is OK, reordering is not)
+- `safety` and `meta` are orthogonal — do not include them in the sequence
+- Trivial tasks may use just 1-2 stages
 
-JSON으로만 답해:
+Respond with JSON only:
 {{
   "sequence": ["<stage>", ...],
-  "reasoning": "<한 줄 — 왜 이 stage들을 골랐는지>"
+  "reasoning": "<one line — why these stages>"
 }}
 """
 
