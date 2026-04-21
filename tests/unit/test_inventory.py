@@ -85,3 +85,28 @@ def test_parse_missing_frontmatter(tmp_path):
     assert meta["name"] is None
     assert meta["description"] is None
     assert meta["body_excerpt"].startswith("Just a plain")
+
+
+from server.inventory import load_pre_mapping, load_stages, load_stage_roles
+
+
+def test_load_pre_mapping():
+    m = load_pre_mapping()
+    assert m["writing-plans"] == [{"stage": "plan", "role": "requirements-spec"}]
+    assert {"stage": "review", "role": "second-opinion-review"} in m["codex"]
+    assert {"stage": "debug",  "role": "second-opinion"} in m["codex"]
+
+
+def test_load_stages():
+    s = load_stages()
+    seq_ids = [x["id"] for x in s["sequential"]]
+    assert seq_ids == ["discover","plan","design","execute","debug","review","verify","ship"]
+    orth_ids = [x["id"] for x in s["orthogonal"]]
+    assert orth_ids == ["safety","meta"]
+
+
+def test_load_stage_roles():
+    r = load_stage_roles()
+    assert "edit-scope-limit" in r["execute"]
+    assert "dangerous-cmd-warn" in r["debug"]
+    assert "skill-discovery" in r["discover"]

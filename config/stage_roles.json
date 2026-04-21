@@ -1,0 +1,11 @@
+{
+  "discover": ["skill-discovery", "prior-learning"],
+  "plan":     ["state-save", "skill-discovery"],
+  "design":   ["state-save"],
+  "execute":  ["edit-scope-limit", "dangerous-cmd-warn", "state-save"],
+  "debug":    ["dangerous-cmd-warn"],
+  "review":   ["state-save"],
+  "verify":   ["state-save"],
+  "ship":     ["dangerous-cmd-warn", "state-save"],
+  "post-ship":["learning-capture", "state-save"]
+}

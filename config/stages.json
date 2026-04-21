@@ -1,0 +1,16 @@
+{
+  "sequential": [
+    {"id": "discover", "label": "Discover",  "desc": "아이디어 탐색·문제 정의"},
+    {"id": "plan",     "label": "Plan",      "desc": "spec/리뷰"},
+    {"id": "design",   "label": "Design",    "desc": "UI/시각 디자인"},
+    {"id": "execute",  "label": "Execute",   "desc": "코드 구현"},
+    {"id": "debug",    "label": "Debug",     "desc": "버그 추적"},
+    {"id": "review",   "label": "Review",    "desc": "코드 리뷰"},
+    {"id": "verify",   "label": "Verify",    "desc": "QA·검증"},
+    {"id": "ship",     "label": "Ship",      "desc": "배포·릴리스"}
+  ],
+  "orthogonal": [
+    {"id": "safety", "label": "Safety", "desc": "실수 방지"},
+    {"id": "meta",   "label": "Meta",   "desc": "워크스페이스 관리"}
+  ]
+}

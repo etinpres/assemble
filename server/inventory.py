@@ -92,3 +92,20 @@ def _parse_yaml_ish(block: str) -> tuple[str | None, str | None]:
                 desc_lines = [val.strip('"').strip("'")]
     description = " ".join(desc_lines).strip() if desc_lines is not None else None
     return name, description or None
+
+
+import json
+
+CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
+
+
+def load_pre_mapping() -> dict[str, list[dict]]:
+    return json.loads((CONFIG_DIR / "pre_mapping.json").read_text())
+
+
+def load_stages() -> dict:
+    return json.loads((CONFIG_DIR / "stages.json").read_text())
+
+
+def load_stage_roles() -> dict[str, list[str]]:
+    return json.loads((CONFIG_DIR / "stage_roles.json").read_text())
