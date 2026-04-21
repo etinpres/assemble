@@ -190,7 +190,7 @@ from server.i18n import t
 p = load_progress('<rid>')
 idx = p['current_stage_index']
 print(t('progress.resume_announce', task=p['task'],
-        stage=p['stages'][idx]['id'], idx=idx+1, total=len(p['stages'])))
+        stage=p['stages'][idx]['stage'], idx=idx+1, total=len(p['stages'])))
 "
 ```
 

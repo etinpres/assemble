@@ -10,14 +10,27 @@ USER_PRIORITY = 0
 PLUGIN_PRIORITY = 1
 
 
+def _under(child: Path, parent: Path) -> bool:
+    try:
+        child.relative_to(parent)
+        return True
+    except ValueError:
+        return False
+
+
 def enumerate_skill_paths(home: Path | None = None) -> list[Path]:
     """Return SKILL.md paths ordered user > plugin.
 
     User skills come before plugin skills so `scan()`'s first-wins dedupe
     keeps the user version when names collide. Within a priority, sort by
     path string so enumeration is reproducible.
+
+    Resolved paths that escape the `~/.claude` tree via symlink are rejected,
+    so a rogue `~/.claude/skills/x -> /etc/passwd` doesn't get indexed or
+    excerpted into inventory.json.
     """
     base = _home(home)
+    claude_root = (base / ".claude").resolve()
     roots: list[tuple[Path, int]] = [
         (base / ".claude" / "skills", USER_PRIORITY),
         (base / ".claude" / "plugins" / "cache", PLUGIN_PRIORITY),
@@ -28,6 +41,8 @@ def enumerate_skill_paths(home: Path | None = None) -> list[Path]:
             continue
         for p in root.rglob("SKILL.md"):
             rp = p.resolve()
+            if not _under(rp, claude_root):
+                continue
             existing = by_path.get(rp)
             if existing is None or prio < existing:
                 by_path[rp] = prio
@@ -35,17 +50,26 @@ def enumerate_skill_paths(home: Path | None = None) -> list[Path]:
 
 
 def enumerate_agent_paths(home: Path | None = None) -> list[Path]:
-    """Return agent .md paths ordered user > plugin (first-wins precedence)."""
+    """Return agent .md paths ordered user > plugin (first-wins precedence).
+
+    Same symlink-escape guard as `enumerate_skill_paths`.
+    """
     base = _home(home)
+    claude_root = (base / ".claude").resolve()
     user_root = base / ".claude" / "agents"
     plugin_root = base / ".claude" / "plugins" / "cache"
     by_path: dict[Path, int] = {}
     if user_root.exists():
         for p in user_root.glob("*.md"):
-            by_path[p.resolve()] = USER_PRIORITY
+            rp = p.resolve()
+            if not _under(rp, claude_root):
+                continue
+            by_path[rp] = USER_PRIORITY
     if plugin_root.exists():
         for p in plugin_root.glob("*/*/*/agents/*.md"):
             rp = p.resolve()
+            if not _under(rp, claude_root):
+                continue
             existing = by_path.get(rp)
             if existing is None or PLUGIN_PRIORITY < existing:
                 by_path[rp] = PLUGIN_PRIORITY

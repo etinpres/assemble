@@ -182,6 +182,44 @@ def test_corrupt_cache_is_quarantined_and_rebuilt(tmp_path, monkeypatch):
     assert backups[0].read_text() == "{not valid json"
 
 
+# Finding #8: enumerate_* rejects symlinks whose resolved target escapes
+# ~/.claude (prevents inventory.json from excerpting arbitrary local files).
+def test_enumerate_rejects_symlink_escape_outside_claude_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    # Real, legitimate skill inside ~/.claude
+    _touch(tmp_path / ".claude/skills/legit/SKILL.md",
+           "---\nname: legit\ndescription: real\n---\nreal body\n")
+    # Hostile target outside ~/.claude with the right filename
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "SKILL.md").write_text(
+        "---\nname: evil\ndescription: EXFIL\n---\nSECRET\n"
+    )
+    # Rogue symlink planted in the user skills root pointing outside
+    link_dir = tmp_path / ".claude/skills/evil"
+    link_dir.mkdir(parents=True)
+    (link_dir / "SKILL.md").symlink_to(outside / "SKILL.md")
+
+    inv = scan()
+    # Legit skill is indexed; escape target is not
+    assert "legit" in inv["skills"]
+    assert "evil" not in inv["skills"]
+    for e in inv["skills"].values():
+        assert "SECRET" not in (e.get("body_excerpt") or "")
+        assert "EXFIL" not in (e.get("description") or "")
+
+
+# Finding #9: persisted stage records must use the 'stage' key — SKILL.md
+# resume snippet reads p['stages'][idx]['stage'] and will KeyError otherwise.
+def test_stage_records_expose_stage_key(tmp_path, monkeypatch):
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    rid = create_run(task="t", sequence=["plan", "execute"])
+    p = load_progress(rid)
+    for row in p["stages"]:
+        assert "stage" in row, "SKILL.md resume snippet depends on this key"
+        assert "id" not in row, "no legacy 'id' alias; don't resurrect it"
+
+
 # Corrupt preserved across apply_classification too — it uses the same lock.
 def test_apply_on_corrupt_cache_does_not_lose_data(tmp_path, monkeypatch):
     monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
