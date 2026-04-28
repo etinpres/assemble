@@ -1,0 +1,6 @@
+# ADR: {{TASK}}
+
+> Architecture Decision Record. Generated alongside PRD.md and ARCHITECTURE.md.
+> Each decision below carries: Context, Decision, Reasoning, Rejected alternatives, Tradeoffs.
+
+{{DECISIONS_BLOCK}}

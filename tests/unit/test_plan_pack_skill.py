@@ -282,3 +282,82 @@ def test_workflow_iteration_step_6_no_force_arch():
     # the option label too, which would still pass even if the bullet
     # describing "no" was changed to keep a draft going.
     assert "exits the workflow" in step6[:800].lower()
+
+
+def test_skill_description_mentions_adr():
+    from server import parse_skill_frontmatter
+    fm = parse_skill_frontmatter(SKILL)
+    desc = (fm.get("description") or "").upper()
+    assert "ADR" in desc, f"description does not mention ADR: {fm.get('description')}"
+
+
+def test_workflow_step_10_adr_interview():
+    body = _body()
+    assert "Step 10" in body
+    step10 = body[body.index("Step 10"):]
+    assert "AskUserQuestion" in step10[:2000]
+    # Gate B3.2 seeds: interview must surface decisions, alternatives, tradeoffs
+    lower = step10[:2000].lower()
+    assert "decision" in lower
+    assert "alternative" in lower or "rejected" in lower
+    assert "tradeoff" in lower or "trade-off" in lower
+
+
+def test_workflow_step_11_adr_single_dispatch():
+    body = _body()
+    assert "Step 11" in body
+    step11 = body[body.index("Step 11"):]
+    # Phase B spec §3: B-2 through B-4 are single-dispatch, not parallel
+    assert "single" in step11[:1000].lower()
+    assert "ADR.md" in step11[:1000]
+    assert "wrap_with_preamble" in step11[:1000]
+    assert "write_run_artifact" in step11[:1000]
+    # Decision count contract for gate B3.2
+    assert "3" in step11[:1500] or "three" in step11[:1500].lower()
+
+
+def test_workflow_step_9_includes_adr():
+    body = _body()
+    step9 = body[body.index("### Step 9"):]
+    # The cross-doc review must now span ADR as well
+    assert "ADR" in step9[:1500]
+    assert "ADR.md" in step9[:1500] or "ADR.md" in body[body.index("### Step 9"):body.index("### Step 6")]
+
+
+def test_workflow_step_9_three_way_consistency():
+    body = _body()
+    step9 = body[body.index("### Step 9"):]
+    # Must explicitly cover ARCH↔ADR decision integrity (per phase-b.md §6 B-3)
+    lower = step9[:1500].lower()
+    assert "decision" in lower
+    assert ("rationale" in lower or "reasoning" in lower or "missing" in lower)
+    # All three pair labels must be present (matches dogfood gate B3.5 distribution)
+    window = step9[:2000]
+    assert "PRD ↔ ARCH" in window
+    assert "ARCH ↔ ADR" in window
+    assert "PRD ↔ ADR" in window
+
+
+def test_workflow_iteration_step_6_includes_adr():
+    body = _body()
+    step6 = body[body.index("Step 6 —"):]
+    # Iteration must now re-run ADR (Step 11) alongside PRD (Steps 2+3) and ARCH (Step 8)
+    assert "Step 11" in step6[:2000] or "ADR" in step6[:2000]
+    assert "ADR.md" in step6[:2000]
+
+
+def test_workflow_iteration_write_order_explicit_adr():
+    body = _body()
+    step6 = body[body.index("Step 6 —"):]
+    # Finding #3 from B-2: iteration write order must be explicit, not implicit.
+    # Look for an enumerated step list mentioning ADR overwrite.
+    assert "Iteration write order" in step6[:2000]
+    overwrite_block = step6[:2500].lower()
+    assert "overwrite" in overwrite_block
+    assert "adr.md" in overwrite_block
+
+def test_workflow_iteration_step_6_no_force():
+    body = _body()
+    step6 = body[body.index("Step 6 —"):]
+    # V4 identity rule: "no" must exit cleanly, even after extension
+    assert "exits the workflow" in step6[:1000].lower()

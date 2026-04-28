@@ -91,3 +91,14 @@ def test_arch_template_exists_and_has_required_sections():
         "## Module boundaries",
     ]:
         assert required in body, f"section missing: {required!r}"
+
+
+def test_adr_template_exists_and_has_required_placeholders():
+    tpl = PLAN_PACK.parent / "templates" / "ADR.md.template"
+    assert tpl.exists(), f"missing: {tpl}"
+    body = tpl.read_text()
+    for required in [
+        "{{TASK}}",
+        "{{DECISIONS_BLOCK}}",
+    ]:
+        assert required in body, f"placeholder missing: {required!r}"
