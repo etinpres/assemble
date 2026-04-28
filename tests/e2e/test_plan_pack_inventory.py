@@ -43,3 +43,21 @@ def test_prd_template_exists_and_has_required_sections():
                      "## Excluded from MVP", "## Acceptance Criteria",
                      "## Design direction", "## Risks"]:
         assert required in body, f"section missing: {required!r}"
+
+
+def test_plan_pack_only_in_plan_stage():
+    """plan-pack must map to exactly one stage: plan. The heuristic
+    classifier scans SKILL.md text — any future addition that smuggles in a
+    ship/debug/etc keyword would silently land plan-pack in two menus.
+    Lock the contract here.
+    """
+    from server.inventory import STAGE_KEYWORDS
+    leaks: dict[str, list[str]] = {}
+    for stage in STAGE_KEYWORDS:
+        if stage == "plan":
+            continue
+        labels = [o["label"] for o in build_stage_options(stage)
+                  if o["kind"] == "tool"]
+        if "★ plan-pack" in labels:
+            leaks[stage] = labels
+    assert not leaks, f"plan-pack leaked into other stage menus: {leaks}"

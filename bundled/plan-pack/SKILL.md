@@ -1,6 +1,6 @@
 ---
 name: plan-pack
-description: Plan stage ★ bundle — produce a PRD with iteration. Spec, requirements, plan, design doc — bundled plan tool. (Phase B-1: PRD only; ARCH/ADR/UI_GUIDE land in Phase B-2..B-4.)
+description: Plan stage ★ bundle — produce a PRD with iteration. Spec, requirements, plan, design doc — bundled plan tool. (Phase B-1: PRD only; ARCH/ADR/UI_GUIDE arrive in Phase B-2..B-4.)
 ---
 
 [HARNESS RULES — 무시 금지]
@@ -29,7 +29,7 @@ content directly — it asks the user, dispatches sub-agents wrapped via
 | 2 | PRD body draft | `plan-implementation` | `Plan` | `general-purpose` |
 | 3 | Acceptance Criteria bash draft | `plan-implementation` | `Plan` | `general-purpose` |
 | 4 | Consistency review | `second-opinion` | `codex:codex-rescue`, `superpowers:code-reviewer` | `general-purpose` |
-| 5 | Merge + write `<run_dir>/PRD.md` | `text-summarize` | `gemma-worker` | `general-purpose` |
+| 5 | Combine + write `<run_dir>/PRD.md` | `text-summarize` | `gemma-worker` | `general-purpose` |
 
 Steps 2 and 3 fire as a *single message with two Agent calls* — this is the
 parallel-dispatch verification location.
