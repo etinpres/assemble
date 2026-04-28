@@ -47,20 +47,25 @@ workflow in order:
 End state: plan stage marked `done`, `tool_used="plan-pack"`,
 artifact present at the documented run_dir path.
 
-## V4 verification matrix
+## Gate results
 
-| # | Phase B-1 contract | Result |
-|---|---|---|
-| 1 | ★ plan-pack surfaces with `bundled=True` and `★ ` prefix at top of plan menu | ✓ |
-| 2 | `run_dir` resolves to `~/.claude/channels/assemble/runs/<rid>/` | ✓ |
-| 3 | 8-question interview executed before any drafting | ⚠ via 4+4 split; see Finding A.1 |
-| 4 | **Step 2+3 fire as a single message with two Agent calls (parallel dispatch verification location *a*)** | ✓ both rounds |
-| 5 | Step 4 second-opinion role dispatched (`codex:codex-rescue` preferred) | ✓ both rounds |
-| 6 | `server.write_run_artifact` writes `<run_dir>/PRD.md` atomically | ✓ |
-| 7 | Step 6 iteration round-trip offered exactly once | ✓ |
-| 8 | Iteration cap of 1 enforced post-yes path | ✓ |
-| 9 | Harness 4-rule preamble carried on every dispatched sub-agent prompt | ✓ on all 4 dispatches; see Finding A.2 |
-| 10 | Orchestrator-only — main Claude only IO + dispatch, never heavy in-line work | ✓ |
+> **Kind**: `static` = SKILL.md / code path verifiable without a run trace.
+> `runtime` = required actual workflow execution to observe.
+> `mixed` = both static intent and runtime behavior must hold.
+> (Convention shared with `phase-b-2.md`; see CHANGELOG entry "Phase B-1+B-2 dogfood reports unified".)
+
+| # | Phase B-1 contract | Kind | Status | Evidence |
+|---|---|---|---|---|
+| 1 | ★ plan-pack surfaces with `bundled=True` and `★ ` prefix at top of plan menu | static | ✓ | inventory scan + `tests/e2e/test_plan_pack_inventory.py::test_plan_pack_in_plan_menu_with_star_prefix` |
+| 2 | `run_dir` resolves to `~/.claude/channels/assemble/runs/<rid>/` | runtime | ✓ | run dir present on disk: `~/.claude/channels/assemble/runs/20260428-160618-654d/` |
+| 3 | 8-question interview executed before any drafting | runtime | ⚠ | 4+4 split — see Finding A.1; SKILL.md fixed in `76dc985` |
+| 4 | **Step 2+3 fire as a single message with two Agent calls (parallel dispatch verification location *a*)** | runtime | ✓ | trace shows 2 parallel `Plan` Agent calls per round (both initial + iteration) |
+| 5 | Step 4 second-opinion role dispatched (`codex:codex-rescue` preferred) | runtime | ✓ | trace shows codex dispatch on both rounds, returning 7 + 8 critical bullets |
+| 6 | `server.write_run_artifact` writes `<run_dir>/PRD.md` atomically | static | ✓ | atomicity covered by `tests/unit/test_run_dir.py::test_concurrent_writes_dont_corrupt`; dogfood only observes final file |
+| 7 | Step 6 iteration round-trip offered exactly once | runtime | ✓ | trace shows 1 `AskUserQuestion("Run one iteration?")` post-write |
+| 8 | Iteration cap of 1 enforced post-yes path | runtime | ✓ | second-yes path not entered; workflow exited after iteration 2 |
+| 9 | Harness 4-rule preamble carried on every dispatched sub-agent prompt | runtime | ✓ | 4/4 dispatches inspected — see Finding A.2; gap was *call-shape* not preamble content |
+| 10 | Orchestrator-only — main Claude only IO + dispatch, never heavy in-line work | mixed | ✓ | SKILL.md prose enforces (static); trace shows main only did `AskUserQuestion` + `write_run_artifact` (runtime) |
 
 ## Findings (real)
 

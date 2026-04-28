@@ -52,18 +52,23 @@ Final PRD.md and ARCHITECTURE.md represent the post-iteration refined pair.
 
 ## Gate results
 
-| # | Item | Result | Evidence |
-|---|---|---|---|
-| C1 | All pre-existing tests pass | ✅ PASS | `109 passed` (post-fix-up) |
-| C2 | No regression in `server/` | ✅ PASS | Gate B2.4 — server/ infra untouched in feature branch |
-| C3 | New tests are meaningful | ✅ PASS | After fix-up `3e9affb`: brittle anchors and tautologies removed |
-| C4 | SKILL.md is parseable by `parse_skill_frontmatter` | ✅ PASS | `test_skill_description_mentions_arch` |
-| C5 | Template loadable and substitutable | ✅ PASS | Section parser + 7 placeholder substitutions succeeded in this run |
-| B2.1 | ARCHITECTURE.md exists at `runs/<rid>/ARCHITECTURE.md` | ✅ PASS | File on disk, 2825 bytes |
-| B2.2 | Directory tree + Data flow each ≥ recognisable structure | ✅ PASS | Tree has 12 paths in code fence; Data flow has 3 numbered steps |
-| B2.3 | ≥1 PRD↔ARCH cross-flaw detected in Step 9 | ✅ PASS | 13 findings in 1st pass (4 CRITICAL); iteration found 1 additional CRITICAL after first 4 were resolved |
-| B2.4 | `server/run_dir.py`, `server/harness.py`, `server/__init__.py` unchanged | ✅ PASS | `git diff master..v4-phase-b-2 -- server/run_dir.py server/harness.py server/__init__.py` empty |
-| B2.5 (runtime) | Harness preamble prepended to dispatched prompts | ✅ PASS | `wrap_with_preamble` produced 1432 + 810 bytes for body/AC; first line `[HARNESS RULES — 무시 금지]` confirmed in `/tmp/dogfood-b2/wrapped_body.txt` |
+> **Kind**: `static` = SKILL.md / code path verifiable without a run trace.
+> `runtime` = required actual workflow execution to observe.
+> `mixed` = both static intent and runtime behavior must hold.
+> (Convention shared with `phase-b-1.md`; see CHANGELOG entry "Phase B-1+B-2 dogfood reports unified".)
+
+| # | Item | Kind | Status | Evidence |
+|---|---|---|---|---|
+| C1 | All pre-existing tests pass | static | ✓ | `109 passed` (post-fix-up `3e9affb`); now 129 after B-1 retroactive review |
+| C2 | No regression in `server/` | static | ✓ | `git diff master..v4-phase-b-2 -- server/` showed 0 lines changed at merge time |
+| C3 | New tests are meaningful (no tautology / false positive) | static | ✓ | post-fix-up `3e9affb`: `body.index("### Step 8")` anchor + 8 assertions verified against actual prose |
+| C4 | SKILL.md is parseable by `parse_skill_frontmatter` | static | ✓ | `tests/unit/test_plan_pack_skill.py::test_skill_description_mentions_arch` invokes the parser end-to-end |
+| C5 | Template loadable and substitutable | mixed | ✓ | template existence verified by `tests/e2e/...::test_arch_template_exists_and_has_required_sections` (static); 7 placeholder substitutions succeeded in this dogfood run (runtime) |
+| B2.1 | ARCHITECTURE.md exists at `runs/<rid>/ARCHITECTURE.md` | runtime | ✓ | file on disk, 2825 bytes — `~/.claude/channels/assemble/runs/20260428-194703-f5dd/ARCHITECTURE.md` |
+| B2.2 | Directory tree + Data flow each fleshed out (not placeholder) | runtime | ✓ | tree: 12 paths inside code fence; Data flow: 3 numbered steps |
+| B2.3 | ≥1 PRD↔ARCH cross-flaw detected in Step 9 | runtime | ✓ | 13 findings 1st pass (4 CRITICAL); iteration surfaced 1 additional CRITICAL after first 4 resolved |
+| B2.4 | `server/run_dir.py`, `server/harness.py`, `server/__init__.py` unchanged in feature branch | static | ✓ | `git diff master..v4-phase-b-2 -- server/run_dir.py server/harness.py server/__init__.py` empty (B-1 retroactive review later patched run_dir.py path traversal — separate from B-2 scope) |
+| B2.5 | Harness preamble prepended to dispatched prompts | runtime | ✓ | `wrap_with_preamble` produced 1432 + 810 bytes for body/AC; first line `[HARNESS RULES — 무시 금지]` confirmed in `/tmp/dogfood-b2/wrapped_body.txt` |
 
 ## Findings — wording/spec issues exposed by dogfood
 
@@ -101,4 +106,9 @@ Tracked here as Phase B-3+ candidates, not blockers for B-2.
    workflow exits. Phase B post-tuning track (multi-iteration with stop
    conditions) is more justified than originally thought.
 
-## Status: PASS — workflow completed end-to-end with real artifacts on disk
+## Status
+
+Phase B-2 dogfood **passes** — workflow completed end-to-end (Steps 0–9 +
+iteration 1) with real artifacts on disk (`PRD.md` + `ARCHITECTURE.md` in
+run `20260428-194703-f5dd`). All 10 gates ✓; 4 wording/spec findings
+captured for Phase B-3 hardening.

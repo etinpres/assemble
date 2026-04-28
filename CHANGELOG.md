@@ -44,6 +44,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`> verified by main Claude on <date> — <n> kept / <m> dropped`)
   prepended to Review notes.
 
+### Changed
+- **Phase B-1+B-2 dogfood reports unified**: both `docs/dogfood/phase-b-1.md`
+  and `docs/dogfood/phase-b-2.md` now use the same Gate results table shape
+  with explicit `Kind` column (`static` / `runtime` / `mixed`) per row.
+  Each row also carries an `Evidence` cell that cites the specific test,
+  trace path, or `git diff` command that backs the status. Addresses the
+  retroactive-review concern that "passes" was claimed without distinguishing
+  between code-path verifiable contracts and behaviors that only a real run
+  can observe. The same shape is the template for Phase B-3+ dogfood.
+
 ### Fixed
 - **Phase B-1 retroactive review C1 (security)**: `server/run_dir.py` now
   validates `run_id` and `filename` as plain basenames before writing —
