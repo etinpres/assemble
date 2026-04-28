@@ -46,12 +46,39 @@ def test_workflow_step_1_interview_eight_questions():
 
 def test_workflow_step_2_single_dispatch_for_prd_body():
     body = _body()
-    # Phase B-1 Task 4 lands single dispatch only; "parallel" is added in Task 5.
-    assert "single dispatch" in body.lower() or "1 Agent call" in body
+    # Task 5 supersedes Task 4: the workflow now dispatches via the
+    # plan-implementation role for the PRD body. The "single dispatch" phrase
+    # is gone (replaced by parallel) — what we still assert is that PRD body
+    # work is mapped to a sub-agent, not done by main Claude inline.
     assert "PRD body" in body or "PRD draft" in body
+    assert "plan-implementation" in body
 
 
 def test_workflow_writes_to_run_dir():
     body = _body()
     assert "PRD.md" in body
     assert "<run_dir>" in body or "runs/<rid>" in body
+
+
+def test_workflow_step_3_parallel_dispatch_for_ac_bash():
+    body = _body()
+    # Task 5 changes the contract — single dispatch is replaced by parallel.
+    assert "single message" in body.lower()
+    assert "2 Agent calls" in body or "two agent calls" in body.lower()
+    assert "AC bash" in body or "Acceptance Criteria" in body
+
+
+def test_workflow_step_3_explains_role_for_ac_bash():
+    body = _body()
+    # AC bash dispatch uses the same role mapping (plan-implementation/Plan).
+    # Verify the phrase appears at least twice — once for Step 2 PRD body,
+    # once for Step 3 AC bash.
+    occurrences = body.lower().count("plan-implementation")
+    assert occurrences >= 2, f"plan-implementation mentioned {occurrences} times"
+
+
+def test_workflow_question_6_now_active():
+    body = _body()
+    # The Phase B-1 Task 4 note ("skipped in Phase B-1 Task 4") is removed
+    # in this task — question 6 is now live.
+    assert "skipped in Phase B-1 Task 4" not in body

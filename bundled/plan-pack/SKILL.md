@@ -36,9 +36,9 @@ parallel-dispatch verification location.
 
 ## Workflow
 
-> NOTE — Phase B-1 implements **steps 1, 2, 5 only**. Steps 3 (parallel AC
-> bash), 4 (consistency review), and 6 (iteration) land in Phase B-1 Tasks
-> 5, 6, 7 of `docs/plans/2026-04-28-v4-phase-b-1.md`.
+> NOTE — Phase B-1 implements **steps 1, 2, 3, 5 only**. Steps 4
+> (consistency review) and 6 (iteration) arrive in Phase B-1 Tasks 6 and
+> 7 of `docs/plans/2026-04-28-v4-phase-b-1.md`.
 
 ### Step 0 — resolve run_dir
 
@@ -55,18 +55,28 @@ Ask the user 8 questions in a single batched `AskUserQuestion`:
 3. Three core features?
 4. Three things explicitly excluded from MVP? (harness #2 enforcement)
 5. One-line success criterion?
-6. One AC bash command — how do you externally verify "it works"? *(skipped in Phase B-1 Task 4; activated in Task 5.)*
+6. One AC bash command — how do you externally verify "it works"?
 7. One-line design direction? (seed for UI_GUIDE later)
 8. One risk or open question?
 
-### Step 2 — PRD body draft (single dispatch)
+### Step 2 — PRD body draft + Step 3 — AC bash draft (parallel dispatch)
 
 Wrap the interview answers + template skeleton via
-`server.harness.wrap_with_preamble`, then dispatch to a `plan-implementation`
-sub-agent (preferred: `Plan`; fallback: `general-purpose`). The sub-agent
-returns the PRD body (Goal / Users / Core features / Excluded from MVP /
-Design direction / Risks). **AC bash is left empty in this task** — Task 5
-adds the parallel call that fills it.
+`server.harness.wrap_with_preamble` once for the body sub-task and once for
+the AC bash sub-task. Then **fire both in a single message with two Agent
+calls** (true parallel dispatch — this is the Phase B-1 parallel-dispatch
+verification location *a*):
+
+- Sub-task A — PRD body. Role `plan-implementation` (preferred `Plan`,
+  fallback `general-purpose`). Returns Goal / Users / Core features /
+  Excluded from MVP / Design direction / Risks.
+- Sub-task B — AC bash. Role `plan-implementation` (preferred `Plan`,
+  fallback `general-purpose`). Given the success criterion (interview Q5)
+  and the externally-verifiable command request (Q6), returns *one
+  executable bash one-liner* that exits 0 iff the success criterion is
+  met. No prose — just the command.
+
+The main Claude waits for both calls to return, then proceeds to Step 5.
 
 ### Step 5 — combine + write (main Claude)
 
