@@ -314,3 +314,20 @@ def test_workflow_step_11_adr_single_dispatch():
     assert "write_run_artifact" in step11[:1000]
     # Decision count contract for gate B3.2
     assert "3" in step11[:1500] or "three" in step11[:1500].lower()
+
+
+def test_workflow_step_9_includes_adr():
+    body = _body()
+    step9 = body[body.index("Step 9"):]
+    # The cross-doc review must now span ADR as well
+    assert "ADR" in step9[:1500]
+    assert "ADR.md" in step9[:1500] or "ADR.md" in body[body.index("Step 9"):body.index("Step 6")]
+
+
+def test_workflow_step_9_three_way_consistency():
+    body = _body()
+    step9 = body[body.index("Step 9"):]
+    # Must explicitly cover ARCH↔ADR decision integrity (per phase-b.md §6 B-3)
+    lower = step9[:1500].lower()
+    assert "decision" in lower
+    assert ("rationale" in lower or "reasoning" in lower or "missing" in lower)

@@ -182,7 +182,7 @@ The function returns the absolute path; show that path to the user.
 
 ### Step 7 — ARCH interview (main Claude, AskUserQuestion)
 
-> Execution order: Steps 7–8–9 run after Step 5 writes PRD.md; Step 6 (iteration) is the final workflow step.
+> Execution order: Steps 7–8–10–11–9 run after Step 5 writes PRD.md; Step 6 (iteration) is the final workflow step.
 
 After Step 5 writes `PRD.md`, collect architecture context. Ask 6 questions
 across **two `AskUserQuestion` calls of 3 questions each** (within the
@@ -256,7 +256,7 @@ Canonical fill + write:
         .replace("{{MODULE_BOUNDARIES}}", s["Module boundaries"]))
     arch_path = write_run_artifact(rid, "ARCHITECTURE.md", filled_arch)
 
-Show `arch_path` to the user, then proceed to Step 9 (cross-doc review).
+Show `arch_path` to the user, then proceed to Step 10 (ADR interview).
 
 ### Step 10 — ADR interview (main Claude, AskUserQuestion)
 
@@ -343,36 +343,46 @@ Substitute the returned block into the ADR template:
 
 Show `adr_path` to the user, then proceed to Step 9 (3-way cross-doc review).
 
-### Step 9 — cross-doc second-opinion (PRD ↔ ARCH consistency)
+### Step 9 — 3-way cross-doc second-opinion (PRD ↔ ARCH ↔ ADR consistency)
 
-After `ARCHITECTURE.md` is written (Step 8), dispatch a cross-doc consistency
-review. Read both artifacts:
+After `ADR.md` is written (Step 11), dispatch a 3-way cross-doc consistency
+review. Read all three artifacts:
 
     from server import read_run_artifact
     prd_text  = read_run_artifact(rid, "PRD.md") or ""
     arch_text = read_run_artifact(rid, "ARCHITECTURE.md") or ""
+    adr_text  = read_run_artifact(rid, "ADR.md") or ""
 
-Wrap both together via `server.harness.wrap_with_preamble` and dispatch to a
+Wrap all three together via `server.harness.wrap_with_preamble` and dispatch to a
 `second-opinion` role (preferred: `codex:codex-rescue`, then
 `superpowers:code-reviewer`; fallback: `general-purpose`).
 
-The prompt must explicitly request:
-- Features in PRD `## Core features` that have no matching module in ARCH
-  `## Module boundaries` (gap detection)
-- Architecture decisions in ARCH that contradict items in PRD
-  `## Excluded from MVP` (scope-creep risk)
-- Any other flaws, inconsistencies, or omissions — never bare agreement
+The prompt must explicitly request three categories of finding:
 
-Apply the triage protocol from Step 4b: verify each claim, drop
-unverifiable speculation, prepend a one-line audit header. Append verified
-cross-doc review notes as a `## Cross-doc review` section to `ARCHITECTURE.md`:
+- **PRD ↔ ARCH (gap detection)**: features in PRD `## Core features` that have no
+  matching module in ARCH `## Module boundaries`, and architecture decisions in
+  ARCH that contradict items in PRD `## Excluded from MVP` (scope-creep risk).
+- **ARCH ↔ ADR (decision integrity)**: any architectural choice in ARCH that is
+  not backed by a Decision in ADR (missing rationale), and any Decision in ADR
+  that contradicts ARCH's stated patterns or module boundaries.
+- **PRD ↔ ADR (motivation traceability)**: any Decision in ADR whose Context
+  cannot be traced to a need stated in PRD `## Goal` / `## Core features` /
+  `## Risks`, and any PRD risk that has no Decision addressing it.
+
+Plus any other flaws, inconsistencies, or omissions — never bare agreement.
+
+Apply the triage protocol from Step 4b: verify each claim, drop unverifiable
+speculation, prepend a one-line audit header. Append verified review notes
+as a `## Cross-doc review` section to **`ADR.md`** (the last-written doc;
+keeps cross-doc context co-located with the doc most likely to be edited
+during iteration):
 
     from datetime import date
     from server import read_run_artifact, write_run_artifact
-    current = read_run_artifact(rid, "ARCHITECTURE.md") or ""
-    audit_header = f"> cross-doc verified on {date.today().isoformat()} — {n_kept} kept / {n_dropped} dropped"
+    current = read_run_artifact(rid, "ADR.md") or ""
+    audit_header = f"> 3-way cross-doc verified on {date.today().isoformat()} — {n_kept} kept / {n_dropped} dropped"
     updated = current + "\n\n## Cross-doc review\n\n" + audit_header + "\n\n" + bullets
-    write_run_artifact(rid, "ARCHITECTURE.md", updated)
+    write_run_artifact(rid, "ADR.md", updated)
 
 Then proceed to Step 6 (iteration prompt).
 
