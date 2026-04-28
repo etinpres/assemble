@@ -83,8 +83,9 @@ The main Claude waits for both calls to return, then proceeds to Step 5.
 Take the combined PRD body + AC bash from Step 2/3 and dispatch it as a
 *challenge* prompt to a `second-opinion` role (preferred:
 `codex:codex-rescue`, then `superpowers:code-reviewer`; fallback:
-`general-purpose` with the role's `fallback_context` pulled from
-`config/roles.json` — see V4 spec memory).
+`general-purpose` with the bare task prompt. (V4 spec memory describes a
+future `roles.json` carrying `fallback_context` per role; until that lands
+in a later phase, dispatches use the prompt as-is.)
 
 The dispatched prompt explicitly asks for *flaws, rebuttals, missing
 constraints, and tradeoffs not yet acknowledged* — never bare agreement.

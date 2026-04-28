@@ -61,3 +61,18 @@ def test_plan_pack_only_in_plan_stage():
         if "★ plan-pack" in labels:
             leaks[stage] = labels
     assert not leaks, f"plan-pack leaked into other stage menus: {leaks}"
+
+
+def test_real_harness_preamble_file_exists():
+    """The runtime preamble file must exist on disk. Without it,
+    `server.harness.wrap_with_preamble` silently degrades to passthrough
+    and dispatched prompts lose the harness 4 rules. This guard catches
+    accidental rm of the source-of-truth file.
+    """
+    p = Path.home() / ".claude/skills/assemble/bundled/_shared/harness-preamble.md"
+    assert p.exists(), f"missing: {p}"
+    body = p.read_text(encoding="utf-8")
+    assert "HARNESS RULES" in body
+    # 4 numbered rules
+    for n in (1, 2, 3, 4):
+        assert f"{n}." in body, f"missing rule {n}."

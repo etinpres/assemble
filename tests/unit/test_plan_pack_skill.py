@@ -122,3 +122,25 @@ def test_workflow_iteration_hard_caps_at_one():
     this contract, second-yes behavior is unbounded."""
     body = _body()
     assert "exits unconditionally" in body or "iteration cap reached" in body
+
+
+def test_skill_preamble_matches_shared_file():
+    """The 4 harness rules appear both in plan-pack/SKILL.md (as a
+    documentation backup) and in bundled/_shared/harness-preamble.md
+    (the runtime source loaded by server.harness). They must stay in
+    sync — runtime uses the file, the SKILL copy is for human readers
+    who may never see the dispatched prompt.
+    """
+    shared = Path.home() / ".claude/skills/assemble/bundled/_shared/harness-preamble.md"
+    if not shared.exists():
+        pytest.skip("shared preamble file missing; covered by e2e existence test")
+    shared_body = shared.read_text().strip()
+    skill_body = _body()
+    # Each non-blank line of the shared preamble must appear in SKILL.md
+    for line in shared_body.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        assert line in skill_body, (
+            f"preamble line missing from SKILL.md: {line!r}"
+        )
