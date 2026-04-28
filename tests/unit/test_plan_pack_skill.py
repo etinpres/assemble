@@ -98,3 +98,20 @@ def test_workflow_review_uses_role_mapping_fallback():
     # be referenced again in the workflow's Step 4 (so a fresh reader
     # doesn't have to scroll up).
     assert "codex:codex-rescue" in body or "code-reviewer" in body
+
+
+def test_workflow_step_6_iteration_prompt():
+    body = _body()
+    assert "Step 6" in body
+    assert "iteration" in body.lower()
+    # Iteration must be opt-in (not forced) — V4 identity rule.
+    assert "AskUserQuestion" in body
+    # Phase B-1 covers exactly one iteration; counts of 3–7 are deferred.
+    assert "one iteration" in body.lower() or "1 iteration" in body.lower()
+
+
+def test_workflow_iteration_does_not_force_loop():
+    body = _body()
+    # Hard prohibition from spec section 10: never force the user into
+    # multiple iterations. The workflow must mention that "no" exits.
+    assert "no exits" in body.lower() or "no → " in body or "user can exit" in body.lower()

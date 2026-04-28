@@ -36,9 +36,7 @@ parallel-dispatch verification location.
 
 ## Workflow
 
-> NOTE — Phase B-1 implements **steps 1, 2, 3, 4, 5 only**. Step 6
-> (iteration) arrives in Phase B-1 Task 7 of
-> `docs/plans/2026-04-28-v4-phase-b-1.md`.
+> NOTE — steps 1–6 implemented (Phase B-1 complete).
 
 ### Step 0 — resolve run_dir
 
@@ -108,3 +106,22 @@ write_run_artifact(rid, "PRD.md", filled)
 ```
 
 The function returns the absolute path; show that path to the user.
+
+### Step 6 — iteration round-trip (one cycle)
+
+After writing PRD.md, ask the user via `AskUserQuestion`:
+
+> "PRD draft saved to `<path>`. Run one iteration?"
+> options: ["yes — refine", "no — done"]
+
+- **no exits the workflow.** The user is never forced into a second
+  pass. (V4 identity rule — see `project_assemble_v4_spec.md` § "절대 금지
+  사항".)
+- **yes → re-runs Steps 2–4** with the existing `PRD.md` loaded as input
+  context, plus a follow-up `AskUserQuestion` collecting the user's new
+  emphases ("what feels off?", "what to expand?"). Step 5 overwrites
+  PRD.md with the refined version.
+
+Phase B-1 covers exactly **one iteration** — answering "yes" twice in a
+row is undefined behavior in this phase. (Counts of 3–7 with stop
+conditions are a Phase B post-tuning track.)
