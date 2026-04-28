@@ -40,7 +40,8 @@ def build_stage_options(stage: str) -> list[dict]:
     fallback_hint = t("notices.bundled_only_hint")
 
     matched_tools = tools_for_stage(stage)
-    has_non_bundled = any(not t.get("bundled", False) for t in matched_tools)
+    # Loop var deliberately not named `t` — would shadow the i18n callable above.
+    has_non_bundled = any(not tool_entry.get("bundled", False) for tool_entry in matched_tools)
 
     options: list[dict] = []
     seen_keys: set[str] = set()
@@ -51,6 +52,8 @@ def build_stage_options(stage: str) -> list[dict]:
         seen_keys.add(key)
         is_bundled = bool(tool.get("bundled", False))
         label = f"{bundled_prefix}{tool['name']}" if is_bundled else tool["name"]
+        # 80-char cap is for the description body; the fallback hint may extend
+        # past it because it carries the load-bearing signal in bundled-only menus.
         desc = (tool.get("description") or no_desc)[:80]
         if is_bundled and not has_non_bundled:
             desc = f"{desc} {fallback_hint}"

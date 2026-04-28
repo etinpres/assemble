@@ -35,6 +35,8 @@ def test_bundled_sorts_before_user_tool(tmp_path, monkeypatch):
     opts = [o for o in build_stage_options("plan") if o["kind"] == "tool"]
     labels = [o["label"] for o in opts]
     assert labels.index("★ plan-pack") < labels.index("my-planner")
+    # Negative case: user-only tool must NOT receive the bundled prefix.
+    assert "★ my-planner" not in labels
 
 
 def test_bundled_only_match_emits_fallback_hint(tmp_path, monkeypatch):
