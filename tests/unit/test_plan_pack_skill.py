@@ -82,3 +82,19 @@ def test_workflow_question_6_now_active():
     # The Phase B-1 Task 4 note ("skipped in Phase B-1 Task 4") is removed
     # in this task — question 6 is now live.
     assert "skipped in Phase B-1 Task 4" not in body
+
+
+def test_workflow_step_4_second_opinion_review():
+    body = _body()
+    assert "Step 4" in body
+    assert "second-opinion" in body
+    # Review must explicitly demand flaws/rebuttals, not bare agreement.
+    assert "flaw" in body.lower() or "rebut" in body.lower() or "challenge" in body.lower()
+
+
+def test_workflow_review_uses_role_mapping_fallback():
+    body = _body()
+    # second-opinion preferred agents listed in the role-mapping table must
+    # be referenced again in the workflow's Step 4 (so a fresh reader
+    # doesn't have to scroll up).
+    assert "codex:codex-rescue" in body or "code-reviewer" in body

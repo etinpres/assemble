@@ -36,9 +36,9 @@ parallel-dispatch verification location.
 
 ## Workflow
 
-> NOTE — Phase B-1 implements **steps 1, 2, 3, 5 only**. Steps 4
-> (consistency review) and 6 (iteration) arrive in Phase B-1 Tasks 6 and
-> 7 of `docs/plans/2026-04-28-v4-phase-b-1.md`.
+> NOTE — Phase B-1 implements **steps 1, 2, 3, 4, 5 only**. Step 6
+> (iteration) arrives in Phase B-1 Task 7 of
+> `docs/plans/2026-04-28-v4-phase-b-1.md`.
 
 ### Step 0 — resolve run_dir
 
@@ -77,6 +77,25 @@ verification location *a*):
   met. No prose — just the command.
 
 The main Claude waits for both calls to return, then proceeds to Step 5.
+
+### Step 4 — consistency review (second-opinion)
+
+Take the combined PRD body + AC bash from Step 2/3 and dispatch it as a
+*challenge* prompt to a `second-opinion` role (preferred:
+`codex:codex-rescue`, then `superpowers:code-reviewer`; fallback:
+`general-purpose` with the role's `fallback_context` pulled from
+`config/roles.json` — see V4 spec memory).
+
+The dispatched prompt explicitly asks for *flaws, rebuttals, missing
+constraints, and tradeoffs not yet acknowledged* — never bare agreement.
+Wrap with `server.harness.wrap_with_preamble`.
+
+The main Claude takes the response and either:
+- Appends a `## Review notes` section to the PRD body, **or**
+- Absorbs the critique by re-running Steps 2/3 in iteration mode.
+
+Phase B-1 takes the simpler path: append `## Review notes`. Iteration-mode
+absorption arrives in Step 6 (Task 7).
 
 ### Step 5 — combine + write (main Claude)
 
