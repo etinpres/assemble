@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — V4 Phase A
+## [Unreleased] — V4 Phase A + B-1
 
 ### Added
 - `bundled/` skill root for self-sufficient bundled library (V4 decisions #1–#5).
@@ -14,10 +14,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `bundled` boolean on every inventory entry (`scan()` flags entries under `~/.claude/skills/assemble/bundled/`).
 - `★ ` label prefix and fallback hint when a bundled tool is the only match for a stage.
 - i18n keys: `menu.bundled_prefix`, `notices.bundled_only_hint` (en + ko).
+- `server/run_dir.py` with atomic `write_run_artifact` / `read_run_artifact` / `run_artifact_path` helpers (Phase B-1).
+- `server/harness.py` exposing `wrap_with_preamble(prompt)` so bundled SKILLs can prepend the 4-rule preamble to every dispatched sub-agent prompt (Phase B-1).
+- `bundled/plan-pack/` — first ★ bundle. Phase B-1 ships PRD-only generation: 8-question interview → parallel dispatch (PRD body + AC bash) → second-opinion review → opt-in one-iteration round-trip → atomic write to `runs/<rid>/PRD.md`.
+- `bundled/plan-pack/templates/PRD.md.template` — fillable PRD shape with 7 sections (Goal, Users, Core features, Excluded from MVP, Acceptance Criteria bash, Design direction, Risks).
+- `docs/plans/2026-04-28-v4-phase-b.md` — Phase B design spec (B-1 to B-5 roadmap).
+- `docs/plans/2026-04-28-v4-phase-b-1.md` — Phase B-1 implementation plan (9 tasks).
+- `docs/dogfood/phase-b-1.md` — Phase B-1 dogfood report (run `20260428-160618-654d`).
+
+### Changed
+- `bundled/plan-pack/SKILL.md` Step 1: 8-question interview now spans two
+  `AskUserQuestion` calls of 4 each (platform `maxItems=4`); the prior
+  "single batched" wording was unimplementable.
+- `bundled/plan-pack/SKILL.md` Step 2/3: ships the canonical
+  `wrap_with_preamble` call snippet; explicit "do not hand-write the
+  preamble inline" guidance to keep harness wording from drifting
+  across runs.
+- `bundled/plan-pack/SKILL.md` Step 4: new Step 4b "verify before
+  appending" — second-opinion runtime claims require a 1-shot Bash
+  test, internal-contradiction claims require re-reading the cited
+  sentences, unverifiable speculation is dropped. Audit header
+  (`> verified by main Claude on <date> — <n> kept / <m> dropped`)
+  prepended to Review notes.
 
 ### Notes
 - Phase B (`plan-pack` ★) is intentionally out of scope; the placeholder `hello-bundle` is the only bundled tool until then.
 - No agent-name hardcoding, no main-Claude heavy work in bundled SKILLs, no Codex/Gemini harness compatibility (per V4 정체성 보호 — see `project_assemble_v4_spec.md`).
+- Phase A's `bundled/hello-bundle/` placeholder has been retired; plan-pack now occupies the bundled `plan` stage slot.
+- Phase B-2 (ARCH), B-3 (ADR), B-4 (UI_GUIDE), and B-5 (4-doc integration spike) remain out of scope and will each be planned with a fresh `writing-plans` pass after the previous phase's dogfood passes.
+- Cross-cutting B (system-wide AC-bash execution by `verifier`) and C (auto trace + learning replay) remain out of scope for Phase B.
+- Dogfood report delivered in `docs/dogfood/phase-b-1.md` — run `20260428-160618-654d`, plan-pack ★ end-to-end smoke. Status: pass; three SKILL.md fixes shipped from findings (see Changed).
 
 ## [3.0.0] — 2026-04-21
 

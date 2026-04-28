@@ -35,6 +35,12 @@ from server.sequence import (
     build_prompt as build_sequence_prompt,
     parse_response as parse_sequence_response,
 )
+from server.run_dir import (
+    write_run_artifact,
+    read_run_artifact,
+    run_artifact_path,
+)
+from server.harness import wrap_with_preamble
 
 __all__ = [
     # inventory
@@ -51,4 +57,8 @@ __all__ = [
     "build_classify_prompt", "parse_classify_response",
     # sequence
     "build_sequence_prompt", "parse_sequence_response",
+    # run_dir
+    "write_run_artifact", "read_run_artifact", "run_artifact_path",
+    # harness
+    "wrap_with_preamble",
 ]

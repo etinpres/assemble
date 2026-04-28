@@ -1,0 +1,24 @@
+# PRD: {{TASK}}
+
+## Goal
+{{GOAL}}
+
+## Users
+{{USERS}}
+
+## Core features
+{{CORE_FEATURES}}
+
+## Excluded from MVP (intentional)
+{{MVP_EXCLUDED}}
+
+## Acceptance Criteria (bash)
+```bash
+{{AC_BASH}}
+```
+
+## Design direction
+{{DESIGN_DIRECTION}}
+
+## Risks / open questions
+{{RISKS}}
