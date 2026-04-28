@@ -63,3 +63,16 @@ def test_preamble_loaded_once_per_process(tmp_path, monkeypatch):
     assert "A" in second
     assert "B" not in second
     assert first == second
+
+
+def test_wrap_format_is_pinned_exactly(tmp_path, monkeypatch):
+    """The on-the-wire format `<preamble>\n\n[TASK]\n<prompt>` is part of the
+    contract. Tasks 4–7 will call wrap_with_preamble from multiple workflow
+    steps; if the format shifts silently, dispatched sub-agent prompts
+    change in non-obvious ways. Pin the exact bytes here.
+    """
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    _stub_preamble(tmp_path, "[HARNESS]\n1. rule\n")
+    h = _reload_harness()
+    out = h.wrap_with_preamble("do the thing")
+    assert out == "[HARNESS]\n1. rule\n\n[TASK]\ndo the thing"

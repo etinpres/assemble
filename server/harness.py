@@ -29,7 +29,7 @@ def _load_preamble() -> str | None:
               "wrap_with_preamble will return prompts unchanged.",
               file=sys.stderr)
         return None
-    return p.read_text().rstrip() + "\n"
+    return p.read_text(encoding="utf-8").rstrip() + "\n"
 
 
 def wrap_with_preamble(prompt: str) -> str:

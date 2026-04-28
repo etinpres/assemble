@@ -38,7 +38,7 @@ def write_run_artifact(run_id: str, filename: str, content: str) -> Path:
                                     dir=str(target.parent))
     tmp = Path(tmp_str)
     try:
-        with os.fdopen(fd, "w") as f:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(content)
             f.flush()
             os.fsync(f.fileno())
@@ -55,4 +55,4 @@ def read_run_artifact(run_id: str, filename: str) -> Optional[str]:
     p = run_artifact_path(run_id, filename)
     if not p.exists():
         return None
-    return p.read_text()
+    return p.read_text(encoding="utf-8")
