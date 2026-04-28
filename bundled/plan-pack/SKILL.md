@@ -46,12 +46,21 @@ exists, treat the workflow as iteration mode (load existing PRD as input).
 
 ### Step 1 — interview (main Claude, AskUserQuestion)
 
-Ask the user 8 questions in a single batched `AskUserQuestion`:
+Ask the user the 8 questions below across **two `AskUserQuestion` calls of
+4 questions each** (platform constraint: `AskUserQuestion.questions` has
+`maxItems: 4` — see the tool schema). Treat the two calls as a single
+interview batch — fire them sequentially, do not interleave other work
+between them.
+
+Call 1 (Q1–Q4):
 
 1. What are you building? (one sentence)
 2. Who uses it? (1–3 user types)
 3. Three core features?
 4. Three things explicitly excluded from MVP? (harness #2 enforcement)
+
+Call 2 (Q5–Q8):
+
 5. One-line success criterion?
 6. One AC bash command — how do you externally verify "it works"?
 7. One-line design direction? (seed for UI_GUIDE later)
@@ -59,11 +68,24 @@ Ask the user 8 questions in a single batched `AskUserQuestion`:
 
 ### Step 2 — PRD body draft + Step 3 — AC bash draft (parallel dispatch)
 
-Wrap the interview answers + template skeleton via
-`server.harness.wrap_with_preamble` once for the body sub-task and once for
-the AC bash sub-task. Then **fire both in a single message with two Agent
-calls** (true parallel dispatch — this is the Phase B-1 parallel-dispatch
-verification location *a*):
+Wrap each sub-task prompt via `server.harness.wrap_with_preamble` before
+firing. Canonical call (use this pattern verbatim — do **not** hand-write
+the 4-rule preamble inline; hand-writing risks wording drift and breaks
+trace consistency):
+
+```python
+from server.harness import wrap_with_preamble
+wrapped_body = wrap_with_preamble(raw_body_prompt)
+wrapped_ac   = wrap_with_preamble(raw_ac_prompt)
+```
+
+Pass `wrapped_body` / `wrapped_ac` as the Agent `prompt` field. The
+function emits the exact 4-rule preamble + `[TASK]` block — see
+`server/harness.py`.
+
+Then **fire both in a single message with two Agent calls** (true parallel
+dispatch — this is the Phase B-1 parallel-dispatch verification location
+*a*):
 
 - Sub-task A — PRD body. Role `plan-implementation` (preferred `Plan`,
   fallback `general-purpose`). Returns Goal / Users / Core features /
@@ -89,9 +111,35 @@ in a later phase, dispatches use the prompt as-is.)
 
 The dispatched prompt explicitly asks for *flaws, rebuttals, missing
 constraints, and tradeoffs not yet acknowledged* — never bare agreement.
-Wrap with `server.harness.wrap_with_preamble`.
+Wrap with `server.harness.wrap_with_preamble` (see Step 2/3 for the
+canonical call pattern).
 
-The main Claude takes the response and either:
+#### Step 4b — verify before appending (mandatory)
+
+Second-opinion responses can carry false-alarm claims. An unverified
+critique still costs the user trust if it lands in `PRD.md`. Before
+appending the response as Review notes, the main Claude **must triage each
+bullet**:
+
+- For any claim asserting a *runtime behaviour* (e.g. "this bash one-liner
+  doesn't work", "this env var doesn't propagate", "this regex doesn't
+  match"), run a 1-shot Bash test — minimal mock, capture stdout/exit
+  code — and either keep, drop, or rewrite the bullet based on the result.
+- For any claim asserting a *PRD internal contradiction*, re-read both
+  cited sentences and confirm the contradiction holds.
+- Drop unverifiable speculation ("this might break in some environments")
+  unless reproducible.
+
+Only verified bullets reach `## Review notes`. Prepend a one-line audit
+header above the bullets so the trail is visible in `PRD.md`:
+
+```
+> verified by main Claude on <ISO date> — <n> kept / <m> dropped
+```
+
+#### Step 4c — outcome
+
+The main Claude takes the verified bullets and either:
 - Appends a `## Review notes` section to the PRD body, **or**
 - Absorbs the critique by re-running Steps 2/3 in iteration mode.
 
