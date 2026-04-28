@@ -36,4 +36,46 @@ parallel-dispatch verification location.
 
 ## Workflow
 
-(Workflow steps land in Tasks 4–7 of the Phase B-1 plan.)
+> NOTE — Phase B-1 implements **steps 1, 2, 5 only**. Steps 3 (parallel AC
+> bash), 4 (consistency review), and 6 (iteration) land in Phase B-1 Tasks
+> 5, 6, 7 of `docs/plans/2026-04-28-v4-phase-b-1.md`.
+
+### Step 0 — resolve run_dir
+
+Read `<rid>` from the active assemble run. The artifact lives at
+`~/.claude/channels/assemble/runs/<rid>/PRD.md`. If the file already
+exists, treat the workflow as iteration mode (load existing PRD as input).
+
+### Step 1 — interview (main Claude, AskUserQuestion)
+
+Ask the user 8 questions in a single batched `AskUserQuestion`:
+
+1. What are you building? (one sentence)
+2. Who uses it? (1–3 user types)
+3. Three core features?
+4. Three things explicitly excluded from MVP? (harness #2 enforcement)
+5. One-line success criterion?
+6. One AC bash command — how do you externally verify "it works"? *(skipped in Phase B-1 Task 4; activated in Task 5.)*
+7. One-line design direction? (seed for UI_GUIDE later)
+8. One risk or open question?
+
+### Step 2 — PRD body draft (single dispatch)
+
+Wrap the interview answers + template skeleton via
+`server.harness.wrap_with_preamble`, then dispatch to a `plan-implementation`
+sub-agent (preferred: `Plan`; fallback: `general-purpose`). The sub-agent
+returns the PRD body (Goal / Users / Core features / Excluded from MVP /
+Design direction / Risks). **AC bash is left empty in this task** — Task 5
+adds the parallel call that fills it.
+
+### Step 5 — combine + write (main Claude)
+
+Fill `bundled/plan-pack/templates/PRD.md.template` with the sub-agent
+output, then call:
+
+```python
+from server import write_run_artifact
+write_run_artifact(rid, "PRD.md", filled)
+```
+
+The function returns the absolute path; show that path to the user.
