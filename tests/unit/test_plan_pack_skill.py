@@ -196,3 +196,22 @@ def test_workflow_step_9_uses_second_opinion_role():
     step9 = body[body.index("### Step 9"):]
     assert "second-opinion" in step9[:800]
     assert "wrap_with_preamble" in step9[:800]
+
+
+def test_workflow_iteration_step_6_includes_arch():
+    body = _body()
+    step6 = body[body.index("### Step 6"):]
+    # Iteration must re-run ARCH (Step 8) alongside PRD (Steps 2+3)
+    assert "Step 8" in step6[:1000] or "ARCH" in step6[:1000]
+    assert "ARCHITECTURE.md" in step6[:1000]
+
+
+def test_workflow_iteration_step_6_no_force_arch():
+    body = _body()
+    step6 = body[body.index("### Step 6"):]
+    # V4 identity rule: "no" must exit cleanly
+    assert (
+        "no exits" in step6[:800].lower()
+        or "no —" in step6[:800]
+        or "no — done" in step6[:800].lower()
+    )

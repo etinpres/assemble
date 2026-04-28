@@ -240,21 +240,27 @@ Then proceed to Step 6 (iteration prompt).
 
 ### Step 6 — iteration round-trip (one cycle)
 
-After writing PRD.md, ask the user via `AskUserQuestion`:
+After Step 9 (cross-doc review), ask the user via `AskUserQuestion`:
 
-> "PRD draft saved to `<path>`. Run one iteration?"
-> options: ["yes — refine", "no — done"]
+> "Both docs saved — PRD.md and ARCHITECTURE.md. Run one iteration?"
+> options: ["yes — refine both", "no — done"]
 
-- **no exits the workflow.** The user is never forced into a second
+- **no → done: exits the workflow.** The user is never forced into a second
   pass. (V4 identity rule — see `project_assemble_v4_spec.md` § "절대 금지
   사항".)
-- **yes → re-runs Steps 2–4** with the existing `PRD.md` loaded as input
-  context, plus a follow-up `AskUserQuestion` collecting the user's new
-  emphases ("what feels off?", "what to expand?"). Step 5 overwrites
-  PRD.md with the refined version.
+- **yes → re-runs Steps 2+3 (PRD re-draft) and Step 8 (ARCH re-draft)**
+  with the existing `PRD.md` and `ARCHITECTURE.md` loaded as input context,
+  plus a follow-up `AskUserQuestion` collecting the user's new emphases
+  ("what feels off in the PRD?", "what feels off in the ARCH?").
+  Step 5 overwrites `PRD.md` and Step 8 overwrites `ARCHITECTURE.md` with the
+  refined versions. Step 9 then re-runs cross-doc second-opinion on the updated
+  pair before the workflow exits.
 
-Phase B-1 covers exactly **one iteration**. After the iteration completes
-(yes-path), the workflow exits unconditionally — even if the user wants
-another pass, the main Claude must reply "iteration cap reached for
-Phase B-1; rerun `/assemble` to start a new run" and stop. Multi-iteration
-support with stop conditions is a Phase B post-tuning track.
+ARCHITECTURE.md is always re-run alongside PRD in the iteration — they are
+produced as a pair and must remain consistent.
+
+Phase B-2 covers exactly **one iteration**. After the iteration completes
+(yes-path), the workflow exits unconditionally — even if the user requests
+another pass, the main Claude must reply "iteration cap reached for Phase B-2;
+rerun `/assemble` to start a new run" and stop. Multi-iteration support (3–7
+counts with stop conditions) is a Phase B post-tuning track.
