@@ -28,30 +28,34 @@ results to `<run_dir>/PRD.md` and `<run_dir>/ARCHITECTURE.md` via
 | Step | Work | Role | Preferred | Fallback |
 |---|---|---|---|---|
 | 1 | PRD interview (8 questions) | (main, AskUserQuestion) | — | — |
-| 2 | PRD body draft | `plan-implementation` | `Plan` | `general-purpose` |
-| 3 | Acceptance Criteria bash draft | `plan-implementation` | `Plan` | `general-purpose` |
+| 2 | PRD body draft | `plan-implementation` | `general-purpose` | `Plan` |
+| 3 | Acceptance Criteria bash draft | `plan-implementation` | `general-purpose` | `Plan` |
 | 4 | PRD consistency review | `second-opinion` | `codex:codex-rescue`, `superpowers:code-reviewer` | `general-purpose` |
 | 5 | Write `<run_dir>/PRD.md` | (main, write_run_artifact) | — | — |
 | 7 | ARCH interview (6 questions) | (main, AskUserQuestion) | — | — |
-| 8 | ARCHITECTURE.md draft | `plan-implementation` | `Plan` | `general-purpose` |
+| 8 | ARCHITECTURE.md draft | `plan-implementation` | `general-purpose` | `Plan` |
 | 10 | ADR interview (6 questions) | (main, AskUserQuestion) | — | — |
-| 11 | ADR.md draft | `plan-implementation` | `Plan` | `general-purpose` |
+| 11 | ADR.md draft | `plan-implementation` | `general-purpose` | `Plan` |
 | 9 | 3-way cross-doc review (PRD + ARCH + ADR) | `second-opinion` | `codex:codex-rescue`, `superpowers:code-reviewer` | `general-purpose` |
 
 Steps 2 and 3 fire as a *single message with two Agent calls* (parallel — unchanged from Phase B-1).
 Steps 8 and 11 are *single dispatch each* — B-2 through B-4 use single dispatch only; B-5 promotes all docs to parallel.
 
-> **Caveat — `Plan` agent for content drafting.** `Plan`'s built-in description is
-> "Software architect agent for designing implementation plans", which doesn't
-> perfectly match content drafting (PRD/AC/ARCH). Empirically (B-2 run
-> `20260428-194703-f5dd` — 5 dispatches; B-3 run `20260428-214502-6b79` — 6
-> dispatches across both first-pass and iteration) `Plan` returned clean
-> markdown when prompted with explicit "do not call ExitPlanMode, return
-> markdown only" instructions, but the role mapping is fragile — a future
-> Claude may short-circuit into plan-mode UX. If drift appears, fall back to
-> `general-purpose`. Phase B-3 dogfood reproduced this drift (see
-> `docs/dogfood/phase-b-3.md` Finding #3); the dedicated content-draft role
-> decision is deferred to Phase B post-tuning.
+> **Note — `plan-implementation` role: preferred `general-purpose`, fallback `Plan`.**
+> Phases B-1 and B-2 used `Plan` as preferred for PRD/AC/ARCH/ADR drafting.
+> `Plan`'s built-in description is "Software architect agent for designing
+> implementation plans", which empirically returned clean markdown for all
+> 11 dispatches across the B-2 (`20260428-194703-f5dd`) and B-3
+> (`20260428-214502-6b79`) dogfoods, but exhibited the predicted drift
+> at least once — B-3 Finding #3: `Plan` appended an unrequested
+> `### Critical Files for Implementation` section to a PRD body draft. The
+> orchestrator stripped it, but the drift was real and reproducible. As of
+> this commit (post-B-3) the role mapping is swapped: `general-purpose` is
+> now preferred, `Plan` is fallback for environments where `general-purpose`
+> is absent or unstable. The Phase B-2/B-3 dogfood evidence stands as the
+> baseline for the Plan-as-preferred path; future drift comparisons should
+> be against the `general-purpose`-as-preferred baseline that Phase B-4
+> dogfood will establish.
 
 ## Workflow
 
@@ -106,11 +110,11 @@ Then **fire both in a single message with two Agent calls** (true parallel
 dispatch — this is the Phase B-1 parallel-dispatch verification location
 *a*):
 
-- Sub-task A — PRD body. Role `plan-implementation` (preferred `Plan`,
-  fallback `general-purpose`). Returns Goal / Users / Core features /
+- Sub-task A — PRD body. Role `plan-implementation` (preferred `general-purpose`,
+  fallback `Plan`). Returns Goal / Users / Core features /
   Excluded from MVP / Design direction / Risks.
-- Sub-task B — AC bash. Role `plan-implementation` (preferred `Plan`,
-  fallback `general-purpose`). Given the success criterion (interview Q5)
+- Sub-task B — AC bash. Role `plan-implementation` (preferred `general-purpose`,
+  fallback `Plan`). Given the success criterion (interview Q5)
   and the externally-verifiable command request (Q6), returns *one
   executable bash one-liner* that exits 0 iff the success criterion is
   met. **Return only the raw command — no markdown fences, no `bash`
@@ -211,7 +215,7 @@ Wrap the ARCH interview answers + template skeleton via
     wrapped_arch = wrap_with_preamble(raw_arch_prompt)
 
 Dispatch to a `plan-implementation` sub-agent via a **single Agent call**
-(preferred: `Plan`; fallback: `general-purpose`). This is the Phase B-2
+(preferred: `general-purpose`; fallback: `Plan`). This is the Phase B-2
 single-dispatch verification location — B-5 promotes all docs to parallel.
 
 The sub-agent returns the ARCH body as markdown with `## Stack`, `## Directory
@@ -329,7 +333,7 @@ rejected-alternative"). Carrying both reduces the chance the sub-agent emits a
 stub like "N/A" that would fail gate B3.3.
 
 Dispatch to a `plan-implementation` sub-agent via a **single Agent call**
-(preferred: `Plan`; fallback: `general-purpose`). This is one of the two
+(preferred: `general-purpose`; fallback: `Plan`). This is one of the two
 Phase B-3 single-dispatch verification locations (the other is Step 8 — ARCH).
 
 Substitute the returned block into the ADR template:
