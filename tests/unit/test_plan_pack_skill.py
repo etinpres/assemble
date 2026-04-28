@@ -360,5 +360,4 @@ def test_workflow_iteration_step_6_no_force():
     body = _body()
     step6 = body[body.index("Step 6 —"):]
     # V4 identity rule: "no" must exit cleanly, even after extension
-    lower = step6[:1000].lower()
-    assert ("no exits" in lower or "no →" in step6[:1000] or "no — done" in lower)
+    assert "exits the workflow" in step6[:1000].lower()

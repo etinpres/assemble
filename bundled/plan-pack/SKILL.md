@@ -384,6 +384,8 @@ during iteration):
     updated = current + "\n\n## Cross-doc review\n\n" + audit_header + "\n\n" + bullets
     write_run_artifact(rid, "ADR.md", updated)
 
+> Note: when running on the iteration yes-path (Step 6), use header `## Cross-doc review (iteration N)` instead of bare `## Cross-doc review`, where N is the current iteration count (Phase B-3 caps at N=1). The first-pass review uses no suffix.
+
 Then proceed to Step 6 (iteration prompt).
 
 ### Step 6 — iteration round-trip (one cycle)
@@ -413,8 +415,8 @@ After Step 9 (3-way cross-doc review), ask the user via `AskUserQuestion`:
      argument as Step 8; can be parallel with Steps 2+3 + 8.
   4. **Step 5 overwrites `PRD.md`** with the new body + new AC bash.
   5. **Step 8 (continued) overwrites `ARCHITECTURE.md`** with the new
-     sections — discard any old `## Cross-doc review` section here; Step 9
-     will regenerate it on ADR.md instead.
+     sections. (Cross-doc review lives on ADR.md only — no leftover to
+     discard here.)
   6. **Step 11 (continued) overwrites `ADR.md`** with the new decisions
      block — discard the old `## Cross-doc review` section here; Step 9
      will regenerate it.
