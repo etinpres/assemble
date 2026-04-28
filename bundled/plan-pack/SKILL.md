@@ -11,10 +11,11 @@ description: Plan stage ★ bundle — produce PRD + ARCH with iteration. Spec, 
 
 # plan-pack — PRD + ARCH generator (Phase B-2)
 
-This bundle is **orchestrator-only**. The main Claude does not write PRD
-content directly — it asks the user, dispatches sub-agents wrapped via
-`server.harness.wrap_with_preamble`, then writes the combined result to
-`<run_dir>/PRD.md` via `server.run_dir.write_run_artifact`.
+This bundle is **orchestrator-only**. The main Claude does not write PRD or
+ARCHITECTURE content directly — it asks the user, dispatches sub-agents
+wrapped via `server.harness.wrap_with_preamble`, then writes the combined
+results to `<run_dir>/PRD.md` and `<run_dir>/ARCHITECTURE.md` via
+`server.run_dir.write_run_artifact`.
 
 ## Artifact
 
@@ -198,13 +199,25 @@ single-dispatch verification location — B-5 promotes all docs to parallel.
 
 The sub-agent returns the ARCH body with all 6 sections filled (Stack,
 Directory tree, Architectural patterns, Data flow, External dependencies,
-Module boundaries). Fill `bundled/plan-pack/templates/ARCHITECTURE.md.template`
-with the result and write atomically:
+Module boundaries). Substitute the answers into the template's placeholders
+(map: A1→`{{STACK}}`, A2→`{{DIRECTORY_TREE}}`, A3→`{{PATTERNS}}`,
+A4→`{{DATA_FLOW}}`, A5→`{{EXTERNAL_DEPS}}`, A6→`{{MODULE_BOUNDARIES}}`,
+task→`{{TASK}}`) and write atomically:
 
+    from pathlib import Path
     from server import write_run_artifact
+    template = Path.home() / ".claude/skills/assemble/bundled/plan-pack/templates/ARCHITECTURE.md.template"
+    filled_arch = (template.read_text()
+        .replace("{{TASK}}", task)
+        .replace("{{STACK}}", a1)
+        .replace("{{DIRECTORY_TREE}}", a2)
+        .replace("{{PATTERNS}}", a3)
+        .replace("{{DATA_FLOW}}", a4)
+        .replace("{{EXTERNAL_DEPS}}", a5)
+        .replace("{{MODULE_BOUNDARIES}}", a6))
     arch_path = write_run_artifact(rid, "ARCHITECTURE.md", filled_arch)
 
-Show `arch_path` to the user, then proceed to Step 9 (cross-doc review — added in Task 3/Phase B-2).
+Show `arch_path` to the user, then proceed to Step 9 (cross-doc review).
 
 ### Step 9 — cross-doc second-opinion (PRD ↔ ARCH consistency)
 
@@ -231,6 +244,7 @@ unverifiable speculation, prepend a one-line audit header. Append verified
 cross-doc review notes as a `## Cross-doc review` section to `ARCHITECTURE.md`:
 
     from datetime import date
+    from server import read_run_artifact, write_run_artifact
     current = read_run_artifact(rid, "ARCHITECTURE.md") or ""
     audit_header = f"> cross-doc verified on {date.today().isoformat()} — {n_kept} kept / {n_dropped} dropped"
     updated = current + "\n\n## Cross-doc review\n\n" + audit_header + "\n\n" + bullets
@@ -255,6 +269,14 @@ After Step 9 (cross-doc review), ask the user via `AskUserQuestion`:
   Step 5 overwrites `PRD.md` and Step 8 overwrites `ARCHITECTURE.md` with the
   refined versions. Step 9 then re-runs cross-doc second-opinion on the updated
   pair before the workflow exits.
+
+  **Step 4 (intra-PRD consistency review) is intentionally skipped on the
+  iteration yes-path.** The cross-doc review in Step 9 provides the
+  second-opinion coverage for the refined PRD ↔ ARCH pair. Re-running Step 4
+  would double-pay for review without checking the new dimension that
+  matters most after iteration (the pair's consistency). Per-doc review on
+  iteration is a Phase B post-tuning track — revisit if dogfood shows
+  regressions in PRD-only quality after iteration.
 
 ARCHITECTURE.md is always re-run alongside PRD in the iteration — they are
 produced as a pair and must remain consistent.

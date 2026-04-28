@@ -133,8 +133,9 @@ def test_skill_description_mentions_arch():
 
 def test_workflow_step_7_arch_interview():
     body = _body()
-    assert "Step 7" in body
-    step7 = body[body.index("Step 7"):]
+    # Anchor to heading to avoid false-positive on role-table row "| 7 |"
+    assert "### Step 7" in body
+    step7 = body[body.index("### Step 7"):]
     assert "AskUserQuestion" in step7[:2000]
     # Gate B2.2 seeds: interview must ask about directory tree and data flow
     assert "directory" in step7[:2000].lower()
@@ -178,16 +179,17 @@ def test_workflow_step_9_cross_doc_review():
     body = _body()
     assert "Step 9" in body
     step9 = body[body.index("### Step 9"):]
-    # Must reference both documents
-    assert "PRD" in step9[:800]
-    assert "ARCHITECTURE" in step9[:800]
+    # Window widened to 1200 — earlier 800-char slice landed exactly on
+    # "flaws" boundary (codex review finding I2)
+    assert "PRD" in step9[:1200]
+    assert "ARCHITECTURE" in step9[:1200]
     # Must challenge, not merely agree (gate B2.3)
     assert (
-        "flaw" in step9[:800].lower()
-        or "rebut" in step9[:800].lower()
-        or "challenge" in step9[:800].lower()
-        or "inconsisten" in step9[:800].lower()
-        or "gap" in step9[:800].lower()
+        "flaw" in step9[:1200].lower()
+        or "rebut" in step9[:1200].lower()
+        or "challenge" in step9[:1200].lower()
+        or "inconsisten" in step9[:1200].lower()
+        or "gap" in step9[:1200].lower()
     )
 
 
@@ -201,17 +203,19 @@ def test_workflow_step_9_uses_second_opinion_role():
 def test_workflow_iteration_step_6_includes_arch():
     body = _body()
     step6 = body[body.index("### Step 6"):]
-    # Iteration must re-run ARCH (Step 8) alongside PRD (Steps 2+3)
-    assert "Step 8" in step6[:1000] or "ARCH" in step6[:1000]
-    assert "ARCHITECTURE.md" in step6[:1000]
+    # Iteration must re-run ARCH (Step 8) alongside PRD (Steps 2+3).
+    # Bare "ARCH" was tautological — substring of "ARCHITECTURE.md".
+    # Anchor on "Step 8" (the actual re-draft instruction).
+    assert "Step 8" in step6[:1500]
+    assert "ARCHITECTURE.md" in step6[:1500]
+    assert "re-draft" in step6[:1500].lower() or "re-runs" in step6[:1500].lower()
 
 
 def test_workflow_iteration_step_6_no_force_arch():
     body = _body()
     step6 = body[body.index("### Step 6"):]
-    # V4 identity rule: "no" must exit cleanly
-    assert (
-        "no exits" in step6[:800].lower()
-        or "no —" in step6[:800]
-        or "no — done" in step6[:800].lower()
-    )
+    # V4 identity rule: "no" must exit cleanly. Anchor on the semantic
+    # phrase "exits the workflow" — the earlier "no —" anchor matched
+    # the option label too, which would still pass even if the bullet
+    # describing "no" was changed to keep a draft going.
+    assert "exits the workflow" in step6[:800].lower()
