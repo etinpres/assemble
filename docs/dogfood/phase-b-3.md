@@ -154,3 +154,35 @@ These are issues the dogfood discovered that static tests would not have caught.
 Phase B-3 dogfood **passes** end-to-end — all 5 phase-specific gates (B3.1–B3.5) green, all 5 common gates (C1–C5) green, workflow completed Steps 0–11 + iteration 1 with real artifacts on disk in run `20260428-214502-6b79`. 5 wording/spec findings captured (none blocking; all candidate Phase B-4+ improvements).
 
 Branch `v4-phase-b-3` is **ready for Task 6 (review-before-merge gate)**: 7 implementation commits + this dogfood report = 8 total, full regression at 138 passes, gate B3.4 (server/* unchanged) holds.
+
+## Pre-merge review (Task 6 Step 3 gate)
+
+Reviewer: `superpowers:code-reviewer` subagent against `git diff master..HEAD`.
+Verdict: **READY** — all 6 acceptance criteria PASS, 2 IMPORTANT + 2 NIT findings.
+
+### Acceptance criteria results
+
+| AC | Status | Note |
+|---|---|---|
+| 1 | PASS | SKILL Step 9/10/11/6 consistent with role-mapping table |
+| 2 | PASS | Execution order self-consistent (no forward-pointers reading future-step output) |
+| 3 | PASS | ADR template uses only `{{TASK}}` + `{{DECISIONS_BLOCK}}`; Step 11 substitutes both |
+| 4 | PASS | Dogfood evidence file sizes/counts match disk state exactly |
+| 5 | PASS | B-1 PRD-only and B-2 PRD+ARCH paths untouched |
+| 6 | PASS | Gate B3.4 — `server/*` empty diff against master |
+
+Test suite: 138 passed in 2.81s (matches plan progression 129 → 130 → 133 → 135 → 138).
+
+### IMPORTANT findings (addressed in fix-up commit on this branch)
+
+1. **SKILL.md caveat — stale "5 dispatches" count.** B-2 caveat said `Plan` returned clean markdown for "5 dispatches"; after B-3 the count is 6 (Steps 2, 3, 4, 8, 9, 11). **Fixed**: caveat now cites both runs (B-2 5 dispatches + B-3 6 dispatches).
+2. **SKILL.md caveat — self-referential B-3 TODO.** B-2 caveat ended "Phase B-3 is the place to revisit whether a dedicated content-draft role is warranted." B-3 did not resolve this — dogfood Finding #3 reproduced the drift. **Fixed**: caveat now cites Finding #3 + defers decision to Phase B post-tuning.
+
+### NIT findings (deferred — non-blocking)
+
+1. **SKILL.md orchestrator-only paragraph** doesn't mention ADR.md alongside PRD/ARCH (lines 14–18). Cosmetic; the Artifact block immediately below lists all three. Defer to opportunistic cleanup.
+2. **`test_workflow_step_9_three_way_consistency`** is partially satisfied by the Step 9 heading itself (which substring-contains all three pair labels). Defer; tightening would require anchoring on the bracketed parentheticals (`(gap detection)`, `(decision integrity)`, `(motivation traceability)`).
+
+### Verdict
+
+**READY for merge** after the 2 IMPORTANT fixes land on this branch. NITs are tracked here for opportunistic follow-up; not blockers.

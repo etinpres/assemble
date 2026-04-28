@@ -43,13 +43,15 @@ Steps 8 and 11 are *single dispatch each* — B-2 through B-4 use single dispatc
 
 > **Caveat — `Plan` agent for content drafting.** `Plan`'s built-in description is
 > "Software architect agent for designing implementation plans", which doesn't
-> perfectly match content drafting (PRD/AC/ARCH). Empirically (run
-> `20260428-194703-f5dd`) `Plan` returned clean markdown for all 5 dispatches
-> when prompted with explicit "do not call ExitPlanMode, return markdown only"
-> instructions, but the role mapping is fragile — a future Claude may
-> short-circuit into plan-mode UX. If drift appears, fall back to
-> `general-purpose`. Phase B-3 is the place to revisit whether a dedicated
-> content-draft role is warranted.
+> perfectly match content drafting (PRD/AC/ARCH). Empirically (B-2 run
+> `20260428-194703-f5dd` — 5 dispatches; B-3 run `20260428-214502-6b79` — 6
+> dispatches across both first-pass and iteration) `Plan` returned clean
+> markdown when prompted with explicit "do not call ExitPlanMode, return
+> markdown only" instructions, but the role mapping is fragile — a future
+> Claude may short-circuit into plan-mode UX. If drift appears, fall back to
+> `general-purpose`. Phase B-3 dogfood reproduced this drift (see
+> `docs/dogfood/phase-b-3.md` Finding #3); the dedicated content-draft role
+> decision is deferred to Phase B post-tuning.
 
 ## Workflow
 
