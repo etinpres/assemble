@@ -124,6 +124,34 @@ def test_workflow_iteration_hard_caps_at_one():
     assert "exits unconditionally" in body or "iteration cap reached" in body
 
 
+def test_skill_description_mentions_arch():
+    from server import parse_skill_frontmatter
+    fm = parse_skill_frontmatter(SKILL)
+    desc = (fm.get("description") or "").upper()
+    assert "ARCH" in desc, f"description does not mention ARCH: {fm.get('description')}"
+
+
+def test_workflow_step_7_arch_interview():
+    body = _body()
+    assert "Step 7" in body
+    step7 = body[body.index("Step 7"):]
+    assert "AskUserQuestion" in step7[:2000]
+    # Gate B2.2 seeds: interview must ask about directory tree and data flow
+    assert "directory" in step7[:2000].lower()
+    assert "data flow" in step7[:2000].lower() or "data-flow" in step7[:2000].lower()
+
+
+def test_workflow_step_8_arch_single_dispatch():
+    body = _body()
+    assert "Step 8" in body
+    step8 = body[body.index("### Step 8"):]
+    # Phase B spec §3: B-2 through B-4 are single-dispatch, not parallel
+    assert "single" in step8[:1000].lower()
+    assert "ARCHITECTURE.md" in step8[:1000]
+    assert "wrap_with_preamble" in step8[:1000]
+    assert "write_run_artifact" in step8[:1000]
+
+
 def test_skill_preamble_matches_shared_file():
     """The 4 harness rules appear both in plan-pack/SKILL.md (as a
     documentation backup) and in bundled/_shared/harness-preamble.md

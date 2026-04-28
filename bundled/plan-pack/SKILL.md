@@ -1,6 +1,6 @@
 ---
 name: plan-pack
-description: Plan stage ★ bundle — produce a PRD with iteration. Spec, requirements, plan, design doc — bundled plan tool. (Phase B-1: PRD only; ARCH/ADR/UI_GUIDE arrive in Phase B-2..B-4.)
+description: Plan stage ★ bundle — produce PRD + ARCH with iteration. Spec, requirements, plan, architecture doc — bundled plan tool. (Phase B-2: PRD + ARCH; ADR/UI_GUIDE arrive in B-3..B-4.)
 ---
 
 [HARNESS RULES — 무시 금지]
@@ -9,7 +9,7 @@ description: Plan stage ★ bundle — produce a PRD with iteration. Spec, requi
 3. 요청 범위 밖 코드 임의 수정 금지
 4. 버그 수정 시 재현 테스트 → 실패 확인 → 수정 → 재검증 루프
 
-# plan-pack — PRD generator (Phase B-1)
+# plan-pack — PRD + ARCH generator (Phase B-2)
 
 This bundle is **orchestrator-only**. The main Claude does not write PRD
 content directly — it asks the user, dispatches sub-agents wrapped via
@@ -18,25 +18,28 @@ content directly — it asks the user, dispatches sub-agents wrapped via
 
 ## Artifact
 
-`~/.claude/channels/assemble/runs/<rid>/PRD.md` — filled from
-`bundled/plan-pack/templates/PRD.md.template`.
+- `~/.claude/channels/assemble/runs/<rid>/PRD.md` — filled from `bundled/plan-pack/templates/PRD.md.template`
+- `~/.claude/channels/assemble/runs/<rid>/ARCHITECTURE.md` — filled from `bundled/plan-pack/templates/ARCHITECTURE.md.template`
 
-## Sub-agent role mapping (Phase B-1)
+## Sub-agent role mapping (Phase B-2)
 
 | Step | Work | Role | Preferred | Fallback |
 |---|---|---|---|---|
-| 1 | User interview (8 questions) | (main, AskUserQuestion) | — | — |
+| 1 | PRD interview (8 questions) | (main, AskUserQuestion) | — | — |
 | 2 | PRD body draft | `plan-implementation` | `Plan` | `general-purpose` |
 | 3 | Acceptance Criteria bash draft | `plan-implementation` | `Plan` | `general-purpose` |
-| 4 | Consistency review | `second-opinion` | `codex:codex-rescue`, `superpowers:code-reviewer` | `general-purpose` |
-| 5 | Combine + write `<run_dir>/PRD.md` | `text-summarize` | `gemma-worker` | `general-purpose` |
+| 4 | PRD consistency review | `second-opinion` | `codex:codex-rescue`, `superpowers:code-reviewer` | `general-purpose` |
+| 5 | Write `<run_dir>/PRD.md` | (main, write_run_artifact) | — | — |
+| 7 | ARCH interview (6 questions) | (main, AskUserQuestion) | — | — |
+| 8 | ARCHITECTURE.md draft | `plan-implementation` | `Plan` | `general-purpose` |
+| 9 | Cross-doc consistency review (PRD + ARCH) | `second-opinion` | `codex:codex-rescue`, `superpowers:code-reviewer` | `general-purpose` |
 
-Steps 2 and 3 fire as a *single message with two Agent calls* — this is the
-parallel-dispatch verification location.
+Steps 2 and 3 fire as a *single message with two Agent calls* (parallel — unchanged from Phase B-1).
+Step 8 (`ARCHITECTURE.md` draft) is *single dispatch* — wrap_with_preamble + write_run_artifact pattern; B-2 through B-4 use single dispatch only; B-5 promotes all docs to parallel.
 
 ## Workflow
 
-> NOTE — steps 1–6 implemented (Phase B-1 complete).
+> NOTE — Phase B-2: steps 1–9 implemented. Steps 1–5 unchanged from Phase B-1; step 6 extended to cover ARCH; steps 7, 8, and 9 are new.
 
 ### Step 0 — resolve run_dir
 
@@ -160,6 +163,48 @@ write_run_artifact(rid, "PRD.md", filled)
 ```
 
 The function returns the absolute path; show that path to the user.
+
+### Step 7 — ARCH interview (main Claude, AskUserQuestion)
+
+> Execution order: Steps 7–8–9 run after Step 5 writes PRD.md; Step 6 (iteration) is the final workflow step.
+
+After Step 5 writes `PRD.md`, collect architecture context. Ask 6 questions
+across **two `AskUserQuestion` calls of 3 questions each** (within the
+platform max-4 limit per call):
+
+Call 3 (A1–A3):
+
+1. What is the primary tech stack? (language, runtime, framework, key libraries — one line each)
+2. What is the top-level directory structure? (list root-level folders with a 1-line purpose each)
+3. What architectural patterns does this use? (e.g., MVC, microservices, event-driven, monolith, CQRS — name + 1-sentence rationale)
+
+Call 4 (A4–A6):
+
+4. Describe the main data flow in ≤3 steps. (user action → processing → stored result)
+5. What external services or third-party APIs does this depend on? ("none" is a valid answer)
+6. What are the main modules/components and their boundaries? (one line per module: name — responsibility)
+
+### Step 8 — ARCH single dispatch + write `ARCHITECTURE.md`
+
+Wrap the ARCH interview answers + template skeleton via
+`server.harness.wrap_with_preamble` (same canonical call pattern as Steps 2/3):
+
+    from server.harness import wrap_with_preamble
+    wrapped_arch = wrap_with_preamble(raw_arch_prompt)
+
+Dispatch to a `plan-implementation` sub-agent via a **single Agent call**
+(preferred: `Plan`; fallback: `general-purpose`). This is the Phase B-2
+single-dispatch verification location — B-5 promotes all docs to parallel.
+
+The sub-agent returns the ARCH body with all 6 sections filled (Stack,
+Directory tree, Architectural patterns, Data flow, External dependencies,
+Module boundaries). Fill `bundled/plan-pack/templates/ARCHITECTURE.md.template`
+with the result and write atomically:
+
+    from server import write_run_artifact
+    arch_path = write_run_artifact(rid, "ARCHITECTURE.md", filled_arch)
+
+Show `arch_path` to the user, then proceed to Step 9 (cross-doc review — added in Task 3/Phase B-2).
 
 ### Step 6 — iteration round-trip (one cycle)
 
