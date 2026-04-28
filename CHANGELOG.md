@@ -44,6 +44,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`> verified by main Claude on <date> — <n> kept / <m> dropped`)
   prepended to Review notes.
 
+### Fixed
+- **Phase B-2 dogfood finding #1**: Step 8 fill pseudocode now uses a
+  `split_sections` parser to extract section bodies from sub-agent output
+  before substituting into the template. Previous version mapped raw
+  interview answers (`a1`–`a6`) to template placeholders, which collided
+  with the sub-agent's actual output format (full markdown with `## Stack`,
+  `## Directory tree` headings).
+- **Phase B-2 dogfood finding #2**: Caveat note added under sub-agent
+  role-mapping table — `Plan` agent's stated description is "designing
+  implementation plans", which doesn't perfectly match content drafting.
+  Empirically works with explicit "no ExitPlanMode" prompts; documented as
+  fragile mapping with `general-purpose` fallback guidance.
+- **Phase B-2 dogfood finding #3**: Step 6 yes-path now includes an
+  explicit "Iteration write order" 6-step list (Steps 2+3 → Step 8 → write
+  PRD → write ARCH → Step 9 → append cross-doc review) instead of leaving
+  order implicit in narrative prose.
+- **Phase B-2 dogfood finding #4**: Multi-iteration justification note added
+  citing the actual run that exposed it (`20260428-194703-f5dd` — single
+  iteration left 1 new CRITICAL unresolved).
+- Tests: 109 → 111 (added `test_workflow_step_8_handles_sub_agent_headings`,
+  `test_workflow_iteration_has_explicit_write_order`).
+- Replaced fabricated B-2 dogfood report (claimed run id that did not exist
+  on disk) with real run trace from `20260428-194703-f5dd`.
+
 ### Notes
 - Phase B (`plan-pack` ★) is intentionally out of scope; the placeholder `hello-bundle` is the only bundled tool until then.
 - No agent-name hardcoding, no main-Claude heavy work in bundled SKILLs, no Codex/Gemini harness compatibility (per V4 정체성 보호 — see `project_assemble_v4_spec.md`).

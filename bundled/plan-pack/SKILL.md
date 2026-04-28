@@ -38,6 +38,16 @@ results to `<run_dir>/PRD.md` and `<run_dir>/ARCHITECTURE.md` via
 Steps 2 and 3 fire as a *single message with two Agent calls* (parallel — unchanged from Phase B-1).
 Step 8 (`ARCHITECTURE.md` draft) is *single dispatch* — wrap_with_preamble + write_run_artifact pattern; B-2 through B-4 use single dispatch only; B-5 promotes all docs to parallel.
 
+> **Caveat — `Plan` agent for content drafting.** `Plan`'s built-in description is
+> "Software architect agent for designing implementation plans", which doesn't
+> perfectly match content drafting (PRD/AC/ARCH). Empirically (run
+> `20260428-194703-f5dd`) `Plan` returned clean markdown for all 5 dispatches
+> when prompted with explicit "do not call ExitPlanMode, return markdown only"
+> instructions, but the role mapping is fragile — a future Claude may
+> short-circuit into plan-mode UX. If drift appears, fall back to
+> `general-purpose`. Phase B-3 is the place to revisit whether a dedicated
+> content-draft role is warranted.
+
 ## Workflow
 
 > NOTE — Phase B-2: steps 1–9 implemented. Steps 1–5 unchanged from Phase B-1; step 6 extended to cover ARCH; steps 7, 8, and 9 are new.
@@ -197,24 +207,48 @@ Dispatch to a `plan-implementation` sub-agent via a **single Agent call**
 (preferred: `Plan`; fallback: `general-purpose`). This is the Phase B-2
 single-dispatch verification location — B-5 promotes all docs to parallel.
 
-The sub-agent returns the ARCH body with all 6 sections filled (Stack,
-Directory tree, Architectural patterns, Data flow, External dependencies,
-Module boundaries). Substitute the answers into the template's placeholders
-(map: A1→`{{STACK}}`, A2→`{{DIRECTORY_TREE}}`, A3→`{{PATTERNS}}`,
-A4→`{{DATA_FLOW}}`, A5→`{{EXTERNAL_DEPS}}`, A6→`{{MODULE_BOUNDARIES}}`,
-task→`{{TASK}}`) and write atomically:
+The sub-agent returns the ARCH body as markdown with `## Stack`, `## Directory
+tree`, ... headings (one per section). The template *already* contains those
+same headings, so a naive concatenation would duplicate them — instead, parse
+the sub-agent output into a `{heading: body}` dict and substitute *bodies*
+into the template placeholders.
 
+Heading→placeholder map: `Stack`→`{{STACK}}`, `Directory tree`→`{{DIRECTORY_TREE}}`,
+`Architectural patterns`→`{{PATTERNS}}`, `Data flow`→`{{DATA_FLOW}}`,
+`External dependencies`→`{{EXTERNAL_DEPS}}`, `Module boundaries`→`{{MODULE_BOUNDARIES}}`.
+Plus `task`→`{{TASK}}`.
+
+Canonical fill + write:
+
+    import re
     from pathlib import Path
     from server import write_run_artifact
+
+    def split_sections(text):
+        """Parse `## Heading\\n<body>\\n## Heading\\n<body>...` into a dict."""
+        sections, current_h, buf = {}, None, []
+        for line in text.splitlines():
+            m = re.match(r'^## (.+?)\\s*$', line)
+            if m:
+                if current_h:
+                    sections[current_h] = '\\n'.join(buf).strip()
+                current_h, buf = m.group(1), []
+            else:
+                buf.append(line)
+        if current_h:
+            sections[current_h] = '\\n'.join(buf).strip()
+        return sections
+
+    s = split_sections(arch_sub_agent_output)
     template = Path.home() / ".claude/skills/assemble/bundled/plan-pack/templates/ARCHITECTURE.md.template"
     filled_arch = (template.read_text()
         .replace("{{TASK}}", task)
-        .replace("{{STACK}}", a1)
-        .replace("{{DIRECTORY_TREE}}", a2)
-        .replace("{{PATTERNS}}", a3)
-        .replace("{{DATA_FLOW}}", a4)
-        .replace("{{EXTERNAL_DEPS}}", a5)
-        .replace("{{MODULE_BOUNDARIES}}", a6))
+        .replace("{{STACK}}", s["Stack"])
+        .replace("{{DIRECTORY_TREE}}", s["Directory tree"])
+        .replace("{{PATTERNS}}", s["Architectural patterns"])
+        .replace("{{DATA_FLOW}}", s["Data flow"])
+        .replace("{{EXTERNAL_DEPS}}", s["External dependencies"])
+        .replace("{{MODULE_BOUNDARIES}}", s["Module boundaries"]))
     arch_path = write_run_artifact(rid, "ARCHITECTURE.md", filled_arch)
 
 Show `arch_path` to the user, then proceed to Step 9 (cross-doc review).
@@ -266,9 +300,22 @@ After Step 9 (cross-doc review), ask the user via `AskUserQuestion`:
   with the existing `PRD.md` and `ARCHITECTURE.md` loaded as input context,
   plus a follow-up `AskUserQuestion` collecting the user's new emphases
   ("what feels off in the PRD?", "what feels off in the ARCH?").
-  Step 5 overwrites `PRD.md` and Step 8 overwrites `ARCHITECTURE.md` with the
-  refined versions. Step 9 then re-runs cross-doc second-opinion on the updated
-  pair before the workflow exits.
+
+  **Iteration write order** (explicit — do not improvise):
+  1. Run Steps 2+3 in parallel (single message, two Agent calls): PRD body
+     re-draft + AC bash re-draft.
+  2. Run Step 8 (ARCH re-draft) — can fire in the same parallel message as
+     Steps 2+3 since the inputs are independent (existing PRD + ARCH +
+     emphases), or sequentially after Steps 2+3 if you prefer simpler control
+     flow.
+  3. **Step 5 overwrites `PRD.md`** with the new body + new AC bash.
+  4. **Step 8 (continued) overwrites `ARCHITECTURE.md`** with the new sections
+     — discard the old `## Cross-doc review` section here; Step 9 will
+     regenerate it.
+  5. Run Step 9 again on the refreshed pair.
+  6. Step 9 (continued) appends `## Cross-doc review (iteration 1)` to
+     `ARCHITECTURE.md` (note the iteration suffix to distinguish from the
+     first-pass review).
 
   **Step 4 (intra-PRD consistency review) is intentionally skipped on the
   iteration yes-path.** The cross-doc review in Step 9 provides the
@@ -286,3 +333,10 @@ Phase B-2 covers exactly **one iteration**. After the iteration completes
 another pass, the main Claude must reply "iteration cap reached for Phase B-2;
 rerun `/assemble` to start a new run" and stop. Multi-iteration support (3–7
 counts with stop conditions) is a Phase B post-tuning track.
+
+> **Dogfood evidence** (run `20260428-194703-f5dd`, 2026-04-28): a single
+> iteration resolved 4 prior CRITICALs and *introduced 1 new CRITICAL* (no-op
+> vs exit non-zero on missing markers). The new CRITICAL exited unresolved
+> when the workflow hit the cap. This makes the multi-iteration post-tuning
+> track more justified than originally expected — see
+> `docs/dogfood/phase-b-2.md` § Findings #4.

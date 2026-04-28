@@ -146,11 +146,30 @@ def test_workflow_step_8_arch_single_dispatch():
     body = _body()
     assert "Step 8" in body
     step8 = body[body.index("### Step 8"):]
+    # Window 2500 covers fill pseudocode added after dogfood finding #1
+    # (sub-agent output ↔ template heading collision).
     # Phase B spec §3: B-2 through B-4 are single-dispatch, not parallel
-    assert "single" in step8[:1000].lower()
-    assert "ARCHITECTURE.md" in step8[:1000]
-    assert "wrap_with_preamble" in step8[:1000]
-    assert "write_run_artifact" in step8[:1000]
+    assert "single" in step8[:2500].lower()
+    assert "ARCHITECTURE.md" in step8[:2500]
+    assert "wrap_with_preamble" in step8[:2500]
+    assert "write_run_artifact" in step8[:2500]
+
+
+def test_workflow_step_8_handles_sub_agent_headings():
+    """Dogfood finding #1: sub-agent returns markdown with `## Stack`,
+    `## Directory tree` etc. headings, but template already has them.
+    Naive substitution would duplicate. Step 8 must show how to extract
+    section bodies before substituting."""
+    body = _body()
+    step8 = body[body.index("### Step 8"):]
+    fill_block = step8[:3000]
+    # The pseudocode must include the section parser, not just a raw
+    # `template.replace(..., a1)` map (which is what tripped this dogfood).
+    assert "split_sections" in fill_block, (
+        "Step 8 must show section-body extraction (dogfood finding #1). "
+        "Naive .replace(...) of full sub-agent output would duplicate "
+        "## headings already in the template."
+    )
 
 
 def test_skill_preamble_matches_shared_file():
@@ -203,12 +222,30 @@ def test_workflow_step_9_uses_second_opinion_role():
 def test_workflow_iteration_step_6_includes_arch():
     body = _body()
     step6 = body[body.index("### Step 6"):]
+    # Window widened to 2500 to cover explicit write-order block
+    # added after dogfood finding #3.
     # Iteration must re-run ARCH (Step 8) alongside PRD (Steps 2+3).
     # Bare "ARCH" was tautological — substring of "ARCHITECTURE.md".
     # Anchor on "Step 8" (the actual re-draft instruction).
-    assert "Step 8" in step6[:1500]
-    assert "ARCHITECTURE.md" in step6[:1500]
-    assert "re-draft" in step6[:1500].lower() or "re-runs" in step6[:1500].lower()
+    assert "Step 8" in step6[:2500]
+    assert "ARCHITECTURE.md" in step6[:2500]
+    assert "re-draft" in step6[:2500].lower() or "re-runs" in step6[:2500].lower()
+
+
+def test_workflow_iteration_has_explicit_write_order():
+    """Dogfood finding #3: iteration write order was implicit. Step 6
+    yes-path must show numbered write-order steps so the main Claude
+    follows a deterministic sequence."""
+    body = _body()
+    step6 = body[body.index("### Step 6"):]
+    block = step6[:3500]
+    assert "write order" in block.lower(), (
+        "Step 6 yes-path must include explicit 'Iteration write order' "
+        "block (dogfood finding #3)"
+    )
+    # Must reference Step 5 overwriting PRD and Step 8 overwriting ARCH
+    assert "overwrites `PRD.md`" in block or "overwrite PRD.md" in block.lower()
+    assert "overwrites `ARCHITECTURE.md`" in block or "overwrite ARCHITECTURE.md" in block.lower()
 
 
 def test_workflow_iteration_step_6_no_force_arch():
