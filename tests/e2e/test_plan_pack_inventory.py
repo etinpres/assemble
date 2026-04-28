@@ -76,3 +76,18 @@ def test_real_harness_preamble_file_exists():
     # 4 numbered rules
     for n in (1, 2, 3, 4):
         assert f"{n}." in body, f"missing rule {n}."
+
+
+def test_arch_template_exists_and_has_required_sections():
+    tpl = PLAN_PACK.parent / "templates" / "ARCHITECTURE.md.template"
+    assert tpl.exists(), f"missing: {tpl}"
+    body = tpl.read_text()
+    for required in [
+        "## Stack",
+        "## Directory tree",
+        "## Architectural patterns",
+        "## Data flow",
+        "## External dependencies",
+        "## Module boundaries",
+    ]:
+        assert required in body, f"section missing: {required!r}"
