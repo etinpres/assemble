@@ -60,3 +60,23 @@ def test_user_match_present_skips_fallback_hint(tmp_path, monkeypatch):
     opts = [o for o in build_stage_options("plan") if o["kind"] == "tool"]
     bundled = next(o for o in opts if o["label"] == "★ plan-pack")
     assert "fallback" not in bundled["description"].lower()
+
+
+def test_locale_ko_uses_korean_fallback_hint(tmp_path, monkeypatch):
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    monkeypatch.setenv("ASSEMBLE_LOCALE", "ko")
+    # Bust the i18n lru_cache (locale switch in-process)
+    from server import i18n as i18n_mod
+    i18n_mod._load.cache_clear()
+
+    body = ("---\nname: plan-pack\n"
+            "description: spec, requirements, plan, design doc — bundled plan tool\n"
+            "---\n\n# plan-pack\n")
+    p = tmp_path / ".claude/skills/assemble/bundled/plan-pack/SKILL.md"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(body)
+
+    opts = [o for o in build_stage_options("plan") if o["kind"] == "tool"]
+    assert opts[0]["label"].startswith("★ ")
+    # Korean fallback hint should not literally be the english string
+    assert "(no matching" not in opts[0]["description"]

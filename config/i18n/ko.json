@@ -18,7 +18,8 @@
     "back":   {"label": "back",     "description": "이전 stage로 돌아가기"},
     "done":   {"label": "done",     "description": "여기서 종료"},
     "no_description": "(설명 없음)",
-    "helper_suffix": "  [보조]"
+    "helper_suffix": "  [보조]",
+    "bundled_prefix": "★ "
   },
   "progress": {
     "resume_announce": "이어서: {task}. 현재 stage: {stage} ({idx}/{total})",
@@ -35,6 +36,7 @@
     }
   },
   "notices": {
-    "unclassified_hint": "미분류 {n}건이 이번 작업 메뉴에 안 나옵니다. 원하면\n  `~/.claude/skills/assemble/bin/classify-inventory` 로 일괄 처리하세요."
+    "unclassified_hint": "미분류 {n}건이 이번 작업 메뉴에 안 나옵니다. 원하면\n  `~/.claude/skills/assemble/bin/classify-inventory` 로 일괄 처리하세요.",
+    "bundled_only_hint": "(매칭 사용자/플러그인 툴 없음 — 번들 폴백)"
   }
 }
