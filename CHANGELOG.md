@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — V4 Phase A
+
+### Added
+- `bundled/` skill root for self-sufficient bundled library (V4 decisions #1–#5).
+- `_shared/harness-preamble.md` — harness 4-rule preamble that bundled SKILLs prepend to subagent prompts.
+- `hello-bundle/` placeholder so bundled-path discovery has a real file in Phase A; replaced when Phase B lands real bundles.
+- `bundled` boolean on every inventory entry (`scan()` flags entries under `~/.claude/skills/assemble/bundled/`).
+- `★ ` label prefix and fallback hint when a bundled tool is the only match for a stage.
+- i18n keys: `menu.bundled_prefix`, `notices.bundled_only_hint` (en + ko).
+
+### Notes
+- Phase B (`plan-pack` ★) is intentionally out of scope; the placeholder `hello-bundle` is the only bundled tool until then.
+- No agent-name hardcoding, no main-Claude heavy work in bundled SKILLs, no Codex/Gemini harness compatibility (per V4 정체성 보호 — see `project_assemble_v4_spec.md`).
+
 ## [3.0.0] — 2026-04-21
 
 First public release. Classification is now installation-aware and the skill

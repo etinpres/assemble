@@ -18,7 +18,8 @@
     "back":   {"label": "back",   "description": "go back to previous stage"},
     "done":   {"label": "done",   "description": "end here"},
     "no_description": "(no description)",
-    "helper_suffix": "  [helper]"
+    "helper_suffix": "  [helper]",
+    "bundled_prefix": "★ "
   },
   "progress": {
     "resume_announce": "Resuming: {task}. Current stage: {stage} ({idx}/{total})",
@@ -35,6 +36,7 @@
     }
   },
   "notices": {
-    "unclassified_hint": "{n} skill(s) are unclassified and won't appear in this run's menus. To bulk-classify, run:\n  ~/.claude/skills/assemble/bin/classify-inventory"
+    "unclassified_hint": "{n} skill(s) are unclassified and won't appear in this run's menus. To bulk-classify, run:\n  ~/.claude/skills/assemble/bin/classify-inventory",
+    "bundled_only_hint": "(no matching user/plugin tool — bundled fallback)"
   }
 }

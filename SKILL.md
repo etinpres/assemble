@@ -254,7 +254,7 @@ Show the output verbatim, then mention they can resume any line with `/assemble 
 
 ## 9. Internals: lazy-load policy
 
-- Each option returned by `build_stage_options()` is `{label, kind, description(≤80), tool_path}`. The skill body is never loaded until the user picks and the `Skill` tool actually invokes it.
+- Each option returned by `build_stage_options()` is `{label, kind, description, tool_path}`. Tool-kind options additionally carry `bundled: bool` (V4 Phase A — `True` for entries under `~/.claude/skills/assemble/bundled/`; bundled labels are prefixed with `★ ` and sorted before user/plugin tools). Description is capped at 80 chars, except bundled-only fallback options append a localized hint that may extend slightly past that cap. The skill body is never loaded until the user picks and the `Skill` tool actually invokes it.
 - The cache at `~/.claude/channels/assemble/inventory.json` stores a 500-char `body_excerpt` per skill, used for classification only — it never reaches the user menu.
 - Audit: confirmed 2026-04-21. Skill bodies don't leak into context.
 

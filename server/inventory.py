@@ -270,6 +270,23 @@ WATCH_PATHS = [
     ".claude/plugins/installed_plugins.json",
 ]
 
+_BUNDLED_ROOT_REL = ".claude/skills/assemble/bundled"
+
+
+def _is_bundled(home: Path, resolved_path: Path) -> bool:
+    """True iff the skill/agent file lives under the assemble bundled root.
+
+    `resolved_path` must already be `Path.resolve()`d by the caller (which
+    `enumerate_skill_paths` does). We resolve the bundle root the same way
+    so a symlinked HOME still matches.
+    """
+    bundled_root = (home / _BUNDLED_ROOT_REL).resolve()
+    try:
+        resolved_path.relative_to(bundled_root)
+        return True
+    except ValueError:
+        return False
+
 
 def _home_for_scan() -> Path:
     env = os.environ.get("ASSEMBLE_HOME")
@@ -361,6 +378,7 @@ def scan(force: bool = False) -> dict:
                 "description": meta["description"],
                 "body_excerpt": meta["body_excerpt"],
                 "path": str(path),
+                "bundled": _is_bundled(home, path),
                 "mappings": mappings,
                 "source": source,
             }
@@ -381,6 +399,7 @@ def scan(force: bool = False) -> dict:
                 "description": meta["description"],
                 "body_excerpt": meta["body_excerpt"],
                 "path": str(path),
+                "bundled": _is_bundled(home, path),
                 "mappings": mappings,
                 "source": source,
             }
