@@ -318,6 +318,8 @@ sections, each containing five sub-headings in order:
     ## Decision 2: …
     ## Decision 3: …
 
+The Step 10 interview only collects user-side input for `### Decision` (the title and one-sentence summary), `### Rejected alternatives`, and `### Tradeoffs`. The sub-agent must **synthesize `### Context` and `### Reasoning` from the loaded `arch_text` plus the PRD's `## Goal` / `## Risks` content** — these two sub-headings are the sub-agent's job, never the user's. Do not emit stubs like "This decision was important." for these sections; if the synthesis cannot be grounded, drop the decision entirely (the user can re-supply on iteration).
+
 The "one-line reason for rejection" + "one-line tradeoff consequence" wording
 is what gate B3.2 measures (each decision has *both* a tradeoff and a rejected
 alternative subsection populated, beyond the bare gate of "tradeoff *or*
