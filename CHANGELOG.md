@@ -5,9 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — V4 Phase A + B-1 + B-2
+## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3
 
 ### Added
+- `bundled/plan-pack/templates/ADR.md.template` — minimal ADR shape with `{{TASK}}` + `{{DECISIONS_BLOCK}}` placeholders; sub-agent emits the entire `## Decision N: <title>` tree directly (Phase B-3, avoids B-2 Finding #1 heading-collision pattern).
+- plan-pack Step 10: ADR interview (6 questions, 2 `AskUserQuestion` calls of 3) after `ARCHITECTURE.md` is written (Phase B-3).
+- plan-pack Step 11: ADR single dispatch via `plan-implementation` role, harness-preamble-prepended, writes `runs/<rid>/ADR.md` atomically; sub-agent contract requires ≥3 decisions each with `### Rejected alternatives` and `### Tradeoffs` sub-headings, with `### Context` and `### Reasoning` synthesized from PRD + ARCH (review I1 fix-up — never user-collected stubs) (Phase B-3).
+- plan-pack Step 9 extended: cross-doc second-opinion is now 3-way (PRD ↔ ARCH ↔ ADR) — gap detection, decision integrity (ARCH ↔ ADR), motivation traceability (PRD ↔ ADR); verified bullets appended as `## Cross-doc review` to `ADR.md`. Iteration uses `## Cross-doc review (iteration N)` suffix (Phase B-3).
+- plan-pack Step 6 extended: iteration now re-runs PRD (Steps 2+3) + ARCH (Step 8) + ADR (Step 11) as a consistent triple; explicit "Iteration write order" subsection enumerates the 8-step overwrite order (Phase B-3, addresses B-2 Finding #3).
+- `docs/plans/2026-04-28-v4-phase-b-3.md` — Phase B-3 implementation plan (6 tasks; Task 6 = explicit review-before-merge gate).
+- `docs/dogfood/phase-b-3.md` — Phase B-3 dogfood result + gate evidence + pre-merge code-reviewer findings (run `20260428-214502-6b79`).
+
+### Notes
+- Phase B-3 closed B-2's after-merge process violation by introducing **review-before-merge** as a dedicated Task 6 gate. `superpowers:code-reviewer` ran against the branch diff before any merge; READY verdict required all 6 acceptance criteria to PASS, and IMPORTANT findings were addressed on the same branch.
+- Phase B-4 (UI_GUIDE) follows the same 5-task shape with the AI-slop antipattern table; review-before-merge gate from Phase B-3 (Task 6) is now the standard for the rest of Phase B.
+- Cross-cutting B (verifier executes AC bash) and C (auto trace + learning replay) remain out of scope for Phase B.
+- Phase B-3 dogfood reproduced B-2 Finding #4: iteration resolves CRITICALs but introduces 1 new finding (`--max-concurrency` knob naming inconsistency) that exits unresolved at the 1-iteration cap. Multi-iteration with stop conditions is increasingly justified for the post-tuning track.
+
+
 - `bundled/` skill root for self-sufficient bundled library (V4 decisions #1–#5).
 - `_shared/harness-preamble.md` — harness 4-rule preamble that bundled SKILLs prepend to subagent prompts.
 - `hello-bundle/` placeholder so bundled-path discovery has a real file in Phase A; replaced when Phase B lands real bundles.
