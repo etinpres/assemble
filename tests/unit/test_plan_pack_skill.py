@@ -62,19 +62,32 @@ def test_workflow_writes_to_run_dir():
 
 def test_workflow_step_3_parallel_dispatch_for_ac_bash():
     body = _body()
-    # Task 5 changes the contract — single dispatch is replaced by parallel.
-    assert "single message" in body.lower()
-    assert "2 Agent calls" in body or "two agent calls" in body.lower()
-    assert "AC bash" in body or "Acceptance Criteria" in body
+    # Anchor on the actual workflow section, not the role-mapping table —
+    # B-1 retroactive review I2 caught this assertion passing on table-only
+    # mentions.
+    step23 = body[body.index("### Step 2 — PRD body draft"):
+                  body.index("### Step 4")]
+    assert "single message" in step23.lower()
+    assert "2 Agent calls" in step23 or "two agent calls" in step23.lower()
+    assert "AC bash" in step23 or "Acceptance Criteria" in step23
 
 
 def test_workflow_step_3_explains_role_for_ac_bash():
     body = _body()
-    # AC bash dispatch uses the same role mapping (plan-implementation/Plan).
-    # Verify the phrase appears at least twice — once for Step 2 PRD body,
-    # once for Step 3 AC bash.
-    occurrences = body.lower().count("plan-implementation")
-    assert occurrences >= 2, f"plan-implementation mentioned {occurrences} times"
+    # The AC bash bullet itself must name the role + fallback — not just
+    # the count-twice heuristic, which passes on duplicate role-table rows
+    # alone (B-1 retroactive review I2).
+    step23 = body[body.index("### Step 2 — PRD body draft"):
+                  body.index("### Step 4")]
+    # The two parallel sub-tasks each carry the role + Plan fallback line.
+    assert step23.count("plan-implementation") >= 2, (
+        "Step 2/3 prose must reference plan-implementation role for both "
+        "sub-tasks (PRD body + AC bash), not rely on the role-mapping table"
+    )
+    assert "Plan" in step23 and "general-purpose" in step23, (
+        "Step 2/3 prose must spell out the Plan/general-purpose fallback "
+        "chain inside the workflow section"
+    )
 
 
 def test_workflow_question_6_now_active():
@@ -86,28 +99,41 @@ def test_workflow_question_6_now_active():
 
 def test_workflow_step_4_second_opinion_review():
     body = _body()
-    assert "Step 4" in body
-    assert "second-opinion" in body
+    assert "### Step 4 — consistency review" in body
+    # Anchor to the Step 4 prose, not the whole file — Step 4b can satisfy
+    # the bare "second-opinion" assertion via its own header (B-1 review I2).
+    step4 = body[body.index("### Step 4 — consistency review"):
+                 body.index("#### Step 4b")]
+    assert "second-opinion" in step4
     # Review must explicitly demand flaws/rebuttals, not bare agreement.
-    assert "flaw" in body.lower() or "rebut" in body.lower() or "challenge" in body.lower()
+    assert (
+        "flaw" in step4.lower()
+        or "rebut" in step4.lower()
+        or "challenge" in step4.lower()
+    )
 
 
 def test_workflow_review_uses_role_mapping_fallback():
     body = _body()
-    # second-opinion preferred agents listed in the role-mapping table must
-    # be referenced again in the workflow's Step 4 (so a fresh reader
-    # doesn't have to scroll up).
-    assert "codex:codex-rescue" in body or "code-reviewer" in body
+    # second-opinion preferred agents must appear in the Step 4 workflow
+    # prose (not just the role-mapping table at the top — B-1 review I2).
+    step4 = body[body.index("### Step 4 — consistency review"):
+                 body.index("#### Step 4b")]
+    assert "codex:codex-rescue" in step4 or "code-reviewer" in step4, (
+        "Step 4 prose must spell out preferred second-opinion agent — "
+        "table-only mention would pass even on empty workflow text"
+    )
 
 
 def test_workflow_step_6_iteration_prompt():
     body = _body()
-    assert "Step 6" in body
-    assert "iteration" in body.lower()
-    # Iteration must be opt-in (not forced) — V4 identity rule.
-    assert "AskUserQuestion" in body
+    step6 = body[body.index("### Step 6"):]
+    # Anchor to Step 6 — bare "AskUserQuestion in body" is satisfied by
+    # Step 1's interview (B-1 review I2).
+    assert "iteration" in step6.lower()
+    assert "AskUserQuestion" in step6
     # Phase B-1 covers exactly one iteration; counts of 3–7 are deferred.
-    assert "one iteration" in body.lower() or "1 iteration" in body.lower()
+    assert "one iteration" in step6.lower() or "1 iteration" in step6.lower()
 
 
 def test_workflow_iteration_does_not_force_loop():

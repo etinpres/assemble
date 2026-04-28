@@ -1,6 +1,13 @@
 import threading
-from pathlib import Path
-from server.run_dir import write_run_artifact, read_run_artifact, run_artifact_path
+
+import pytest
+
+from server.run_dir import (
+    write_run_artifact,
+    read_run_artifact,
+    run_artifact_path,
+    strip_bash_fence,
+)
 
 
 def test_write_creates_file_and_returns_path(tmp_path, monkeypatch):
@@ -35,6 +42,66 @@ def test_read_returns_content_after_write(tmp_path, monkeypatch):
     monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
     write_run_artifact("rid", "PRD.md", "body")
     assert read_run_artifact("rid", "PRD.md") == "body"
+
+
+# --- path-traversal guards (B-1 retroactive review C1) ---
+
+@pytest.mark.parametrize("bad_filename", [
+    "/tmp/evil",                # absolute path
+    "../evil",                  # parent traversal
+    "../../etc/passwd",         # deeper traversal
+    "subdir/file.md",           # nested filename
+    ".hidden",                  # leading dot
+    "",                         # empty
+])
+def test_rejects_unsafe_filename(tmp_path, monkeypatch, bad_filename):
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    with pytest.raises(ValueError):
+        write_run_artifact("rid", bad_filename, "x")
+
+
+@pytest.mark.parametrize("bad_run_id", [
+    "/tmp/evil",
+    "../evil",
+    "../../",
+    "sub/dir",
+    ".hidden-rid",
+    "",
+])
+def test_rejects_unsafe_run_id(tmp_path, monkeypatch, bad_run_id):
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    with pytest.raises(ValueError):
+        write_run_artifact(bad_run_id, "PRD.md", "x")
+
+
+def test_run_artifact_path_also_validates(tmp_path, monkeypatch):
+    """Validation happens at path construction, not just at write time —
+    so callers can't sneak past by computing the path themselves."""
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    with pytest.raises(ValueError):
+        run_artifact_path("rid", "../evil")
+
+
+# --- AC fence strip (B-1 retroactive review I1) ---
+
+def test_strip_bash_fence_raw_command():
+    assert strip_bash_fence("ls -la") == "ls -la"
+
+
+def test_strip_bash_fence_with_bash_tag():
+    assert strip_bash_fence("```bash\nls -la\n```") == "ls -la"
+
+
+def test_strip_bash_fence_no_lang_tag():
+    assert strip_bash_fence("```\nls -la\n```") == "ls -la"
+
+
+def test_strip_bash_fence_with_trailing_newline():
+    assert strip_bash_fence("```bash\nls -la\n```\n") == "ls -la"
+
+
+def test_strip_bash_fence_with_surrounding_whitespace():
+    assert strip_bash_fence("  ```bash\n  ls -la\n```  ") == "ls -la"
 
 
 def test_concurrent_writes_dont_corrupt(tmp_path, monkeypatch):

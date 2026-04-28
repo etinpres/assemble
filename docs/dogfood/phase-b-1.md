@@ -207,6 +207,20 @@ read again.
 
 ## Status
 
-Phase B-1 dogfood **passes**. The three SKILL.md fixes (commit
-`76dc985`) close the gaps surfaced above. CHANGELOG updated to mark
-the dogfood report as delivered.
+Phase B-1 dogfood **passes for the SKILL.md-fixes track**. The three
+fixes in commit `76dc985` close the gaps surfaced above and ensure
+*future* runs verify second-opinion bullets before appending (Step 4b).
+
+**Caveat — the produced PRD artifact is not authoritative.** The Step 4
+iteration-2 false alarm ("AC bash is broken because TIMEFORMAT=%R doesn't
+propagate") is preserved verbatim in
+`runs/20260428-160618-654d/PRD.md` Review notes (first bullet), because
+it predates the Step 4b fix that would have caught it. The artifact is
+retained as **historical evidence of the very defect that motivated
+Step 4b**, not as a fit-for-implementation PRD. Do not derive
+implementation from the persisted Review notes; the bullet refuted in
+"Finding (false alarm)" above is wrong.
+
+Future plan-pack runs (post-`76dc985`) apply Step 4b verify, so the
+class of failure that produced this caveat will not repeat. CHANGELOG
+updated to mark the dogfood report as delivered.

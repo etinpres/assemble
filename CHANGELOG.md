@@ -45,6 +45,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   prepended to Review notes.
 
 ### Fixed
+- **Phase B-1 retroactive review C1 (security)**: `server/run_dir.py` now
+  validates `run_id` and `filename` as plain basenames before writing —
+  rejects `/`, `\`, `..`, leading `.`, and empty values. Prevents path-
+  traversal / absolute-path injection out of the runs directory. Adds a
+  defense-in-depth `resolve()` check that the final target sits under
+  the runs root, catching symlink swaps that basename validation alone
+  would miss. Reproduced live before fix: `write_run_artifact("rid",
+  "/tmp/evil", ...)` wrote outside the runs root.
+- **Phase B-1 retroactive review C2**: Plan-doc role-mapping tables
+  (`docs/plans/2026-04-28-v4-phase-b-1.md`, `docs/plans/2026-04-28-v4-phase-b.md`)
+  Step 5 row claimed `text-summarize`/`gemma-worker` dispatch, contradicting
+  the prose (main Claude calls `write_run_artifact` directly) and violating
+  V4 identity rule "no Codex/Gemini harness compatibility in bundled SKILLs".
+  SKILL.md was silently corrected in B-2 — plan docs now match.
+- **Phase B-1 retroactive review C3**: Phase B-1 dogfood report status
+  clarified — passes only for the SKILL.md-fixes track. The PRD artifact
+  produced during the dogfood iteration 2 still carries the false-alarm
+  bullet that motivated Step 4b; report now explicitly preserves it as
+  historical evidence rather than an authoritative PRD.
+- **Phase B-1 retroactive review C4**: `bundled/plan-pack/SKILL.md` Steps
+  2/3 prose now says "proceeds to Step 4 (consistency review), not Step 5"
+  — was previously "proceeds to Step 5", which silently skipped the
+  second-opinion review that exists immediately after.
+- **Phase B-1 retroactive review C5**: `_load_preamble` no longer caches
+  the missing-file (`None`) result. The previous `lru_cache` cached the
+  first call's outcome forever — a preamble created late in process was
+  silently never picked up. Replaced with a per-resolved-path dict cache
+  that only stores successful loads.
+- **Phase B-1 retroactive review I1**: AC bash fence-strip is now an
+  exposed `strip_bash_fence` helper in `server/run_dir.py` (also in
+  facade) with 5-case unit tests. SKILL.md Step 5 prose previously
+  described the algorithm but never implemented or tested it.
+- **Phase B-1 retroactive review I2**: 6 plan-pack tests rewritten to
+  anchor on the actual workflow section (`### Step N` slice) instead of
+  searching the whole file body. Previously these tests passed on
+  role-table mentions alone — workflow prose could be deleted entirely
+  and tests still passed. Affected: step_3 parallel/explains_role,
+  step_4_second_opinion_review, review_uses_role_mapping_fallback,
+  step_6_iteration_prompt.
 - **Phase B-2 dogfood finding #1**: Step 8 fill pseudocode now uses a
   `split_sections` parser to extract section bodies from sub-agent output
   before substituting into the template. Previous version mapped raw

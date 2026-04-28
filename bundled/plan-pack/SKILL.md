@@ -112,7 +112,9 @@ dispatch — this is the Phase B-1 parallel-dispatch verification location
   language tag, no surrounding prose.** Step 5 will substitute the result
   into the template's pre-existing fenced bash block.
 
-The main Claude waits for both calls to return, then proceeds to Step 5.
+The main Claude waits for both calls to return, then proceeds to **Step 4
+(consistency review)** — *not* directly to Step 5. Step 4 verifies the bullets,
+Step 5 then combines + writes.
 
 ### Step 4 — consistency review (second-opinion)
 

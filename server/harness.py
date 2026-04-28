@@ -9,7 +9,6 @@ loaded once per process (lru_cache).
 
 import os
 import sys
-from functools import lru_cache
 from pathlib import Path
 
 
@@ -21,15 +20,28 @@ def _preamble_path() -> Path:
     return base / _PREAMBLE_REL
 
 
-@lru_cache(maxsize=1)
+_CACHED_PREAMBLE: dict[Path, str] = {}
+
+
 def _load_preamble() -> str | None:
+    """Load preamble for the *current* `_preamble_path()`.
+
+    Cached per resolved path — does NOT cache the missing-file (None) result,
+    so a preamble created after first call is picked up on the next call.
+    Caching by path also prevents stale reuse if `ASSEMBLE_HOME` changes
+    between calls in a long-running process (e.g. pytest fixture swaps).
+    """
     p = _preamble_path()
+    if p in _CACHED_PREAMBLE:
+        return _CACHED_PREAMBLE[p]
     if not p.exists():
         print(f"[harness] missing preamble at {p}; "
               "wrap_with_preamble will return prompts unchanged.",
               file=sys.stderr)
-        return None
-    return p.read_text(encoding="utf-8").rstrip() + "\n"
+        return None  # not cached — re-check next call
+    text = p.read_text(encoding="utf-8").rstrip() + "\n"
+    _CACHED_PREAMBLE[p] = text
+    return text
 
 
 def wrap_with_preamble(prompt: str) -> str:
