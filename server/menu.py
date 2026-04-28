@@ -15,18 +15,13 @@ def tools_for_stage(stage: str) -> list[dict]:
             if m.get("stage") == stage:
                 out.append({**entry, "role_in_stage": m.get("role")})
                 break
-    return sorted(out, key=lambda x: x["name"])
+    return sorted(out, key=lambda x: (not x.get("bundled", False), x["name"]))
 
 
 _META_KINDS = ["ask", "skip", "manual", "back", "done"]
 
 
 def _meta_actions() -> list[dict]:
-    """Localized meta-action menu entries.
-
-    Rebuilt each call so a locale change (e.g. tests switching env vars)
-    is observed without reimporting.
-    """
     actions: list[dict] = []
     for kind in _META_KINDS:
         entry = tdict(f"menu.{kind}")
@@ -39,32 +34,38 @@ def _meta_actions() -> list[dict]:
 
 
 def build_stage_options(stage: str) -> list[dict]:
-    """Tool + meta actions + safety/meta helpers, merged into one menu.
-
-    If the same skill is both directly mapped to this stage AND tagged as a
-    contextual helper (via meta/safety role), surface it once under `tool`
-    and drop the helper duplicate.
-    """
     no_desc = t("menu.no_description")
     helper_suffix = t("menu.helper_suffix")
+    bundled_prefix = t("menu.bundled_prefix")
+    fallback_hint = t("notices.bundled_only_hint")
+
+    matched_tools = tools_for_stage(stage)
+    has_non_bundled = any(not t.get("bundled", False) for t in matched_tools)
+
     options: list[dict] = []
     seen_keys: set[str] = set()
-    for tool in tools_for_stage(stage):
+    for tool in matched_tools:
         key = tool.get("path") or tool["name"]
         if key in seen_keys:
             continue
         seen_keys.add(key)
+        is_bundled = bool(tool.get("bundled", False))
+        label = f"{bundled_prefix}{tool['name']}" if is_bundled else tool["name"]
+        desc = (tool.get("description") or no_desc)[:80]
+        if is_bundled and not has_non_bundled:
+            desc = f"{desc} {fallback_hint}"
         options.append({
-            "label": tool["name"],
+            "label": label,
             "kind": "tool",
-            "description": (tool.get("description") or no_desc)[:80],
+            "description": desc,
             "tool_path": tool.get("path"),
+            "bundled": is_bundled,
         })
     options.extend(_meta_actions())
     for helper in contextual_helpers(stage):
         key = helper.get("path") or helper["name"]
         if key in seen_keys:
-            continue  # already surfaced as a tool — avoid duplicate
+            continue
         seen_keys.add(key)
         options.append({
             "label": helper["name"],
@@ -76,7 +77,6 @@ def build_stage_options(stage: str) -> list[dict]:
 
 
 def contextual_helpers(stage: str) -> list[dict]:
-    """Return safety/meta tools whose role matches stage_roles[stage]."""
     wanted = set(load_stage_roles().get(stage, []))
     if not wanted:
         return []
