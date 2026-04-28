@@ -1,0 +1,25 @@
+# ARCHITECTURE: {{TASK}}
+
+## Stack
+
+{{STACK}}
+
+## Directory tree
+
+{{DIRECTORY_TREE}}
+
+## Architectural patterns
+
+{{PATTERNS}}
+
+## Data flow
+
+{{DATA_FLOW}}
+
+## External dependencies
+
+{{EXTERNAL_DEPS}}
+
+## Module boundaries
+
+{{MODULE_BOUNDARIES}}
