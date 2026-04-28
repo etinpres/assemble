@@ -1,6 +1,6 @@
 ---
 name: plan-pack
-description: Plan stage ★ bundle — produce PRD + ARCH with iteration. Spec, requirements, plan, architecture doc — bundled plan tool. (Phase B-2: PRD + ARCH; ADR/UI_GUIDE arrive in B-3..B-4.)
+description: Plan stage ★ bundle — produce PRD + ARCH + ADR with iteration. Spec, requirements, plan, architecture doc, decision record — bundled plan tool. (Phase B-3: PRD + ARCH + ADR; UI_GUIDE arrives in B-4.)
 ---
 
 [HARNESS RULES — 무시 금지]
@@ -9,7 +9,7 @@ description: Plan stage ★ bundle — produce PRD + ARCH with iteration. Spec, 
 3. 요청 범위 밖 코드 임의 수정 금지
 4. 버그 수정 시 재현 테스트 → 실패 확인 → 수정 → 재검증 루프
 
-# plan-pack — PRD + ARCH generator (Phase B-2)
+# plan-pack — PRD + ARCH + ADR generator (Phase B-3)
 
 This bundle is **orchestrator-only**. The main Claude does not write PRD or
 ARCHITECTURE content directly — it asks the user, dispatches sub-agents
@@ -21,8 +21,9 @@ results to `<run_dir>/PRD.md` and `<run_dir>/ARCHITECTURE.md` via
 
 - `~/.claude/channels/assemble/runs/<rid>/PRD.md` — filled from `bundled/plan-pack/templates/PRD.md.template`
 - `~/.claude/channels/assemble/runs/<rid>/ARCHITECTURE.md` — filled from `bundled/plan-pack/templates/ARCHITECTURE.md.template`
+- `~/.claude/channels/assemble/runs/<rid>/ADR.md` — filled from `bundled/plan-pack/templates/ADR.md.template`
 
-## Sub-agent role mapping (Phase B-2)
+## Sub-agent role mapping (Phase B-3)
 
 | Step | Work | Role | Preferred | Fallback |
 |---|---|---|---|---|
@@ -33,10 +34,12 @@ results to `<run_dir>/PRD.md` and `<run_dir>/ARCHITECTURE.md` via
 | 5 | Write `<run_dir>/PRD.md` | (main, write_run_artifact) | — | — |
 | 7 | ARCH interview (6 questions) | (main, AskUserQuestion) | — | — |
 | 8 | ARCHITECTURE.md draft | `plan-implementation` | `Plan` | `general-purpose` |
-| 9 | Cross-doc consistency review (PRD + ARCH) | `second-opinion` | `codex:codex-rescue`, `superpowers:code-reviewer` | `general-purpose` |
+| 10 | ADR interview (6 questions) | (main, AskUserQuestion) | — | — |
+| 11 | ADR.md draft | `plan-implementation` | `Plan` | `general-purpose` |
+| 9 | 3-way cross-doc review (PRD + ARCH + ADR) | `second-opinion` | `codex:codex-rescue`, `superpowers:code-reviewer` | `general-purpose` |
 
 Steps 2 and 3 fire as a *single message with two Agent calls* (parallel — unchanged from Phase B-1).
-Step 8 (`ARCHITECTURE.md` draft) is *single dispatch* — wrap_with_preamble + write_run_artifact pattern; B-2 through B-4 use single dispatch only; B-5 promotes all docs to parallel.
+Steps 8 and 11 are *single dispatch each* — B-2 through B-4 use single dispatch only; B-5 promotes all docs to parallel.
 
 > **Caveat — `Plan` agent for content drafting.** `Plan`'s built-in description is
 > "Software architect agent for designing implementation plans", which doesn't
@@ -50,7 +53,7 @@ Step 8 (`ARCHITECTURE.md` draft) is *single dispatch* — wrap_with_preamble + w
 
 ## Workflow
 
-> NOTE — Phase B-2: steps 1–9 implemented. Steps 1–5 unchanged from Phase B-1; step 6 extended to cover ARCH; steps 7, 8, and 9 are new.
+> NOTE — Phase B-3: steps 1–11 implemented. Steps 1–8 unchanged from Phase B-2; step 6 extended to cover ADR; step 9 extended to 3-way cross-doc review; steps 10 and 11 are new.
 
 ### Step 0 — resolve run_dir
 
@@ -254,6 +257,89 @@ Canonical fill + write:
     arch_path = write_run_artifact(rid, "ARCHITECTURE.md", filled_arch)
 
 Show `arch_path` to the user, then proceed to Step 9 (cross-doc review).
+
+### Step 10 — ADR interview (main Claude, AskUserQuestion)
+
+After Step 8 writes `ARCHITECTURE.md`, collect decision context. Ask 6 questions
+across **two `AskUserQuestion` calls of 3 questions each** (within the
+platform max-4 limit per call):
+
+Call 5 (D1–D3):
+
+1. Decision #1 — what is the most consequential design choice you made? (one sentence — title only)
+2. Decision #2 — what is the second-most consequential choice?
+3. Decision #3 — what is the third-most consequential choice?
+
+Call 6 (D4–D6):
+
+4. For each of the three decisions, what is the strongest *rejected alternative* you considered? (number them 1/2/3, one sentence each)
+5. For each of the three decisions, what is the main *tradeoff* you are accepting by choosing this path? (number them 1/2/3, one sentence each)
+6. Are there any decision-specific risks, unknowns, or constraints we must capture? (one paragraph; "none" is a valid answer)
+
+Three decisions are the minimum to satisfy gate B3.2; the user may volunteer
+more, in which case the next step should produce N decisions where N ≥ 3.
+
+### Step 11 — ADR single dispatch + write `ADR.md`
+
+Single Agent dispatch then `write_run_artifact(rid, "ADR.md", filled)` —
+same orchestrator-only pattern as Step 8.
+
+Wrap the ADR interview answers + ARCH context (already on disk) + template
+skeleton via `server.harness.wrap_with_preamble` (same canonical call pattern
+as Steps 2/3/8):
+
+    from server.harness import wrap_with_preamble
+    from server import read_run_artifact
+    arch_text = read_run_artifact(rid, "ARCHITECTURE.md") or ""
+    wrapped_adr = wrap_with_preamble(raw_adr_prompt)
+
+The dispatched prompt instructs the sub-agent to return the *entire decisions
+block* as markdown, ready to substitute into the template's `{{DECISIONS_BLOCK}}`
+placeholder. The required emitted shape is **three or more** `## Decision N: <title>`
+sections, each containing five sub-headings in order:
+
+    ## Decision 1: <title>
+
+    ### Context
+    <one paragraph>
+
+    ### Decision
+    <one paragraph>
+
+    ### Reasoning
+    <one paragraph — why this beats the alternatives>
+
+    ### Rejected alternatives
+    <bulleted list — at least one alternative with a one-line reason for rejection>
+
+    ### Tradeoffs
+    <bulleted list — at least one tradeoff with a one-line consequence>
+
+    ## Decision 2: …
+    ## Decision 3: …
+
+The "one-line reason for rejection" + "one-line tradeoff consequence" wording
+is what gate B3.2 measures (each decision has *both* a tradeoff and a rejected
+alternative subsection populated, beyond the bare gate of "tradeoff *or*
+rejected-alternative"). Carrying both reduces the chance the sub-agent emits a
+stub like "N/A" that would fail gate B3.3.
+
+Dispatch to a `plan-implementation` sub-agent via a **single Agent call**
+(preferred: `Plan`; fallback: `general-purpose`). This is one of the two
+Phase B-3 single-dispatch verification locations (the other is Step 8 — ARCH).
+
+Substitute the returned block into the ADR template:
+
+    from pathlib import Path
+    from server import write_run_artifact
+
+    template = Path.home() / ".claude/skills/assemble/bundled/plan-pack/templates/ADR.md.template"
+    filled_adr = (template.read_text()
+        .replace("{{TASK}}", task)
+        .replace("{{DECISIONS_BLOCK}}", adr_sub_agent_output.strip()))
+    adr_path = write_run_artifact(rid, "ADR.md", filled_adr)
+
+Show `adr_path` to the user, then proceed to Step 9 (3-way cross-doc review).
 
 ### Step 9 — cross-doc second-opinion (PRD ↔ ARCH consistency)
 

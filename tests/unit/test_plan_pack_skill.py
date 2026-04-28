@@ -282,3 +282,35 @@ def test_workflow_iteration_step_6_no_force_arch():
     # the option label too, which would still pass even if the bullet
     # describing "no" was changed to keep a draft going.
     assert "exits the workflow" in step6[:800].lower()
+
+
+def test_skill_description_mentions_adr():
+    from server import parse_skill_frontmatter
+    fm = parse_skill_frontmatter(SKILL)
+    desc = (fm.get("description") or "").upper()
+    assert "ADR" in desc, f"description does not mention ADR: {fm.get('description')}"
+
+
+def test_workflow_step_10_adr_interview():
+    body = _body()
+    assert "Step 10" in body
+    step10 = body[body.index("Step 10"):]
+    assert "AskUserQuestion" in step10[:2000]
+    # Gate B3.2 seeds: interview must surface decisions, alternatives, tradeoffs
+    lower = step10[:2000].lower()
+    assert "decision" in lower
+    assert "alternative" in lower or "rejected" in lower
+    assert "tradeoff" in lower or "trade-off" in lower
+
+
+def test_workflow_step_11_adr_single_dispatch():
+    body = _body()
+    assert "Step 11" in body
+    step11 = body[body.index("Step 11"):]
+    # Phase B spec §3: B-2 through B-4 are single-dispatch, not parallel
+    assert "single" in step11[:1000].lower()
+    assert "ADR.md" in step11[:1000]
+    assert "wrap_with_preamble" in step11[:1000]
+    assert "write_run_artifact" in step11[:1000]
+    # Decision count contract for gate B3.2
+    assert "3" in step11[:1500] or "three" in step11[:1500].lower()
