@@ -336,3 +336,29 @@ def test_workflow_step_9_three_way_consistency():
     assert "PRD ↔ ARCH" in window
     assert "ARCH ↔ ADR" in window
     assert "PRD ↔ ADR" in window
+
+
+def test_workflow_iteration_step_6_includes_adr():
+    body = _body()
+    step6 = body[body.index("Step 6 —"):]
+    # Iteration must now re-run ADR (Step 11) alongside PRD (Steps 2+3) and ARCH (Step 8)
+    assert "Step 11" in step6[:2000] or "ADR" in step6[:2000]
+    assert "ADR.md" in step6[:2000]
+
+
+def test_workflow_iteration_write_order_explicit_adr():
+    body = _body()
+    step6 = body[body.index("Step 6 —"):]
+    # Finding #3 from B-2: iteration write order must be explicit, not implicit.
+    # Look for an enumerated step list mentioning ADR overwrite.
+    assert "Iteration write order" in step6[:2000]
+    overwrite_block = step6[:2500].lower()
+    assert "overwrite" in overwrite_block
+    assert "adr.md" in overwrite_block
+
+def test_workflow_iteration_step_6_no_force():
+    body = _body()
+    step6 = body[body.index("Step 6 —"):]
+    # V4 identity rule: "no" must exit cleanly, even after extension
+    lower = step6[:1000].lower()
+    assert ("no exits" in lower or "no →" in step6[:1000] or "no — done" in lower)
