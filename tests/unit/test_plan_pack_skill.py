@@ -172,3 +172,27 @@ def test_skill_preamble_matches_shared_file():
         assert line in skill_body, (
             f"preamble line missing from SKILL.md: {line!r}"
         )
+
+
+def test_workflow_step_9_cross_doc_review():
+    body = _body()
+    assert "Step 9" in body
+    step9 = body[body.index("### Step 9"):]
+    # Must reference both documents
+    assert "PRD" in step9[:800]
+    assert "ARCHITECTURE" in step9[:800]
+    # Must challenge, not merely agree (gate B2.3)
+    assert (
+        "flaw" in step9[:800].lower()
+        or "rebut" in step9[:800].lower()
+        or "challenge" in step9[:800].lower()
+        or "inconsisten" in step9[:800].lower()
+        or "gap" in step9[:800].lower()
+    )
+
+
+def test_workflow_step_9_uses_second_opinion_role():
+    body = _body()
+    step9 = body[body.index("### Step 9"):]
+    assert "second-opinion" in step9[:800]
+    assert "wrap_with_preamble" in step9[:800]

@@ -206,6 +206,38 @@ with the result and write atomically:
 
 Show `arch_path` to the user, then proceed to Step 9 (cross-doc review — added in Task 3/Phase B-2).
 
+### Step 9 — cross-doc second-opinion (PRD ↔ ARCH consistency)
+
+After `ARCHITECTURE.md` is written (Step 8), dispatch a cross-doc consistency
+review. Read both artifacts:
+
+    from server import read_run_artifact
+    prd_text  = read_run_artifact(rid, "PRD.md") or ""
+    arch_text = read_run_artifact(rid, "ARCHITECTURE.md") or ""
+
+Wrap both together via `server.harness.wrap_with_preamble` and dispatch to a
+`second-opinion` role (preferred: `codex:codex-rescue`, then
+`superpowers:code-reviewer`; fallback: `general-purpose`).
+
+The prompt must explicitly request:
+- Features in PRD `## Core features` that have no matching module in ARCH
+  `## Module boundaries` (gap detection)
+- Architecture decisions in ARCH that contradict items in PRD
+  `## Excluded from MVP` (scope-creep risk)
+- Any other flaws, inconsistencies, or omissions — never bare agreement
+
+Apply the triage protocol from Step 4b: verify each claim, drop
+unverifiable speculation, prepend a one-line audit header. Append verified
+cross-doc review notes as a `## Cross-doc review` section to `ARCHITECTURE.md`:
+
+    from datetime import date
+    current = read_run_artifact(rid, "ARCHITECTURE.md") or ""
+    audit_header = f"> cross-doc verified on {date.today().isoformat()} — {n_kept} kept / {n_dropped} dropped"
+    updated = current + "\n\n## Cross-doc review\n\n" + audit_header + "\n\n" + bullets
+    write_run_artifact(rid, "ARCHITECTURE.md", updated)
+
+Then proceed to Step 6 (iteration prompt).
+
 ### Step 6 — iteration round-trip (one cycle)
 
 After writing PRD.md, ask the user via `AskUserQuestion`:
