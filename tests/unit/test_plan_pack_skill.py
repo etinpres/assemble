@@ -115,3 +115,10 @@ def test_workflow_iteration_does_not_force_loop():
     # Hard prohibition from spec section 10: never force the user into
     # multiple iterations. The workflow must mention that "no" exits.
     assert "no exits" in body.lower() or "no → " in body or "user can exit" in body.lower()
+
+
+def test_workflow_iteration_hard_caps_at_one():
+    """Step 6 must explicitly state the post-iteration exit policy. Without
+    this contract, second-yes behavior is unbounded."""
+    body = _body()
+    assert "exits unconditionally" in body or "iteration cap reached" in body

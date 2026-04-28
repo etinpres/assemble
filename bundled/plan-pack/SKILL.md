@@ -13,7 +13,7 @@ description: Plan stage ★ bundle — produce a PRD with iteration. Spec, requi
 
 This bundle is **orchestrator-only**. The main Claude does not write PRD
 content directly — it asks the user, dispatches sub-agents wrapped via
-`server.harness.wrap_with_preamble`, then writes the merged result to
+`server.harness.wrap_with_preamble`, then writes the combined result to
 `<run_dir>/PRD.md` via `server.run_dir.write_run_artifact`.
 
 ## Artifact
@@ -72,7 +72,9 @@ verification location *a*):
   fallback `general-purpose`). Given the success criterion (interview Q5)
   and the externally-verifiable command request (Q6), returns *one
   executable bash one-liner* that exits 0 iff the success criterion is
-  met. No prose — just the command.
+  met. **Return only the raw command — no markdown fences, no `bash`
+  language tag, no surrounding prose.** Step 5 will substitute the result
+  into the template's pre-existing fenced bash block.
 
 The main Claude waits for both calls to return, then proceeds to Step 5.
 
@@ -97,8 +99,11 @@ absorption arrives in Step 6 (Task 7).
 
 ### Step 5 — combine + write (main Claude)
 
-Fill `bundled/plan-pack/templates/PRD.md.template` with the sub-agent
-output, then call:
+If the AC bash sub-agent returned a fenced block (despite Sub-task B's
+instruction), strip leading/trailing triple-backtick fences and any
+`bash` language tag before substituting `{{AC_BASH}}`. Then fill
+`bundled/plan-pack/templates/PRD.md.template` with the sub-agent output
+and call:
 
 ```python
 from server import write_run_artifact
@@ -122,6 +127,8 @@ After writing PRD.md, ask the user via `AskUserQuestion`:
   emphases ("what feels off?", "what to expand?"). Step 5 overwrites
   PRD.md with the refined version.
 
-Phase B-1 covers exactly **one iteration** — answering "yes" twice in a
-row is undefined behavior in this phase. (Counts of 3–7 with stop
-conditions are a Phase B post-tuning track.)
+Phase B-1 covers exactly **one iteration**. After the iteration completes
+(yes-path), the workflow exits unconditionally — even if the user wants
+another pass, the main Claude must reply "iteration cap reached for
+Phase B-1; rerun `/assemble` to start a new run" and stop. Multi-iteration
+support with stop conditions is a Phase B post-tuning track.
