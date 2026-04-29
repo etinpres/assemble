@@ -5,7 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5
+## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D)
+
+### Added (Quality Pass — Items C + D)
+- `tests/contracts/contracts.json` — verbatim contract registry. Initial entries cover the 5 B-5 contracts (stop condition, iteration state, scope discipline preserved, platform-limit citation, preamble byte-identity). Contributors register new contracts here as new verbatim spec blocks ship (Item D).
+- `tests/unit/test_contracts_meta.py` — parametrized meta-test that reads the registry and asserts each phrase appears as a literal substring within its declared section of its declared spec file. CI-grade defense against silent test ↔ spec wording drift (Item D).
+- `docs/contributing/test-anchoring.md` — canonical contributor reference for the test-anchoring pattern. Codifies the `body[:N]` window-slice prohibition, the `_section()` helper contract, and the heading-depth semantics. Future contributors hit one doc instead of rediscovering the pattern from B-4 retro (Item C).
+
+### Changed (Quality Pass — Items C + D)
+- `tests/unit/test_plan_pack_skill.py` refactored: all `step_X[:N]` window slices replaced with `_section(body, "### Step N")` heading-anchored slices (28 step assignments + 54 window-slice usages cleaned up). Step variable assignments normalized from `body[body.index("Step N..."):]` to `_section(body, "### Step N")`. The wholesale refactor that B-4 retro #1 documented and B-5 plan §"Out of scope" deferred (Item C).
+
+### Notes (Quality Pass)
+- Phase B-5 closed Items A + B (multi-iteration + parallel/byte-identity); this Quality Pass closes Items C + D (test pattern + spec/test drift CI). Items E + F remain queued for a Hygiene Pass per ledger `project_assemble_v4_phase_b_posttuning.md` Tier 3.
+- Test count delta: +8 contracts meta tests (parametrized over 5-entry registry plus 3 sanity-check tests). Total: 163 passed.
+- Diff scope: tests/unit/test_plan_pack_skill.py + 3 new files. server/run_dir.py, server/harness.py, server/__init__.py unchanged (gate B5.4 intact).
 
 ### Added (Phase B-5)
 - `server/inventory.py` honors `ASSEMBLE_BUNDLED_ONLY=1`: when the env flag is set, `scan()` filters enumeration results down to entries under the assemble bundled root and returns the in-memory rebuild without persisting to cache. Lets blank-Mac dogfood gates simulate a fresh user with no installed skills without nuking `~/.claude/skills/` (Phase B-5 distribution prep).
