@@ -361,3 +361,103 @@ def test_workflow_iteration_step_6_no_force():
     step6 = body[body.index("Step 6 —"):]
     # V4 identity rule: "no" must exit cleanly, even after extension
     assert "exits the workflow" in step6[:1000].lower()
+
+
+def test_skill_description_mentions_ui_guide():
+    from server import parse_skill_frontmatter
+    fm = parse_skill_frontmatter(SKILL)
+    desc = (fm.get("description") or "").upper()
+    assert "UI_GUIDE" in desc or "UI GUIDE" in desc, (
+        f"description does not mention UI_GUIDE: {fm.get('description')}"
+    )
+
+
+def test_workflow_step_12_ui_interview():
+    body = _body()
+    assert "Step 12" in body
+    step12 = body[body.index("Step 12"):]
+    assert "AskUserQuestion" in step12[:2000]
+    # Gate B4.1/B4.2 seeds: interview must surface visual identity, components, do/don't.
+    lower = step12[:2000].lower()
+    assert "visual" in lower or "tone" in lower or "aesthetic" in lower
+    assert "component" in lower or "pattern" in lower
+    assert "antipattern" in lower or "avoid" in lower or "don't" in lower or "do not" in lower
+
+
+def test_workflow_step_13_ui_single_dispatch_inherits_plan_fix():
+    body = _body()
+    assert "Step 13" in body
+    step13 = body[body.index("Step 13"):]
+    # Phase B spec §3: B-2 through B-4 are single-dispatch, not parallel
+    assert "single" in step13[:1200].lower()
+    assert "UI_GUIDE.md" in step13[:1200]
+    assert "wrap_with_preamble" in step13[:1200]
+    assert "write_run_artifact" in step13[:1200]
+    # B-3 Finding #3 fix carried into Step 13: general-purpose preferred, Plan fallback.
+    # Locate the role-mapping table and assert the Step 13 row's preferred column is general-purpose.
+    table = body[body.index("## Sub-agent role mapping"):body.index("## Workflow")]
+    # The Step 13 row mentions UI_GUIDE.md draft and uses plan-implementation role.
+    ui_row = [line for line in table.splitlines()
+              if line.startswith("| 13 ") or "UI_GUIDE.md draft" in line]
+    assert ui_row, f"no Step 13 row in role table; table=\n{table}"
+    row_text = " ".join(ui_row).lower()
+    assert "plan-implementation" in row_text
+    # Preferred general-purpose, fallback Plan — same swap as Steps 2/3/8/11
+    assert "general-purpose" in row_text
+    # Plan still appears as the fallback column (case-sensitive `Plan`)
+    assert "`Plan`" in " ".join(ui_row)
+
+
+def test_workflow_step_9_includes_ui_guide():
+    body = _body()
+    step9 = body[body.index("Step 9 —"):]
+    # The cross-doc review must now span UI_GUIDE as well
+    assert "UI_GUIDE" in step9[:2000]
+    assert "UI_GUIDE.md" in step9[:2500]
+
+
+def test_workflow_step_9_four_way_includes_antipattern_audit():
+    body = _body()
+    step9 = body[body.index("Step 9 —"):]
+    # Phase B-4 specific: Step 9 must call out the antipattern audit
+    # (the cross-check between UI_GUIDE body and PRD `## Design direction`).
+    lower = step9[:2500].lower()
+    assert "antipattern" in lower or "anti-pattern" in lower
+    assert "design direction" in lower
+    # Must explicitly enumerate the new pair categories beyond the 3 from B-3
+    assert "ui_guide" in lower or "ui guide" in lower
+    # Audit must be either part of category 4/5/6 (new pair labels) or
+    # called out as a dedicated antipattern category
+    assert ("prd ↔ ui_guide" in lower or "arch ↔ ui_guide" in lower
+            or "adr ↔ ui_guide" in lower or "audit" in lower)
+
+
+def test_workflow_iteration_step_6_includes_ui_guide():
+    body = _body()
+    step6 = body[body.index("Step 6 —"):]
+    # Iteration must now re-run UI_GUIDE (Step 13) alongside PRD (Steps 2+3),
+    # ARCH (Step 8), and ADR (Step 11)
+    assert "Step 13" in step6[:2500] or "UI_GUIDE" in step6[:2500]
+    assert "UI_GUIDE.md" in step6[:2500]
+
+
+def test_workflow_iteration_write_order_explicit_ui_guide():
+    body = _body()
+    step6 = body[body.index("Step 6 —"):]
+    # Finding #3 from B-2 (carried into B-3, B-4): iteration write order must
+    # be explicit, not implicit. Look for an enumerated step list mentioning
+    # UI_GUIDE overwrite.
+    assert "Iteration write order" in step6[:2500]
+    overwrite_block = step6[:3000].lower()
+    assert "overwrite" in overwrite_block
+    assert "ui_guide.md" in overwrite_block
+
+
+def test_workflow_iteration_step_6_quad_prompt_no_force():
+    body = _body()
+    step6 = body[body.index("Step 6 —"):]
+    # V4 identity rule: "no" must exit cleanly, even after extension to 4 docs
+    lower = step6[:1200].lower()
+    assert ("no exits" in lower or "no →" in step6[:1200] or "no — done" in lower)
+    # The yes-path option label must reflect the 4-doc surface
+    assert ("all four" in lower or "four" in lower or "ui_guide" in lower)

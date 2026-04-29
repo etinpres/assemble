@@ -5,9 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3
+## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4
 
 ### Added
+- `bundled/plan-pack/templates/UI_GUIDE.md.template` — UI guide shape with `{{TASK}}` + `{{DESIGN_DIRECTION}}` + `{{UI_BODY}}` placeholders; design direction carried in from PRD §6 to anchor the cross-doc antipattern audit; ships an `## Antipatterns to avoid` section with 8 canonical AI-slop bullets (gradient-text, glass morphism, backdrop-blur, all-purple palettes, emoji-as-decoration, Lorem ipsum / placeholder, TODO / FIXME, ad-copy clichés like "innovative" / "next-generation") (Phase B-4).
+- plan-pack Step 12: UI_GUIDE interview (6 questions, 2 `AskUserQuestion` calls of 3) after `ADR.md` is written — visual identity, priority flows, component patterns, color tokens, typography, project-specific antipattern emphasis (Phase B-4).
+- plan-pack Step 13: UI_GUIDE single dispatch via `plan-implementation` role (preferred `general-purpose`, fallback `Plan` — inherits the post-B-3 swap from `v4-plan-pack-content-role-fix`), harness-preamble-prepended, writes `runs/<rid>/UI_GUIDE.md` atomically; sub-agent contract requires five sections (Visual identity, Color tokens, Typography, Component patterns, Priority screens) with synthesis from PRD `## Design direction` + `## Core features` (Phase B-4).
+- plan-pack Step 9 extended: cross-doc second-opinion is now 4-way (PRD ↔ ARCH ↔ ADR ↔ UI_GUIDE) with three new pair categories — design-direction audit (PRD ↔ UI_GUIDE, antipattern violations are CRITICAL), component coverage (ARCH ↔ UI_GUIDE), UX decision integrity (ADR ↔ UI_GUIDE). Verified bullets continue to land on `ADR.md` (Phase B-4).
+- plan-pack Step 6 extended: iteration now re-runs PRD (Steps 2+3) + ARCH (Step 8) + ADR (Step 11) + UI_GUIDE (Step 13) as a consistent quadruple; explicit "Iteration write order" subsection enumerates the 10-step overwrite order; iteration prompt label updated to "yes — refine all four" (Phase B-4).
+- `docs/plans/2026-04-29-v4-phase-b-4.md` — Phase B-4 implementation plan (6 tasks; Task 6 = review-before-merge gate, now the standard).
+- `docs/dogfood/phase-b-4.md` — Phase B-4 dogfood result + gate evidence + pre-merge code-reviewer findings (run `20260429-103152-e35b`).
+
+### Notes (Phase B-4)
+- Phase B-4 closes the four-doc plan-pack surface (PRD + ARCH + ADR + UI_GUIDE). Phase B-5 promotes all docs to true 4-way parallel dispatch and runs the blank-Mac simulation under `ASSEMBLE_BUNDLED_ONLY=1`.
+- Plan-agent fix (B-3 Finding #3) was already merged on master before B-4 started (commit `85366f1` on `v4-plan-pack-content-role-fix`); the new Step 13 row inherits the swap (`plan-implementation` preferred `general-purpose`, fallback `Plan`). B-4 dogfood produced the first 4-doc trace (11 plan-implementation dispatches, 0 drift observations) under `general-purpose`-as-preferred — baseline for future drift comparisons.
+- B-3 Finding #1 (gate B3.3 mechanical grep false positive on narrative prose) recurrence check: **not observed** in B-4 dogfood. Plan Task 5 Step 3's awk-based slice (anchoring on `## Visual identity` instead of literal `{{UI_BODY}}` placeholder) correctly excluded the antipattern table from B4.5 grep — captured as positive design validation in dogfood Finding #3.
+- B-3 Finding #5 (a fresh CRITICAL surfacing only on iteration 1, exiting unresolved at the cap) recurrence check: **observed** in B-4 dogfood. Iteration 1 resolved 12/12 prior findings (100% — vs B-3's 90%) but introduced 2 NEW findings (1 IMPORTANT [PRD↔UI_GUIDE] inline editing screen vs PRD core features + 1 NIT [ADR↔UI_GUIDE] dark-mode tokens forward-shadow). Both exit unresolved at the 1-iteration cap. Three consecutive phases (B-2 / B-3 / B-4) now corroborate the multi-iteration post-tuning track justification.
+
+### Added (Phase B-3, carried into Unreleased)
 - `bundled/plan-pack/templates/ADR.md.template` — minimal ADR shape with `{{TASK}}` + `{{DECISIONS_BLOCK}}` placeholders; sub-agent emits the entire `## Decision N: <title>` tree directly (Phase B-3, avoids B-2 Finding #1 heading-collision pattern).
 - plan-pack Step 10: ADR interview (6 questions, 2 `AskUserQuestion` calls of 3) after `ARCHITECTURE.md` is written (Phase B-3).
 - plan-pack Step 11: ADR single dispatch via `plan-implementation` role, harness-preamble-prepended, writes `runs/<rid>/ADR.md` atomically; sub-agent contract requires ≥3 decisions each with `### Rejected alternatives` and `### Tradeoffs` sub-headings, with `### Context` and `### Reasoning` synthesized from PRD + ARCH (review I1 fix-up — never user-collected stubs) (Phase B-3).

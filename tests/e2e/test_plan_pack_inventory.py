@@ -102,3 +102,37 @@ def test_adr_template_exists_and_has_required_placeholders():
         "{{DECISIONS_BLOCK}}",
     ]:
         assert required in body, f"placeholder missing: {required!r}"
+
+
+def test_ui_guide_template_exists_and_has_required_placeholders_and_antipatterns():
+    tpl = PLAN_PACK.parent / "templates" / "UI_GUIDE.md.template"
+    assert tpl.exists(), f"missing: {tpl}"
+    body = tpl.read_text()
+    for required in [
+        "{{TASK}}",
+        "{{DESIGN_DIRECTION}}",
+        "{{UI_BODY}}",
+    ]:
+        assert required in body, f"placeholder missing: {required!r}"
+    # AI-slop antipattern table — gate B4.1 requires ≥6 items.
+    # The template ships the canonical baseline list verbatim from
+    # phase-b.md §6 B-4. The list lives inside an `## Antipatterns
+    # to avoid` section so the structure is greppable.
+    assert "## Antipatterns to avoid" in body, "antipattern section missing"
+    antipattern_block = body[body.index("## Antipatterns to avoid"):]
+    # bullet count: at least 6 lines starting with "- "
+    bullet_count = sum(
+        1 for line in antipattern_block.splitlines() if line.startswith("- ")
+    )
+    assert bullet_count >= 6, f"antipattern bullets <6: got {bullet_count}"
+    # canonical antipattern keywords from phase-b.md §6 B-4 must all appear
+    for kw in [
+        "gradient-text",
+        "glass morphism",
+        "backdrop-blur",
+        "emoji",
+        "Lorem ipsum",
+        "TODO",
+        "innovative",
+    ]:
+        assert kw in antipattern_block, f"antipattern keyword missing: {kw!r}"

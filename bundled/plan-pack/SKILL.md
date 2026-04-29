@@ -1,6 +1,6 @@
 ---
 name: plan-pack
-description: Plan stage ★ bundle — produce PRD + ARCH + ADR with iteration. Spec, requirements, plan, architecture doc, decision record — bundled plan tool. (Phase B-3: PRD + ARCH + ADR; UI_GUIDE arrives in B-4.)
+description: Plan stage ★ bundle — produce PRD + ARCH + ADR + UI_GUIDE with iteration. Spec, requirements, plan, architecture doc, decision record, UI guide — bundled plan tool. (Phase B-4: PRD + ARCH + ADR + UI_GUIDE.)
 ---
 
 [HARNESS RULES — 무시 금지]
@@ -9,21 +9,22 @@ description: Plan stage ★ bundle — produce PRD + ARCH + ADR with iteration. 
 3. 요청 범위 밖 코드 임의 수정 금지
 4. 버그 수정 시 재현 테스트 → 실패 확인 → 수정 → 재검증 루프
 
-# plan-pack — PRD + ARCH + ADR generator (Phase B-3)
+# plan-pack — PRD + ARCH + ADR + UI_GUIDE generator (Phase B-4)
 
-This bundle is **orchestrator-only**. The main Claude does not write PRD or
-ARCHITECTURE content directly — it asks the user, dispatches sub-agents
-wrapped via `server.harness.wrap_with_preamble`, then writes the combined
-results to `<run_dir>/PRD.md` and `<run_dir>/ARCHITECTURE.md` via
-`server.run_dir.write_run_artifact`.
+This bundle is **orchestrator-only**. The main Claude does not write PRD,
+ARCHITECTURE, ADR, or UI_GUIDE content directly — it asks the user,
+dispatches sub-agents wrapped via `server.harness.wrap_with_preamble`,
+then writes the combined results to `<run_dir>/{PRD,ARCHITECTURE,ADR,UI_GUIDE}.md`
+via `server.run_dir.write_run_artifact`.
 
 ## Artifact
 
 - `~/.claude/channels/assemble/runs/<rid>/PRD.md` — filled from `bundled/plan-pack/templates/PRD.md.template`
 - `~/.claude/channels/assemble/runs/<rid>/ARCHITECTURE.md` — filled from `bundled/plan-pack/templates/ARCHITECTURE.md.template`
 - `~/.claude/channels/assemble/runs/<rid>/ADR.md` — filled from `bundled/plan-pack/templates/ADR.md.template`
+- `~/.claude/channels/assemble/runs/<rid>/UI_GUIDE.md` — filled from `bundled/plan-pack/templates/UI_GUIDE.md.template`
 
-## Sub-agent role mapping (Phase B-3)
+## Sub-agent role mapping (Phase B-4)
 
 | Step | Work | Role | Preferred | Fallback |
 |---|---|---|---|---|
@@ -36,30 +37,32 @@ results to `<run_dir>/PRD.md` and `<run_dir>/ARCHITECTURE.md` via
 | 8 | ARCHITECTURE.md draft | `plan-implementation` | `general-purpose` | `Plan` |
 | 10 | ADR interview (6 questions) | (main, AskUserQuestion) | — | — |
 | 11 | ADR.md draft | `plan-implementation` | `general-purpose` | `Plan` |
-| 9 | 3-way cross-doc review (PRD + ARCH + ADR) | `second-opinion` | `codex:codex-rescue`, `superpowers:code-reviewer` | `general-purpose` |
+| 12 | UI_GUIDE interview (6 questions) | (main, AskUserQuestion) | — | — |
+| 13 | UI_GUIDE.md draft | `plan-implementation` | `general-purpose` | `Plan` |
+| 9 | 4-way cross-doc review (PRD + ARCH + ADR + UI_GUIDE) | `second-opinion` | `codex:codex-rescue`, `superpowers:code-reviewer` | `general-purpose` |
 
 Steps 2 and 3 fire as a *single message with two Agent calls* (parallel — unchanged from Phase B-1).
-Steps 8 and 11 are *single dispatch each* — B-2 through B-4 use single dispatch only; B-5 promotes all docs to parallel.
+Steps 8, 11, and 13 are *single dispatch each* — B-2 through B-4 use single dispatch only; B-5 promotes all docs to parallel.
 
 > **Note — `plan-implementation` role: preferred `general-purpose`, fallback `Plan`.**
-> Phases B-1 and B-2 used `Plan` as preferred for PRD/AC/ARCH/ADR drafting.
+> Phases B-1 and B-2 used `Plan` as preferred for PRD/AC/ARCH drafting.
 > `Plan`'s built-in description is "Software architect agent for designing
-> implementation plans", which empirically returned clean markdown for all
-> 11 dispatches across the B-2 (`20260428-194703-f5dd`) and B-3
+> implementation plans", which empirically returned clean markdown for the
+> bulk of dispatches across the B-2 (`20260428-194703-f5dd`) and B-3
 > (`20260428-214502-6b79`) dogfoods, but exhibited the predicted drift
 > at least once — B-3 Finding #3: `Plan` appended an unrequested
 > `### Critical Files for Implementation` section to a PRD body draft. The
-> orchestrator stripped it, but the drift was real and reproducible. As of
-> this commit (post-B-3) the role mapping is swapped: `general-purpose` is
-> now preferred, `Plan` is fallback for environments where `general-purpose`
-> is absent or unstable. The Phase B-2/B-3 dogfood evidence stands as the
-> baseline for the Plan-as-preferred path; future drift comparisons should
-> be against the `general-purpose`-as-preferred baseline that Phase B-4
-> dogfood will establish.
+> orchestrator stripped it, but the drift was real and reproducible. Hot-fix
+> branch `v4-plan-pack-content-role-fix` (commit `85366f1`) swapped the
+> mapping post-B-3: `general-purpose` is now preferred, `Plan` is fallback
+> for environments where `general-purpose` is absent or unstable. Phase B-4
+> inherits this swap into the new UI_GUIDE row without re-acting on it; the
+> Phase B-4 dogfood will produce the first 4-doc trace under
+> `general-purpose`-as-preferred.
 
 ## Workflow
 
-> NOTE — Phase B-3: steps 1–11 implemented. Steps 1–8 unchanged from Phase B-2; step 6 extended to cover ADR; step 9 extended to 3-way cross-doc review; steps 10 and 11 are new.
+> NOTE — Phase B-4: steps 1–13 implemented. Steps 1–11 unchanged from Phase B-3; step 6 extended to cover UI_GUIDE; step 9 extended to 4-way cross-doc review (with antipattern audit); steps 12 and 13 are new.
 
 ### Step 0 — resolve run_dir
 
@@ -188,7 +191,7 @@ The function returns the absolute path; show that path to the user.
 
 ### Step 7 — ARCH interview (main Claude, AskUserQuestion)
 
-> Execution order: Steps 7–8–10–11–9 run after Step 5 writes PRD.md; Step 6 (iteration) is the final workflow step.
+> Execution order: Steps 7–8–10–11–12–13–9 run after Step 5 writes PRD.md; Step 6 (iteration) is the final workflow step.
 
 After Step 5 writes `PRD.md`, collect architecture context. Ask 6 questions
 across **two `AskUserQuestion` calls of 3 questions each** (within the
@@ -347,107 +350,255 @@ Substitute the returned block into the ADR template:
         .replace("{{DECISIONS_BLOCK}}", adr_sub_agent_output.strip()))
     adr_path = write_run_artifact(rid, "ADR.md", filled_adr)
 
-Show `adr_path` to the user, then proceed to Step 9 (3-way cross-doc review).
+Show `adr_path` to the user, then proceed to Step 12 (UI_GUIDE interview).
 
-### Step 9 — 3-way cross-doc second-opinion (PRD ↔ ARCH ↔ ADR consistency)
+### Step 12 — UI_GUIDE interview (main Claude, AskUserQuestion)
 
-After `ADR.md` is written (Step 11), dispatch a 3-way cross-doc consistency
-review. Read all three artifacts:
+After Step 11 writes `ADR.md`, collect UI guide context. Ask 6 questions
+across **two `AskUserQuestion` calls of 3 questions each** (within the
+platform max-4 limit per call):
+
+Call 7 (U1–U3):
+
+1. Visual identity / aesthetic in one line — what should this UI feel like to a first-time user? (e.g. "high-density information panel, low-chrome", "playful editorial, big typography")
+2. Primary user flows you want to UI-prototype as priority screens — list 3 flows in one line each (e.g. "first-run onboarding", "main daily-use loop", "error/empty state")
+3. Required component patterns — list 3 components or interaction patterns the UI must include (e.g. "data table with inline edit", "command palette", "tabbed settings", "modal wizard")
+
+Call 8 (U4–U6):
+
+4. Brand color tokens (hex or named) — list up to 5 with role (e.g. "#0F1115 primary surface", "amber accent for warnings"). "no preference" is a valid answer (the sub-agent will then propose neutral tokens consistent with the design direction).
+5. Typography — primary font family + 1 supporting (e.g. "Inter UI / JetBrains Mono mono"). "no preference" is a valid answer.
+6. Antipattern emphasis — beyond the baseline list in the template, are there any project-specific things the UI must avoid? (e.g. "no skeuomorphic shadows", "no carousel home-page hero"). "none" is a valid answer.
+
+The interview deliberately surfaces antipattern emphasis (Q6) so gate B4.3
+(no antipattern artifacts in the rendered UI body) has user-supplied
+project-specific signal beyond the canonical baseline shipped in the
+template.
+
+### Step 13 — UI_GUIDE single dispatch + write `UI_GUIDE.md`
+
+Single Agent dispatch then `write_run_artifact(rid, "UI_GUIDE.md", filled)` —
+same orchestrator-only pattern as Steps 8 and 11.
+
+Wrap the UI interview answers + PRD `## Design direction` (already on disk)
++ template skeleton via `server.harness.wrap_with_preamble` (same canonical
+call pattern as Steps 2/3/8/11):
+
+    from server.harness import wrap_with_preamble
+    from server import read_run_artifact
+    prd_text = read_run_artifact(rid, "PRD.md") or ""
+    wrapped_ui = wrap_with_preamble(raw_ui_prompt)
+
+The dispatched prompt instructs the sub-agent to return the *entire UI guide
+body* as markdown, ready to substitute into the template's `{{UI_BODY}}`
+placeholder. The required emitted shape is the following five `## Section`
+headings in order (the sub-agent must emit each as a `## ` heading; do not
+emit `# ` or `### `):
+
+    ## Visual identity
+    <one-paragraph aesthetic statement, plus a short bullet list of "feels like" reference points>
+
+    ## Color tokens
+    <table or bullet list — token name, hex value, role, optional dark-mode pair>
+
+    ## Typography
+    <bullet list — family, weights, sizes, line-heights, primary use case>
+
+    ## Component patterns
+    <one section per component pattern from interview Q3 — describe layout, primary states, behavior. ≥3 components total.>
+
+    ## Priority screens
+    <one numbered subsection per priority flow from interview Q2 — describe screen layout in prose with explicit reference to which Component patterns it composes. ≥3 screens.>
+
+The sub-agent contract additionally requires: do NOT emit any of the
+antipattern keywords already enumerated in the template's `## Antipatterns
+to avoid` section (gradient-text, glass morphism, backdrop-blur,
+all-purple, emoji-as-decoration, Lorem ipsum, TODO/FIXME, "innovative",
+"seamless", etc.). Gate B4.3 enforces this on the rendered file.
+
+The Step 12 interview only collects user-side input for visual identity (Q1),
+priority flows (Q2), required components (Q3), color preferences (Q4),
+typography preferences (Q5), and project-specific antipatterns (Q6). The
+sub-agent must **synthesize the full content of all five sections from the
+loaded `prd_text` (`## Design direction` and `## Core features`) plus the
+interview answers** — no stub sections like "TBD: fill in colors". If a
+section cannot be synthesized (e.g. user said "no preference" for color and
+no PRD signal exists), the sub-agent must propose a defensible neutral
+default and document the choice in the section's first sentence.
+
+Dispatch to a `plan-implementation` sub-agent via a **single Agent call**
+(preferred: `general-purpose`; fallback: `Plan`). This is one of the three
+Phase B-4 single-dispatch verification locations (the others are Step 8 — ARCH
+and Step 11 — ADR). The role swap from B-3 Finding #3 hot-fix is inherited
+verbatim — the dispatched prompt does not need any extra negative wording
+about `### Critical Files`; `general-purpose` does not exhibit the drift
+that motivated the swap.
+
+Substitute the returned body into the UI_GUIDE template:
+
+    from pathlib import Path
+    from server import write_run_artifact
+
+    template = Path.home() / ".claude/skills/assemble/bundled/plan-pack/templates/UI_GUIDE.md.template"
+    # Pull design direction from PRD §6 — same string the sub-agent received as context
+    design_direction_lines: list[str] = []
+    collecting = False
+    for line in prd_text.splitlines():
+        if line.startswith("## Design direction"):
+            collecting = True
+            continue
+        if collecting:
+            if line.startswith("## "):
+                break
+            design_direction_lines.append(line)
+    design_direction = "\n".join(design_direction_lines).strip() or "(not specified in PRD)"
+
+    filled_ui = (template.read_text()
+        .replace("{{TASK}}", task)
+        .replace("{{DESIGN_DIRECTION}}", design_direction)
+        .replace("{{UI_BODY}}", ui_sub_agent_output.strip()))
+    ui_path = write_run_artifact(rid, "UI_GUIDE.md", filled_ui)
+
+Show `ui_path` to the user, then proceed to Step 9 (4-way cross-doc review).
+
+### Step 9 — 4-way cross-doc second-opinion (PRD ↔ ARCH ↔ ADR ↔ UI_GUIDE consistency)
+
+After `UI_GUIDE.md` is written (Step 13), dispatch a 4-way cross-doc
+consistency review. Read all four artifacts:
 
     from server import read_run_artifact
     prd_text  = read_run_artifact(rid, "PRD.md") or ""
     arch_text = read_run_artifact(rid, "ARCHITECTURE.md") or ""
     adr_text  = read_run_artifact(rid, "ADR.md") or ""
+    ui_text   = read_run_artifact(rid, "UI_GUIDE.md") or ""
 
-Wrap all three together via `server.harness.wrap_with_preamble` and dispatch to a
-`second-opinion` role (preferred: `codex:codex-rescue`, then
+Wrap all four together via `server.harness.wrap_with_preamble` and dispatch
+to a `second-opinion` role (preferred: `codex:codex-rescue`, then
 `superpowers:code-reviewer`; fallback: `general-purpose`).
 
-The prompt must explicitly request three categories of finding:
+The prompt must explicitly request six categories of finding (the three
+B-3 categories + three new UI_GUIDE-specific categories):
 
-- **PRD ↔ ARCH (gap detection)**: features in PRD `## Core features` that have no
-  matching module in ARCH `## Module boundaries`, and architecture decisions in
-  ARCH that contradict items in PRD `## Excluded from MVP` (scope-creep risk).
-- **ARCH ↔ ADR (decision integrity)**: any architectural choice in ARCH that is
-  not backed by a Decision in ADR (missing rationale), and any Decision in ADR
-  that contradicts ARCH's stated patterns or module boundaries.
-- **PRD ↔ ADR (motivation traceability)**: any Decision in ADR whose Context
-  cannot be traced to a need stated in PRD `## Goal` / `## Core features` /
-  `## Risks`, and any PRD risk that has no Decision addressing it.
+- **PRD ↔ ARCH (gap detection)**: features in PRD `## Core features` that
+  have no matching module in ARCH `## Module boundaries`, and
+  architecture decisions in ARCH that contradict items in PRD
+  `## Excluded from MVP` (scope-creep risk).
+- **ARCH ↔ ADR (decision integrity)**: any architectural choice in ARCH
+  that is not backed by a Decision in ADR (missing rationale), and any
+  Decision in ADR that contradicts ARCH's stated patterns or module
+  boundaries.
+- **PRD ↔ ADR (motivation traceability)**: any Decision in ADR whose
+  Context cannot be traced to a need stated in PRD `## Goal` /
+  `## Core features` / `## Risks`, and any PRD risk that has no Decision
+  addressing it.
+- **PRD ↔ UI_GUIDE (design direction audit)**: every choice the UI guide
+  makes in `## Visual identity`, `## Color tokens`, `## Typography`, and
+  `## Component patterns` must be consistent with PRD §6 `## Design direction`.
+  Contradictions ("PRD says low-chrome / UI uses heavy
+  decoration") are findings; **violations of the antipattern list in the
+  UI_GUIDE template's `## Antipatterns to avoid` section are
+  CRITICAL findings** and seed gate B4.3.
+- **ARCH ↔ UI_GUIDE (component coverage)**: every priority screen in
+  UI_GUIDE `## Priority screens` must compose at least one ARCH
+  `## Module boundaries` module — orphan UI screens that don't map to a
+  module are findings (either UI overreach or missing ARCH module).
+- **ADR ↔ UI_GUIDE (UX decision integrity)**: any UI choice that is in
+  scope for an ADR Decision (e.g. accessibility floor, dark-mode support,
+  i18n) but is not addressed there is a finding (either an ADR gap or a
+  UI assumption that should be promoted to a Decision).
 
 Plus any other flaws, inconsistencies, or omissions — never bare agreement.
 
 Apply the triage protocol from Step 4b: verify each claim, drop unverifiable
 speculation, prepend a one-line audit header. Append verified review notes
-as a `## Cross-doc review` section to **`ADR.md`** (the last-written doc;
-keeps cross-doc context co-located with the doc most likely to be edited
-during iteration):
+as a `## Cross-doc review` section to **`ADR.md`** (the last-written doc
+*before* UI_GUIDE was added in B-4; keeping cross-doc context co-located
+with ADR.md preserves the B-3 convention and the same "doc most likely to
+be edited during iteration" reasoning still applies — design decisions ride
+on ADR, and that is where reviewers will look first):
 
     from datetime import date
     from server import read_run_artifact, write_run_artifact
     current = read_run_artifact(rid, "ADR.md") or ""
-    audit_header = f"> 3-way cross-doc verified on {date.today().isoformat()} — {n_kept} kept / {n_dropped} dropped"
+    audit_header = f"> 4-way cross-doc verified on {date.today().isoformat()} — {n_kept} kept / {n_dropped} dropped"
     updated = current + "\n\n## Cross-doc review\n\n" + audit_header + "\n\n" + bullets
     write_run_artifact(rid, "ADR.md", updated)
 
-> Note: when running on the iteration yes-path (Step 6), use header `## Cross-doc review (iteration N)` instead of bare `## Cross-doc review`, where N is the current iteration count (Phase B-3 caps at N=1). The first-pass review uses no suffix.
+> Note: when running on the iteration yes-path (Step 6), use header `## Cross-doc review (iteration N)` instead of bare `## Cross-doc review`, where N is the current iteration count (Phase B-4 caps at N=1). The first-pass review uses no suffix.
 
 Then proceed to Step 6 (iteration prompt).
 
 ### Step 6 — iteration round-trip (one cycle)
 
-After Step 9 (3-way cross-doc review), ask the user via `AskUserQuestion`:
+After Step 9 (4-way cross-doc review), ask the user via `AskUserQuestion`:
 
-> "All three docs saved — PRD.md, ARCHITECTURE.md, ADR.md. Run one iteration?"
-> options: ["yes — refine all three", "no — done"]
+> "All four docs saved — PRD.md, ARCHITECTURE.md, ADR.md, UI_GUIDE.md. Run one iteration?"
+> options: ["yes — refine all four", "no — done"]
 
 - **no → done: exits the workflow.** The user is never forced into a second
   pass. (V4 identity rule — see `project_assemble_v4_spec.md` § "절대 금지
   사항".)
-- **yes → re-runs Steps 2+3 (PRD re-draft), Step 8 (ARCH re-draft), and
-  Step 11 (ADR re-draft)** with the existing `PRD.md`, `ARCHITECTURE.md`,
-  and `ADR.md` loaded as input context, plus a follow-up `AskUserQuestion`
-  collecting the user's new emphases ("what feels off in the PRD?", "what
-  feels off in the ARCH?", "what feels off in the ADR?").
+- **yes → re-runs Steps 2+3 (PRD re-draft), Step 8 (ARCH re-draft),
+  Step 11 (ADR re-draft), and Step 13 (UI_GUIDE re-draft)** with the
+  existing `PRD.md`, `ARCHITECTURE.md`, `ADR.md`, and `UI_GUIDE.md` loaded
+  as input context, plus a follow-up `AskUserQuestion` collecting the
+  user's new emphases ("what feels off in the PRD?", "what feels off in
+  the ARCH?", "what feels off in the ADR?", "what feels off in the
+  UI_GUIDE?").
 
   **Iteration write order** (explicit — do not improvise):
   1. Run Steps 2+3 in parallel (single message, two Agent calls): PRD body
      re-draft + AC bash re-draft.
   2. Run Step 8 (ARCH re-draft) — single dispatch. Can fire in the same
      parallel message as Steps 2+3 since the inputs are independent
-     (existing PRD + ARCH + ADR + emphases), or sequentially after Steps 2+3
-     if you prefer simpler control flow.
+     (existing PRD + ARCH + ADR + UI_GUIDE + emphases), or sequentially
+     after Steps 2+3 if you prefer simpler control flow.
   3. Run Step 11 (ADR re-draft) — single dispatch. Same independence
      argument as Step 8; can be parallel with Steps 2+3 + 8.
-  4. **Step 5 overwrites `PRD.md`** with the new body + new AC bash.
-  5. **Step 8 (continued) overwrites `ARCHITECTURE.md`** with the new
+  4. Run Step 13 (UI_GUIDE re-draft) — single dispatch. Same independence
+     argument; can be parallel with Steps 2+3 + 8 + 11. **This is the
+     true 4-way parallel-dispatch surface that B-5 is scheduled to
+     formalize**; B-4 iteration is a natural place to demonstrate it
+     opportunistically (single message, four Agent calls), but
+     sequential dispatch remains acceptable per the same B-3 dogfood
+     Finding #4 caveat (single-message Agent-call budget concerns).
+  5. **Step 5 overwrites `PRD.md`** with the new body + new AC bash.
+  6. **Step 8 (continued) overwrites `ARCHITECTURE.md`** with the new
      sections. (Cross-doc review lives on ADR.md only — no leftover to
      discard here.)
-  6. **Step 11 (continued) overwrites `ADR.md`** with the new decisions
+  7. **Step 11 (continued) overwrites `ADR.md`** with the new decisions
      block — discard the old `## Cross-doc review` section here; Step 9
      will regenerate it.
-  7. Run Step 9 again on the refreshed triple (PRD ↔ ARCH ↔ ADR).
-  8. Step 9 (continued) appends `## Cross-doc review (iteration 1)` to
-     `ADR.md` (note the iteration suffix to distinguish from the first-pass
-     review).
+  8. **Step 13 (continued) overwrites `UI_GUIDE.md`** with the new
+     sections.
+  9. Run Step 9 again on the refreshed quadruple
+     (PRD ↔ ARCH ↔ ADR ↔ UI_GUIDE).
+  10. Step 9 (continued) appends `## Cross-doc review (iteration 1)` to
+      `ADR.md` (note the iteration suffix to distinguish from the
+      first-pass review).
 
   **Step 4 (intra-PRD consistency review) is intentionally skipped on the
-  iteration yes-path** — same reasoning as Phase B-2: the 3-way cross-doc
-  review in Step 9 provides the second-opinion coverage for the refined
-  PRD ↔ ARCH ↔ ADR triple. Re-running Step 4 would double-pay for review
-  without checking the new dimensions that matter most after iteration.
+  iteration yes-path** — same reasoning as Phase B-2/B-3: the 4-way
+  cross-doc review in Step 9 provides the second-opinion coverage for the
+  refined PRD ↔ ARCH ↔ ADR ↔ UI_GUIDE quadruple. Re-running Step 4 would
+  double-pay for review without checking the new dimensions that matter
+  most after iteration.
 
-ADR.md is always re-run alongside PRD and ARCH in the iteration — they are
-produced as a triple and must remain consistent.
+UI_GUIDE.md is always re-run alongside PRD, ARCH, and ADR in the iteration
+— they are produced as a quadruple and must remain consistent.
 
-Phase B-3 covers exactly **one iteration**. After the iteration completes
+Phase B-4 covers exactly **one iteration**. After the iteration completes
 (yes-path), the workflow exits unconditionally — even if the user requests
-another pass, the main Claude must reply "iteration cap reached for Phase B-3;
+another pass, the main Claude must reply "iteration cap reached for Phase B-4;
 rerun `/assemble` to start a new run" and stop. Multi-iteration support (3–7
-counts with stop conditions) is a Phase B post-tuning track.
+counts with stop conditions) is a Phase B post-tuning track. Note: B-3
+Finding #5 (a fresh CRITICAL surfacing only on iteration 1, exiting
+unresolved at the cap) is a third corroborating data point if it
+reproduces in B-4 — capture it in the dogfood report § Findings.
 
-> **Dogfood evidence carried forward** (run `20260428-194703-f5dd`, Phase B-2):
-> a single iteration resolved 4 prior CRITICALs and *introduced 1 new CRITICAL*.
-> The new CRITICAL exited unresolved when the workflow hit the cap. Phase B-3
-> dogfood (run id captured in `docs/dogfood/phase-b-3.md`) re-tests this with
-> the 3-way review surface.
+> **Dogfood evidence carried forward** (run `20260428-214502-6b79`, Phase B-3):
+> a single iteration resolved 9 of 10 prior findings (90%) and *introduced
+> 1 new IMPORTANT* (`--max-concurrency` knob naming inconsistency). The new
+> finding exited unresolved when the workflow hit the cap. Phase B-4 dogfood
+> (run id captured in `docs/dogfood/phase-b-4.md`) re-tests this with the
+> 4-way review surface and the antipattern audit dimension.
