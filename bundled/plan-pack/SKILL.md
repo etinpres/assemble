@@ -530,58 +530,75 @@ Then proceed to Step 6 (iteration prompt).
 
 ### Step 6 — iteration round-trip (one cycle)
 
-After Step 9 (3-way cross-doc review), ask the user via `AskUserQuestion`:
+After Step 9 (4-way cross-doc review), ask the user via `AskUserQuestion`:
 
-> "All three docs saved — PRD.md, ARCHITECTURE.md, ADR.md. Run one iteration?"
-> options: ["yes — refine all three", "no — done"]
+> "All four docs saved — PRD.md, ARCHITECTURE.md, ADR.md, UI_GUIDE.md. Run one iteration?"
+> options: ["yes — refine all four", "no — done"]
 
 - **no → done: exits the workflow.** The user is never forced into a second
   pass. (V4 identity rule — see `project_assemble_v4_spec.md` § "절대 금지
   사항".)
-- **yes → re-runs Steps 2+3 (PRD re-draft), Step 8 (ARCH re-draft), and
-  Step 11 (ADR re-draft)** with the existing `PRD.md`, `ARCHITECTURE.md`,
-  and `ADR.md` loaded as input context, plus a follow-up `AskUserQuestion`
-  collecting the user's new emphases ("what feels off in the PRD?", "what
-  feels off in the ARCH?", "what feels off in the ADR?").
+- **yes → re-runs Steps 2+3 (PRD re-draft), Step 8 (ARCH re-draft),
+  Step 11 (ADR re-draft), and Step 13 (UI_GUIDE re-draft)** with the
+  existing `PRD.md`, `ARCHITECTURE.md`, `ADR.md`, and `UI_GUIDE.md` loaded
+  as input context, plus a follow-up `AskUserQuestion` collecting the
+  user's new emphases ("what feels off in the PRD?", "what feels off in
+  the ARCH?", "what feels off in the ADR?", "what feels off in the
+  UI_GUIDE?").
 
   **Iteration write order** (explicit — do not improvise):
   1. Run Steps 2+3 in parallel (single message, two Agent calls): PRD body
      re-draft + AC bash re-draft.
   2. Run Step 8 (ARCH re-draft) — single dispatch. Can fire in the same
      parallel message as Steps 2+3 since the inputs are independent
-     (existing PRD + ARCH + ADR + emphases), or sequentially after Steps 2+3
-     if you prefer simpler control flow.
+     (existing PRD + ARCH + ADR + UI_GUIDE + emphases), or sequentially
+     after Steps 2+3 if you prefer simpler control flow.
   3. Run Step 11 (ADR re-draft) — single dispatch. Same independence
      argument as Step 8; can be parallel with Steps 2+3 + 8.
-  4. **Step 5 overwrites `PRD.md`** with the new body + new AC bash.
-  5. **Step 8 (continued) overwrites `ARCHITECTURE.md`** with the new
+  4. Run Step 13 (UI_GUIDE re-draft) — single dispatch. Same independence
+     argument; can be parallel with Steps 2+3 + 8 + 11. **This is the
+     true 4-way parallel-dispatch surface that B-5 is scheduled to
+     formalize**; B-4 iteration is a natural place to demonstrate it
+     opportunistically (single message, four Agent calls), but
+     sequential dispatch remains acceptable per the same B-3 dogfood
+     Finding #4 caveat (single-message Agent-call budget concerns).
+  5. **Step 5 overwrites `PRD.md`** with the new body + new AC bash.
+  6. **Step 8 (continued) overwrites `ARCHITECTURE.md`** with the new
      sections. (Cross-doc review lives on ADR.md only — no leftover to
      discard here.)
-  6. **Step 11 (continued) overwrites `ADR.md`** with the new decisions
+  7. **Step 11 (continued) overwrites `ADR.md`** with the new decisions
      block — discard the old `## Cross-doc review` section here; Step 9
      will regenerate it.
-  7. Run Step 9 again on the refreshed triple (PRD ↔ ARCH ↔ ADR).
-  8. Step 9 (continued) appends `## Cross-doc review (iteration 1)` to
-     `ADR.md` (note the iteration suffix to distinguish from the first-pass
-     review).
+  8. **Step 13 (continued) overwrites `UI_GUIDE.md`** with the new
+     sections.
+  9. Run Step 9 again on the refreshed quadruple
+     (PRD ↔ ARCH ↔ ADR ↔ UI_GUIDE).
+  10. Step 9 (continued) appends `## Cross-doc review (iteration 1)` to
+      `ADR.md` (note the iteration suffix to distinguish from the
+      first-pass review).
 
   **Step 4 (intra-PRD consistency review) is intentionally skipped on the
-  iteration yes-path** — same reasoning as Phase B-2: the 3-way cross-doc
-  review in Step 9 provides the second-opinion coverage for the refined
-  PRD ↔ ARCH ↔ ADR triple. Re-running Step 4 would double-pay for review
-  without checking the new dimensions that matter most after iteration.
+  iteration yes-path** — same reasoning as Phase B-2/B-3: the 4-way
+  cross-doc review in Step 9 provides the second-opinion coverage for the
+  refined PRD ↔ ARCH ↔ ADR ↔ UI_GUIDE quadruple. Re-running Step 4 would
+  double-pay for review without checking the new dimensions that matter
+  most after iteration.
 
-ADR.md is always re-run alongside PRD and ARCH in the iteration — they are
-produced as a triple and must remain consistent.
+UI_GUIDE.md is always re-run alongside PRD, ARCH, and ADR in the iteration
+— they are produced as a quadruple and must remain consistent.
 
-Phase B-3 covers exactly **one iteration**. After the iteration completes
+Phase B-4 covers exactly **one iteration**. After the iteration completes
 (yes-path), the workflow exits unconditionally — even if the user requests
-another pass, the main Claude must reply "iteration cap reached for Phase B-3;
+another pass, the main Claude must reply "iteration cap reached for Phase B-4;
 rerun `/assemble` to start a new run" and stop. Multi-iteration support (3–7
-counts with stop conditions) is a Phase B post-tuning track.
+counts with stop conditions) is a Phase B post-tuning track. Note: B-3
+Finding #5 (a fresh CRITICAL surfacing only on iteration 1, exiting
+unresolved at the cap) is a third corroborating data point if it
+reproduces in B-4 — capture it in the dogfood report § Findings.
 
-> **Dogfood evidence carried forward** (run `20260428-194703-f5dd`, Phase B-2):
-> a single iteration resolved 4 prior CRITICALs and *introduced 1 new CRITICAL*.
-> The new CRITICAL exited unresolved when the workflow hit the cap. Phase B-3
-> dogfood (run id captured in `docs/dogfood/phase-b-3.md`) re-tests this with
-> the 3-way review surface.
+> **Dogfood evidence carried forward** (run `20260428-214502-6b79`, Phase B-3):
+> a single iteration resolved 9 of 10 prior findings (90%) and *introduced
+> 1 new IMPORTANT* (`--max-concurrency` knob naming inconsistency). The new
+> finding exited unresolved when the workflow hit the cap. Phase B-4 dogfood
+> (run id captured in `docs/dogfood/phase-b-4.md`) re-tests this with the
+> 4-way review surface and the antipattern audit dimension.

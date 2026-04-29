@@ -430,3 +430,34 @@ def test_workflow_step_9_four_way_includes_antipattern_audit():
     # called out as a dedicated antipattern category
     assert ("prd ↔ ui_guide" in lower or "arch ↔ ui_guide" in lower
             or "adr ↔ ui_guide" in lower or "audit" in lower)
+
+
+def test_workflow_iteration_step_6_includes_ui_guide():
+    body = _body()
+    step6 = body[body.index("Step 6 —"):]
+    # Iteration must now re-run UI_GUIDE (Step 13) alongside PRD (Steps 2+3),
+    # ARCH (Step 8), and ADR (Step 11)
+    assert "Step 13" in step6[:2500] or "UI_GUIDE" in step6[:2500]
+    assert "UI_GUIDE.md" in step6[:2500]
+
+
+def test_workflow_iteration_write_order_explicit_ui_guide():
+    body = _body()
+    step6 = body[body.index("Step 6 —"):]
+    # Finding #3 from B-2 (carried into B-3, B-4): iteration write order must
+    # be explicit, not implicit. Look for an enumerated step list mentioning
+    # UI_GUIDE overwrite.
+    assert "Iteration write order" in step6[:2500]
+    overwrite_block = step6[:3000].lower()
+    assert "overwrite" in overwrite_block
+    assert "ui_guide.md" in overwrite_block
+
+
+def test_workflow_iteration_step_6_quad_prompt_no_force():
+    body = _body()
+    step6 = body[body.index("Step 6 —"):]
+    # V4 identity rule: "no" must exit cleanly, even after extension to 4 docs
+    lower = step6[:1200].lower()
+    assert ("no exits" in lower or "no →" in step6[:1200] or "no — done" in lower)
+    # The yes-path option label must reflect the 4-doc surface
+    assert ("all four" in lower or "four" in lower or "ui_guide" in lower)
