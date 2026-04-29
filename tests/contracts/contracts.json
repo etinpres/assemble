@@ -35,6 +35,27 @@
       "spec_path": "bundled/plan-pack/SKILL.md",
       "section": "### Step 2",
       "tag": "B-5 Item B-2 — preamble byte-identity contract in Steps 2/3"
+    },
+    {
+      "id": "B-5-finding1-verbatim-preservation",
+      "phrase": "Existing sections that are not the explicit target of the iteration emphasis MUST be returned verbatim",
+      "spec_path": "bundled/plan-pack/SKILL.md",
+      "section": "### Step 6",
+      "tag": "B-5 Finding #1 — iteration verbatim preservation clause"
+    },
+    {
+      "id": "B-5-finding2-no-rename",
+      "phrase": "Pre-existing identifiers (variable names, token names, module names, component names) MUST NOT be renamed unless the rename IS the requested change",
+      "spec_path": "bundled/plan-pack/SKILL.md",
+      "section": "### Step 6",
+      "tag": "B-5 Finding #2 — iteration no-rename clause"
+    },
+    {
+      "id": "B-5-finding4-unit-consistency",
+      "phrase": "Numerical / unit consistency (cross-doc)",
+      "spec_path": "bundled/plan-pack/SKILL.md",
+      "section": "### Step 9",
+      "tag": "B-5 Finding #4 — Step 9 cross-doc review unit consistency category"
     }
   ]
 }
