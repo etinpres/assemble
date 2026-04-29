@@ -41,7 +41,12 @@ from server.run_dir import (
     run_artifact_path,
     strip_bash_fence,
 )
-from server.harness import wrap_with_preamble
+from server.harness import (
+    wrap_with_preamble,
+    record_dispatch,
+    verify_dispatches,
+    canonical_preamble_sha256,
+)
 
 __all__ = [
     # inventory
@@ -62,5 +67,6 @@ __all__ = [
     "write_run_artifact", "read_run_artifact", "run_artifact_path",
     "strip_bash_fence",
     # harness
-    "wrap_with_preamble",
+    "wrap_with_preamble", "record_dispatch", "verify_dispatches",
+    "canonical_preamble_sha256",
 ]

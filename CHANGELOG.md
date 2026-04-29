@@ -5,7 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental)
+## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl replayable evidence)
+
+### Added (B-5 Item B-7 — `runs/<rid>/dispatches.jsonl` replayable evidence)
+- `server/harness.py` gains 3 new public symbols: `record_dispatch(run_id, step, prompt_text, *, subagent_type, description)` appends a hash-only JSONL record to `runs/<run_id>/dispatches.jsonl`; `verify_dispatches(run_id)` reads the JSONL and asserts every recorded `preamble_sha256` matches `canonical_preamble_sha256()`; `canonical_preamble_sha256()` returns the audit constant (sha256 of the on-disk preamble file). Schema is hash-only — no full prompt text persisted, so `dispatches.jsonl` is privacy-safe and compact.
+- `server/__init__.py` exports the 3 new symbols via the canonical facade.
+- `tests/unit/test_harness_dispatches.py` — 13 new tests covering: file creation, schema correctness, sha256 alignment with canonical, append behavior across multiple records, unwrapped-prompt degraded mode, run_id validation (path-traversal rejection + empty/leading-dot/separator rules), step required, missing-preamble file → `canonical_preamble_sha256()` returns None, `verify_dispatches` green/red/missing-file/empty-file branches, smoke test against the actual repo preamble file (sha `858e9ff1...e159` confirmed).
+- `tests/contracts/contracts.json` adds 2 entries: `B-5-B7-dispatches-jsonl-required` (locks the "MUST also call record_dispatch ... runs/<rid>/dispatches.jsonl" clause under § Step 2) and `B-5-B7-verify-dispatches` (locks the "verify_dispatches(rid) reading the JSONL" audit method clause). Both now under contracts meta-test parametrization (Item D).
+
+### Changed (B-5 Item B-7)
+- `bundled/plan-pack/SKILL.md` § Step 2 §"Preamble byte-identity" gains a new sub-section §"Replayable on-disk evidence (`runs/<rid>/dispatches.jsonl`)" — documents the `record_dispatch` mandatory call after each `wrap_with_preamble` + dispatch, schema fields list, and points at `verify_dispatches(rid)` for replayable audit. Existing §"Preamble byte-identity" verbatim block (contract `B-5-B2-preamble-byte-identity`) untouched. The new sub-section converts gate B5.7 from orchestrator self-report ("the orchestrator claims byte-identity") to replayable disk audit ("`verify_dispatches` reads the JSONL and computes per-record sha256 against canonical").
+
+### Notes (B-5 Item B-7)
+- This closes the B5.7 evidence path #3 — orchestrator self-report is now backed by a replayable on-disk audit. iter2/iter3 supplemental run (commit `7dd49f3`) noted "self-report only — `runs/<rid>/dispatches.jsonl` server hook for replayable verification remains a future B5.7 enhancement". This change is that enhancement.
+- Test count: 179 (166 + 13 dispatches).
+- Diff scope: `server/harness.py` + `server/__init__.py` + `tests/unit/test_harness_dispatches.py` (new) + `tests/contracts/contracts.json` (+2 entries) + `bundled/plan-pack/SKILL.md` (+1 sub-section under Step 2) + CHANGELOG.md. No regression in existing 166 tests. Existing run dirs (e.g. `runs/20260429-135600-3b6d/`) do not gain `dispatches.jsonl` retroactively — the file only appears for runs that explicitly call `record_dispatch`. This is intended; the supplemental dogfood §"Honest dispatch trace caveat" already documents that the iter2/iter3 sha self-report happened before this hook landed.
+- Privacy posture: hash-only schema means user-product content (PRD/ARCH/etc.) is NOT persisted in `dispatches.jsonl`. Safe to commit run dirs without redaction (though by current convention runs live in `~/.claude/channels/` outside the skill repo).
 
 ### Changed (B-5 Finding #3 — iter2 + iter3 supplemental run)
 - `runs/20260429-135600-3b6d/iteration_state.json`: extended from 2 iteration entries (first-pass + iter1) to 4 (adds iter2 + iter3). `termination.reason` updated from `user-requested-stop` to `stop-condition-met`, `iteration_at_stop` 1 → 3, `stop_condition_satisfied_consecutively` 0 → 2. Added `supplemental_run_metadata` block recording dispatch form per iteration, preamble sha256 self-report, and `started_after_master_commit: a7fb8b3`.
