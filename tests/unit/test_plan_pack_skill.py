@@ -24,8 +24,10 @@ def _section(body: str, heading: str) -> str:
     function locates the heading, then scans forward and stops at the first
     heading line of equal-or-shallower depth (so a ``### Step 6`` slice ends
     on the next ``### ``, ``## ``, or ``# `` heading — whichever comes
-    first). New B-5 tests use this helper instead of ``body[:N]`` window
-    slices (Item C — test anchoring brittleness, B-4 retro #1).
+    first). All tests in this file use this helper instead of ``body[:N]``
+    window slices (Item C — test anchoring brittleness, B-4 retro #1,
+    refactored to full coverage in v4-quality-pass-c-d). See
+    ``docs/contributing/test-anchoring.md`` for the contributor convention.
     """
     start = body.index(heading)
     depth = len(heading) - len(heading.lstrip("#"))
@@ -157,7 +159,7 @@ def test_workflow_review_uses_role_mapping_fallback():
 
 def test_workflow_step_6_iteration_prompt():
     body = _body()
-    step6 = body[body.index("### Step 6"):]
+    step6 = _section(body, "### Step 6")
     # Anchor to Step 6 — bare "AskUserQuestion in body" is satisfied by
     # Step 1's interview (B-1 review I2).
     assert "iteration" in step6.lower()
@@ -198,24 +200,24 @@ def test_workflow_step_7_arch_interview():
     body = _body()
     # Anchor to heading to avoid false-positive on role-table row "| 7 |"
     assert "### Step 7" in body
-    step7 = body[body.index("### Step 7"):]
-    assert "AskUserQuestion" in step7[:2000]
+    step7 = _section(body, "### Step 7")
+    assert "AskUserQuestion" in step7
     # Gate B2.2 seeds: interview must ask about directory tree and data flow
-    assert "directory" in step7[:2000].lower()
-    assert "data flow" in step7[:2000].lower() or "data-flow" in step7[:2000].lower()
+    assert "directory" in step7.lower()
+    assert "data flow" in step7.lower() or "data-flow" in step7.lower()
 
 
 def test_workflow_step_8_arch_single_dispatch():
     body = _body()
     assert "Step 8" in body
-    step8 = body[body.index("### Step 8"):]
+    step8 = _section(body, "### Step 8")
     # Window 2500 covers fill pseudocode added after dogfood finding #1
     # (sub-agent output ↔ template heading collision).
     # Phase B spec §3: B-2 through B-4 are single-dispatch, not parallel
-    assert "single" in step8[:2500].lower()
-    assert "ARCHITECTURE.md" in step8[:2500]
-    assert "wrap_with_preamble" in step8[:2500]
-    assert "write_run_artifact" in step8[:2500]
+    assert "single" in step8.lower()
+    assert "ARCHITECTURE.md" in step8
+    assert "wrap_with_preamble" in step8
+    assert "write_run_artifact" in step8
 
 
 def test_workflow_step_8_handles_sub_agent_headings():
@@ -224,11 +226,10 @@ def test_workflow_step_8_handles_sub_agent_headings():
     Naive substitution would duplicate. Step 8 must show how to extract
     section bodies before substituting."""
     body = _body()
-    step8 = body[body.index("### Step 8"):]
-    fill_block = step8[:3000]
+    step8 = _section(body, "### Step 8")
     # The pseudocode must include the section parser, not just a raw
     # `template.replace(..., a1)` map (which is what tripped this dogfood).
-    assert "split_sections" in fill_block, (
+    assert "split_sections" in step8, (
         "Step 8 must show section-body extraction (dogfood finding #1). "
         "Naive .replace(...) of full sub-agent output would duplicate "
         "## headings already in the template."
@@ -260,39 +261,39 @@ def test_skill_preamble_matches_shared_file():
 def test_workflow_step_9_cross_doc_review():
     body = _body()
     assert "Step 9" in body
-    step9 = body[body.index("### Step 9"):]
+    step9 = _section(body, "### Step 9")
     # Window widened to 1200 — earlier 800-char slice landed exactly on
     # "flaws" boundary (codex review finding I2)
-    assert "PRD" in step9[:1200]
-    assert "ARCHITECTURE" in step9[:1200]
+    assert "PRD" in step9
+    assert "ARCHITECTURE" in step9
     # Must challenge, not merely agree (gate B2.3)
     assert (
-        "flaw" in step9[:1200].lower()
-        or "rebut" in step9[:1200].lower()
-        or "challenge" in step9[:1200].lower()
-        or "inconsisten" in step9[:1200].lower()
-        or "gap" in step9[:1200].lower()
+        "flaw" in step9.lower()
+        or "rebut" in step9.lower()
+        or "challenge" in step9.lower()
+        or "inconsisten" in step9.lower()
+        or "gap" in step9.lower()
     )
 
 
 def test_workflow_step_9_uses_second_opinion_role():
     body = _body()
-    step9 = body[body.index("### Step 9"):]
-    assert "second-opinion" in step9[:800]
-    assert "wrap_with_preamble" in step9[:800]
+    step9 = _section(body, "### Step 9")
+    assert "second-opinion" in step9
+    assert "wrap_with_preamble" in step9
 
 
 def test_workflow_iteration_step_6_includes_arch():
     body = _body()
-    step6 = body[body.index("### Step 6"):]
+    step6 = _section(body, "### Step 6")
     # Window widened to 2500 to cover explicit write-order block
     # added after dogfood finding #3.
     # Iteration must re-run ARCH (Step 8) alongside PRD (Steps 2+3).
     # Bare "ARCH" was tautological — substring of "ARCHITECTURE.md".
     # Anchor on "Step 8" (the actual re-draft instruction).
-    assert "Step 8" in step6[:2500]
-    assert "ARCHITECTURE.md" in step6[:2500]
-    assert "re-draft" in step6[:2500].lower() or "re-runs" in step6[:2500].lower()
+    assert "Step 8" in step6
+    assert "ARCHITECTURE.md" in step6
+    assert "re-draft" in step6.lower() or "re-runs" in step6.lower()
 
 
 def test_workflow_iteration_has_explicit_write_order():
@@ -300,29 +301,24 @@ def test_workflow_iteration_has_explicit_write_order():
     yes-path must show numbered write-order steps so the main Claude
     follows a deterministic sequence."""
     body = _body()
-    step6 = body[body.index("### Step 6"):]
-    # Widened from [:3500] in B-5 — multi-iteration loop block pushed the
-    # write-order section further from the heading. Same iter-scope-fix
-    # pattern as the [:2000]→[:5000] precedent (B-4 retro #1). The wholesale
-    # window-slice → heading-anchor refactor is on the post-B-5 quality pass.
-    block = step6[:7000]
-    assert "write order" in block.lower(), (
+    step6 = _section(body, "### Step 6")
+    assert "write order" in step6.lower(), (
         "Step 6 yes-path must include explicit 'Iteration write order' "
         "block (dogfood finding #3)"
     )
     # Must reference Step 5 overwriting PRD and Step 8 overwriting ARCH
-    assert "overwrites `PRD.md`" in block or "overwrite PRD.md" in block.lower()
-    assert "overwrites `ARCHITECTURE.md`" in block or "overwrite ARCHITECTURE.md" in block.lower()
+    assert "overwrites `PRD.md`" in step6 or "overwrite PRD.md" in step6.lower()
+    assert "overwrites `ARCHITECTURE.md`" in step6 or "overwrite ARCHITECTURE.md" in step6.lower()
 
 
 def test_workflow_iteration_step_6_no_force_arch():
     body = _body()
-    step6 = body[body.index("### Step 6"):]
+    step6 = _section(body, "### Step 6")
     # V4 identity rule: "no" must exit cleanly. Anchor on the semantic
     # phrase "exits the workflow" — the earlier "no —" anchor matched
     # the option label too, which would still pass even if the bullet
     # describing "no" was changed to keep a draft going.
-    assert "exits the workflow" in step6[:800].lower()
+    assert "exits the workflow" in step6.lower()
 
 
 def test_skill_description_mentions_adr():
@@ -335,10 +331,10 @@ def test_skill_description_mentions_adr():
 def test_workflow_step_10_adr_interview():
     body = _body()
     assert "Step 10" in body
-    step10 = body[body.index("Step 10"):]
-    assert "AskUserQuestion" in step10[:2000]
+    step10 = _section(body, "### Step 10")
+    assert "AskUserQuestion" in step10
     # Gate B3.2 seeds: interview must surface decisions, alternatives, tradeoffs
-    lower = step10[:2000].lower()
+    lower = step10.lower()
     assert "decision" in lower
     assert "alternative" in lower or "rejected" in lower
     assert "tradeoff" in lower or "trade-off" in lower
@@ -347,33 +343,33 @@ def test_workflow_step_10_adr_interview():
 def test_workflow_step_11_adr_single_dispatch():
     body = _body()
     assert "Step 11" in body
-    step11 = body[body.index("Step 11"):]
+    step11 = _section(body, "### Step 11")
     # Phase B spec §3: B-2 through B-4 are single-dispatch, not parallel
-    assert "single" in step11[:1000].lower()
-    assert "ADR.md" in step11[:1000]
-    assert "wrap_with_preamble" in step11[:1000]
-    assert "write_run_artifact" in step11[:1000]
+    assert "single" in step11.lower()
+    assert "ADR.md" in step11
+    assert "wrap_with_preamble" in step11
+    assert "write_run_artifact" in step11
     # Decision count contract for gate B3.2
-    assert "3" in step11[:1500] or "three" in step11[:1500].lower()
+    assert "3" in step11 or "three" in step11.lower()
 
 
 def test_workflow_step_9_includes_adr():
     body = _body()
-    step9 = body[body.index("### Step 9"):]
+    step9 = _section(body, "### Step 9")
     # The cross-doc review must now span ADR as well
-    assert "ADR" in step9[:1500]
-    assert "ADR.md" in step9[:1500] or "ADR.md" in body[body.index("### Step 9"):body.index("### Step 6")]
+    assert "ADR" in step9
+    assert "ADR.md" in step9 or "ADR.md" in body[body.index("### Step 9"):body.index("### Step 6")]
 
 
 def test_workflow_step_9_three_way_consistency():
     body = _body()
-    step9 = body[body.index("### Step 9"):]
+    step9 = _section(body, "### Step 9")
     # Must explicitly cover ARCH↔ADR decision integrity (per phase-b.md §6 B-3)
-    lower = step9[:1500].lower()
+    lower = step9.lower()
     assert "decision" in lower
     assert ("rationale" in lower or "reasoning" in lower or "missing" in lower)
     # All three pair labels must be present (matches dogfood gate B3.5 distribution)
-    window = step9[:2000]
+    window = step9
     assert "PRD ↔ ARCH" in window
     assert "ARCH ↔ ADR" in window
     assert "PRD ↔ ADR" in window
@@ -381,28 +377,28 @@ def test_workflow_step_9_three_way_consistency():
 
 def test_workflow_iteration_step_6_includes_adr():
     body = _body()
-    step6 = body[body.index("Step 6 —"):]
+    step6 = _section(body, "### Step 6")
     # Iteration must now re-run ADR (Step 11) alongside PRD (Steps 2+3) and ARCH (Step 8)
-    assert "Step 11" in step6[:2000] or "ADR" in step6[:2000]
-    assert "ADR.md" in step6[:2000]
+    assert "Step 11" in step6 or "ADR" in step6
+    assert "ADR.md" in step6
 
 
 def test_workflow_iteration_write_order_explicit_adr():
     body = _body()
-    step6 = body[body.index("Step 6 —"):]
+    step6 = _section(body, "### Step 6")
     # Finding #3 from B-2: iteration write order must be explicit, not implicit.
     # Look for an enumerated step list mentioning ADR overwrite.
     # Window widened post-B-4 scope-discipline insertion (B-4 dogfood Findings #4+#5 fix-up).
-    assert "Iteration write order" in step6[:5000]
-    overwrite_block = step6[:5500].lower()
+    assert "Iteration write order" in step6
+    overwrite_block = step6.lower()
     assert "overwrite" in overwrite_block
     assert "adr.md" in overwrite_block
 
 def test_workflow_iteration_step_6_no_force():
     body = _body()
-    step6 = body[body.index("Step 6 —"):]
+    step6 = _section(body, "### Step 6")
     # V4 identity rule: "no" must exit cleanly, even after extension
-    assert "exits the workflow" in step6[:1000].lower()
+    assert "exits the workflow" in step6.lower()
 
 
 def test_skill_description_mentions_ui_guide():
@@ -417,10 +413,10 @@ def test_skill_description_mentions_ui_guide():
 def test_workflow_step_12_ui_interview():
     body = _body()
     assert "Step 12" in body
-    step12 = body[body.index("Step 12"):]
-    assert "AskUserQuestion" in step12[:2000]
+    step12 = _section(body, "### Step 12")
+    assert "AskUserQuestion" in step12
     # Gate B4.1/B4.2 seeds: interview must surface visual identity, components, do/don't.
-    lower = step12[:2000].lower()
+    lower = step12.lower()
     assert "visual" in lower or "tone" in lower or "aesthetic" in lower
     assert "component" in lower or "pattern" in lower
     assert "antipattern" in lower or "avoid" in lower or "don't" in lower or "do not" in lower
@@ -429,12 +425,12 @@ def test_workflow_step_12_ui_interview():
 def test_workflow_step_13_ui_single_dispatch_inherits_plan_fix():
     body = _body()
     assert "Step 13" in body
-    step13 = body[body.index("Step 13"):]
+    step13 = _section(body, "### Step 13")
     # Phase B spec §3: B-2 through B-4 are single-dispatch, not parallel
-    assert "single" in step13[:1200].lower()
-    assert "UI_GUIDE.md" in step13[:1200]
-    assert "wrap_with_preamble" in step13[:1200]
-    assert "write_run_artifact" in step13[:1200]
+    assert "single" in step13.lower()
+    assert "UI_GUIDE.md" in step13
+    assert "wrap_with_preamble" in step13
+    assert "write_run_artifact" in step13
     # B-3 Finding #3 fix carried into Step 13: general-purpose preferred, Plan fallback.
     # Locate the role-mapping table and assert the Step 13 row's preferred column is general-purpose.
     table = body[body.index("## Sub-agent role mapping"):body.index("## Workflow")]
@@ -452,18 +448,18 @@ def test_workflow_step_13_ui_single_dispatch_inherits_plan_fix():
 
 def test_workflow_step_9_includes_ui_guide():
     body = _body()
-    step9 = body[body.index("Step 9 —"):]
+    step9 = _section(body, "### Step 9")
     # The cross-doc review must now span UI_GUIDE as well
-    assert "UI_GUIDE" in step9[:2000]
-    assert "UI_GUIDE.md" in step9[:2500]
+    assert "UI_GUIDE" in step9
+    assert "UI_GUIDE.md" in step9
 
 
 def test_workflow_step_9_four_way_includes_antipattern_audit():
     body = _body()
-    step9 = body[body.index("Step 9 —"):]
+    step9 = _section(body, "### Step 9")
     # Phase B-4 specific: Step 9 must call out the antipattern audit
     # (the cross-check between UI_GUIDE body and PRD `## Design direction`).
-    lower = step9[:2500].lower()
+    lower = step9.lower()
     assert "antipattern" in lower or "anti-pattern" in lower
     assert "design direction" in lower
     # Must explicitly enumerate the new pair categories beyond the 3 from B-3
@@ -476,32 +472,32 @@ def test_workflow_step_9_four_way_includes_antipattern_audit():
 
 def test_workflow_iteration_step_6_includes_ui_guide():
     body = _body()
-    step6 = body[body.index("Step 6 —"):]
+    step6 = _section(body, "### Step 6")
     # Iteration must now re-run UI_GUIDE (Step 13) alongside PRD (Steps 2+3),
     # ARCH (Step 8), and ADR (Step 11)
-    assert "Step 13" in step6[:2500] or "UI_GUIDE" in step6[:2500]
-    assert "UI_GUIDE.md" in step6[:2500]
+    assert "Step 13" in step6 or "UI_GUIDE" in step6
+    assert "UI_GUIDE.md" in step6
 
 
 def test_workflow_iteration_write_order_explicit_ui_guide():
     body = _body()
-    step6 = body[body.index("Step 6 —"):]
+    step6 = _section(body, "### Step 6")
     # Finding #3 from B-2 (carried into B-3, B-4): iteration write order must
     # be explicit, not implicit. Look for an enumerated step list mentioning
     # UI_GUIDE overwrite.
     # Window widened post-B-4 scope-discipline insertion (B-4 dogfood Findings #4+#5 fix-up).
-    assert "Iteration write order" in step6[:5000]
-    overwrite_block = step6[:5500].lower()
+    assert "Iteration write order" in step6
+    overwrite_block = step6.lower()
     assert "overwrite" in overwrite_block
     assert "ui_guide.md" in overwrite_block
 
 
 def test_workflow_iteration_step_6_quad_prompt_no_force():
     body = _body()
-    step6 = body[body.index("Step 6 —"):]
+    step6 = _section(body, "### Step 6")
     # V4 identity rule: "no" must exit cleanly, even after extension to 4 docs
-    lower = step6[:1200].lower()
-    assert ("no exits" in lower or "no →" in step6[:1200] or "no — done" in lower)
+    lower = step6.lower()
+    assert ("no exits" in lower or "no →" in step6 or "no — done" in lower)
     # The yes-path option label must reflect the 4-doc surface
     assert ("all four" in lower or "four" in lower or "ui_guide" in lower)
 
@@ -518,9 +514,9 @@ def test_workflow_iteration_scope_discipline():
     constructing iteration sub-agent prompts.
     """
     body = _body()
-    step6 = body[body.index("Step 6 —"):]
+    step6 = _section(body, "### Step 6")
     # Step 6 must document scope discipline for iteration
-    lower = step6[:4000].lower()
+    lower = step6.lower()
     assert ("scope discipline" in lower or "scope creep" in lower), (
         "Step 6 missing 'scope discipline' / 'scope creep' wording — "
         "B-4 dogfood Findings #4 + #5 fix not applied"

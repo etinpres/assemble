@@ -1,0 +1,40 @@
+{
+  "$schema_note": "Verbatim contracts registered for plan-time spec/test wording-drift check. Each entry asserts that `phrase` appears as a literal substring within `section` of `spec_path` (relative to skill root). The meta-test at tests/unit/test_contracts_meta.py reads this file and verifies each entry; if a contract is silently changed in either spec or test, CI catches it (Item D — test ↔ spec wording drift).",
+  "contracts": [
+    {
+      "id": "B-5-A-stop-condition",
+      "phrase": "two consecutive iterations both satisfy `RESOLVED ≥ 80% AND NEW ≤ 0`",
+      "spec_path": "bundled/plan-pack/SKILL.md",
+      "section": "### Step 6",
+      "tag": "B-5 Item A — multi-iteration stop condition contract"
+    },
+    {
+      "id": "B-5-A-iteration-state",
+      "phrase": "runs/<rid>/iteration_state.json",
+      "spec_path": "bundled/plan-pack/SKILL.md",
+      "section": "### Step 6",
+      "tag": "B-5 Item A — iteration state tracking contract"
+    },
+    {
+      "id": "B-5-A-scope-discipline-preserved",
+      "phrase": "PRD `## Core features` is the authoritative scope",
+      "spec_path": "bundled/plan-pack/SKILL.md",
+      "section": "### Step 6",
+      "tag": "B-5 regression guard — preserves 33b3056 iteration scope discipline block verbatim"
+    },
+    {
+      "id": "B-5-B1-platform-limit-citation",
+      "phrase": "docs/research/2026-04-29-platform-limit.md",
+      "spec_path": "bundled/plan-pack/SKILL.md",
+      "section": "### Step 6",
+      "tag": "B-5 Item B-1 — platform-limit research citation in Step 6 step 4"
+    },
+    {
+      "id": "B-5-B2-preamble-byte-identity",
+      "phrase": "every dispatched prompt's preamble block, when isolated and hashed, MUST match",
+      "spec_path": "bundled/plan-pack/SKILL.md",
+      "section": "### Step 2",
+      "tag": "B-5 Item B-2 — preamble byte-identity contract in Steps 2/3"
+    }
+  ]
+}
