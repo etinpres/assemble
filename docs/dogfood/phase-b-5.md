@@ -235,7 +235,27 @@ The original B-5 dogfood § "Trace excerpts — gate B5.6" exercised the `user-r
 - `termination.reason` rewritten from `user-requested-stop` to `stop-condition-met`, `iteration_at_stop=3`, `stop_condition_satisfied_consecutively=2`.
 - `supplemental_run_metadata` block records the dispatch split (iter2) and dispatch form (iter3), preamble sha256 for both, and `started_after_master_commit`.
 
-`cap-reached` remains the one termination path with no on-disk replayable evidence. Closing it would require running 7 iterations without stop condition firing, which is contrived — it's a terminal-cap safety net rather than a path the loop wants to take. Future option: a synthetic test that dispatches a malformed cross-doc review producing fake NEW findings each iter to force the cap; not pursued here.
+~~`cap-reached` remains the one termination path with no on-disk replayable evidence.~~ **Closed via synthetic on-disk artifact** — see § "Cap-reached termination path closure (synthetic)" below.
+
+## Cap-reached termination path closure (synthetic)
+
+`runs/20260429-cap-reached-synthetic/` (channels dir, branch `v4-cap-reached-and-medlow`) contains a self-labeled synthetic `iteration_state.json` plus `NOTES.md` provenance. The cap-reached branch is purely arithmetic — when iteration counter == 7 and stop condition has not satisfied 2× consecutively, `termination.reason = "cap-reached"`. The synthetic state demonstrates exactly that arithmetic:
+
+- 8 iteration entries (first-pass + iter1..iter7), every iter NEW ≥ 1 → stop condition never satisfies
+- `termination.reason: "cap-reached"`, `iteration_at_stop: 7`, `stop_condition_satisfied_consecutively: 0`, `cap: 7`
+- `supplemental_run_metadata.synthetic: true` + prose `note` + `NOTES.md` integrity disclosure all explicitly label this as not from a real cycle
+
+**Why synthetic instead of real.** Running 7 real iterations × 4 sub-agents = 28 agent dispatches for a path the loop is contractually designed NOT to take (terminal-cap safety net) is wasteful. The cap-reached arithmetic is deterministic; no further verification value is produced by burning agent tokens. The honest disclosure stays — every reader of `iteration_state.json` MUST treat it as synthetic.
+
+**What this does NOT prove.** B5.1 parallel dispatch over 7 iters; B5.7 byte-identity over 7 iters. Those evidence paths come from real loops (e.g. `runs/20260429-135600-3b6d/dispatches.jsonl` once a future genuine cycle re-runs with the B-7 hook from commit `5e0f87e`).
+
+All 3 termination paths now have on-disk evidence:
+
+| Path | Run dir | Real / synthetic |
+|---|---|---|
+| `user-requested-stop` | `runs/20260429-135600-3b6d/` (iter1) | real |
+| `stop-condition-met` | `runs/20260429-135600-3b6d/` (iter2 + iter3 supplemental) | real |
+| `cap-reached` | `runs/20260429-cap-reached-synthetic/` | synthetic (self-labeled) |
 
 ## Pre-merge review (Task 5 will run)
 
