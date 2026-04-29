@@ -17,6 +17,36 @@ def _body() -> str:
     return SKILL.read_text()
 
 
+def _section(body: str, heading: str) -> str:
+    """Return the body block from `heading` through the next sibling-or-shallower heading line.
+
+    `heading` must include leading hash markers, e.g. ``"### Step 6"``. The
+    function locates the heading, then scans forward and stops at the first
+    heading line of equal-or-shallower depth (so a ``### Step 6`` slice ends
+    on the next ``### ``, ``## ``, or ``# `` heading — whichever comes
+    first). New B-5 tests use this helper instead of ``body[:N]`` window
+    slices (Item C — test anchoring brittleness, B-4 retro #1).
+    """
+    start = body.index(heading)
+    depth = len(heading) - len(heading.lstrip("#"))
+    nl = body.find("\n", start)
+    if nl == -1:
+        return body[start:]
+    cursor = nl + 1
+    while cursor < len(body):
+        next_nl = body.find("\n", cursor)
+        line_end = next_nl if next_nl != -1 else len(body)
+        line = body[cursor:line_end]
+        if line.startswith("#"):
+            line_depth = len(line) - len(line.lstrip("#"))
+            if line_depth <= depth and not line.startswith(heading):
+                return body[start:cursor]
+        if next_nl == -1:
+            break
+        cursor = next_nl + 1
+    return body[start:]
+
+
 def test_skill_lives_at_expected_path():
     assert SKILL.exists(), f"missing: {SKILL}"
 
@@ -143,11 +173,18 @@ def test_workflow_iteration_does_not_force_loop():
     assert "no exits" in body.lower() or "no → " in body or "user can exit" in body.lower()
 
 
-def test_workflow_iteration_hard_caps_at_one():
+def test_workflow_iteration_has_exit_policy():
     """Step 6 must explicitly state the post-iteration exit policy. Without
-    this contract, second-yes behavior is unbounded."""
+    this contract, iteration behavior is unbounded.
+
+    B-5: superseded the B-4 hard cap=1 ("exits unconditionally") with a
+    multi-iteration loop. The contract now requires either the new cap
+    phrase ('iteration cap (7)') or the canonical stop-state token
+    ('cap-reached') to appear in body — both come from the multi-iteration
+    loop block.
+    """
     body = _body()
-    assert "exits unconditionally" in body or "iteration cap reached" in body
+    assert "iteration cap (7)" in body or "cap-reached" in body
 
 
 def test_skill_description_mentions_arch():
@@ -264,7 +301,11 @@ def test_workflow_iteration_has_explicit_write_order():
     follows a deterministic sequence."""
     body = _body()
     step6 = body[body.index("### Step 6"):]
-    block = step6[:3500]
+    # Widened from [:3500] in B-5 — multi-iteration loop block pushed the
+    # write-order section further from the heading. Same iter-scope-fix
+    # pattern as the [:2000]→[:5000] precedent (B-4 retro #1). The wholesale
+    # window-slice → heading-anchor refactor is on the post-B-5 quality pass.
+    block = step6[:7000]
     assert "write order" in block.lower(), (
         "Step 6 yes-path must include explicit 'Iteration write order' "
         "block (dogfood finding #3)"
@@ -492,4 +533,41 @@ def test_workflow_iteration_scope_discipline():
             or "must not introduce" in lower
             or "must not add" in lower), (
         "scope discipline must explicitly forbid introducing new features"
+    )
+
+
+# -------------------------------------------------------------------------
+# Phase B-5 contracts (multi-iteration loop)
+# -------------------------------------------------------------------------
+
+
+def test_step6_has_stop_condition_contract():
+    """B-5 Item A: Step 6 must contain the verbatim stop condition contract."""
+    body = _body()
+    step6 = _section(body, "### Step 6")
+    assert "two consecutive iterations both satisfy `RESOLVED ≥ 80% AND NEW ≤ 0`" in step6, (
+        "Step 6 missing the verbatim stop condition contract phrase — "
+        "B-5 Item A multi-iteration loop spec drift"
+    )
+
+
+def test_step6_has_iteration_state_contract():
+    """B-5 Item A: Step 6 must reference runs/<rid>/iteration_state.json."""
+    body = _body()
+    step6 = _section(body, "### Step 6")
+    assert "runs/<rid>/iteration_state.json" in step6, (
+        "Step 6 missing the runs/<rid>/iteration_state.json contract — "
+        "B-5 Item A multi-iteration loop spec drift"
+    )
+
+
+def test_step6_has_iteration_scope_discipline_preserved():
+    """B-5 Item A regression guard: the 33b3056 iteration scope discipline
+    block (B-4 fix) must remain verbatim — it now applies to every iteration
+    in the loop, not only the first."""
+    body = _body()
+    step6 = _section(body, "### Step 6")
+    assert "PRD `## Core features` is the authoritative scope" in step6, (
+        "Iteration scope discipline block (33b3056) was modified or "
+        "removed during the B-5 multi-iteration rewrite — regression"
     )

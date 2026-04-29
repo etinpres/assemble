@@ -546,6 +546,8 @@ After Step 9 (4-way cross-doc review), ask the user via `AskUserQuestion`:
   the ARCH?", "what feels off in the ADR?", "what feels off in the
   UI_GUIDE?").
 
+  > The constraint below applies to every iteration in the loop above, not only the first.
+
   **Iteration scope discipline** (mandatory constraint on all iteration sub-agent prompts — addresses B-4 dogfood Findings #4 + #5):
 
   When constructing the iteration prompts for Steps 2/3, 8, 11, and 13, the orchestrator MUST include this constraint verbatim in every dispatched prompt's `[TASK]` block:
@@ -595,18 +597,57 @@ After Step 9 (4-way cross-doc review), ask the user via `AskUserQuestion`:
 UI_GUIDE.md is always re-run alongside PRD, ARCH, and ADR in the iteration
 — they are produced as a quadruple and must remain consistent.
 
-Phase B-4 covers exactly **one iteration**. After the iteration completes
-(yes-path), the workflow exits unconditionally — even if the user requests
-another pass, the main Claude must reply "iteration cap reached for Phase B-4;
-rerun `/assemble` to start a new run" and stop. Multi-iteration support (3–7
-counts with stop conditions) is a Phase B post-tuning track. Note: B-3
-Finding #5 (a fresh CRITICAL surfacing only on iteration 1, exiting
-unresolved at the cap) is a third corroborating data point if it
-reproduces in B-4 — capture it in the dogfood report § Findings.
+#### Multi-iteration loop with stop conditions (Phase B-5)
 
-> **Dogfood evidence carried forward** (run `20260428-214502-6b79`, Phase B-3):
-> a single iteration resolved 9 of 10 prior findings (90%) and *introduced
-> 1 new IMPORTANT* (`--max-concurrency` knob naming inconsistency). The new
-> finding exited unresolved when the workflow hit the cap. Phase B-4 dogfood
-> (run id captured in `docs/dogfood/phase-b-4.md`) re-tests this with the
-> 4-way review surface and the antipattern audit dimension.
+Phase B-5 replaces the prior 1-iteration cap (B-1 through B-4) with an
+explicit stop-condition loop. Three consecutive phases (B-2, B-3, B-4) all
+showed the same recurrence — iteration resolves prior findings (4/4 → 9/10
+→ 12/12) but introduces NEW findings that exit unresolved at the cap. The
+loop below is the contracted answer.
+
+**Stop condition (verbatim — do not paraphrase in implementations):**
+
+> The orchestrator continues iterating while either condition holds: (a) Step 9 review reports `NEW ≥ 1` for the just-completed iteration, OR (b) the most recent two iterations have not both satisfied `RESOLVED ≥ 80% AND NEW ≤ 0`. Iteration stops when two consecutive iterations both satisfy `RESOLVED ≥ 80% AND NEW ≤ 0`, or when the iteration counter reaches 7, whichever comes first.
+
+**Iteration state tracking (verbatim):**
+
+> The orchestrator maintains a per-run state file at
+> `runs/<rid>/iteration_state.json` with shape
+> `{"iterations": [{"index": N, "resolved_pct": F, "new_count": N,
+> "stopped": bool, "reason": "..."}, ...]}`. The file is updated after
+> each Step 9 cross-doc review. Termination reason is one of
+> `stop-condition-met`, `cap-reached`, `user-requested-stop`.
+
+After each Step 9 review, the main Claude parses the RESOLVED/UNRESOLVED/NEW
+counts (Step 9 already produces these), computes `resolved_pct = RESOLVED /
+(RESOLVED + UNRESOLVED + NEW)`, appends a new entry to
+`iteration_state.json`, and decides whether to continue.
+
+##### User exit override
+
+After every iteration (including iterations 1 and 2 before the stop
+condition can have fired), the orchestrator asks via `AskUserQuestion`:
+
+> "Continue iterating?"
+> options: ["yes — run another iteration", "no — stop here"]
+
+A "no — stop here" answer terminates the loop unconditionally and records
+`reason: "user-requested-stop"` in `iteration_state.json`. The user is
+never forced through additional iterations to satisfy the stop condition
+(V4 identity rule — user agency is preserved).
+
+##### Iteration cap exceeded
+
+If the iteration counter reaches 7 without the stop condition firing and
+without a user no-answer, the orchestrator emits a one-line warning to the
+user citing the cap and the unresolved finding count from the most recent
+Step 9 review (e.g. "iteration cap (7) reached with 2 unresolved findings;
+exiting"), records `reason: "cap-reached"` in `iteration_state.json`, and
+stops. The user can still rerun `/assemble` for a fresh run.
+
+> **Dogfood evidence (Phase B-5, run `{{B5_RUN_ID}}` —
+> `docs/dogfood/phase-b-5.md`):** the multi-iteration loop is exercised
+> end-to-end under `ASSEMBLE_BUNDLED_ONLY=1` (blank-Mac sim) with true
+> 4-way parallel iteration dispatch and sha256 preamble byte-identity
+> verification. The recorded termination reason is the canonical evidence
+> that the cap is now driven by data, not by spec.
