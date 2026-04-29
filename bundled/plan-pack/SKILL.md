@@ -1,6 +1,6 @@
 ---
 name: plan-pack
-description: Plan stage ★ bundle — produce PRD + ARCH + ADR with iteration. Spec, requirements, plan, architecture doc, decision record — bundled plan tool. (Phase B-3: PRD + ARCH + ADR; UI_GUIDE arrives in B-4.)
+description: Plan stage ★ bundle — produce PRD + ARCH + ADR + UI_GUIDE with iteration. Spec, requirements, plan, architecture doc, decision record, UI guide — bundled plan tool. (Phase B-4: PRD + ARCH + ADR + UI_GUIDE.)
 ---
 
 [HARNESS RULES — 무시 금지]
@@ -9,7 +9,7 @@ description: Plan stage ★ bundle — produce PRD + ARCH + ADR with iteration. 
 3. 요청 범위 밖 코드 임의 수정 금지
 4. 버그 수정 시 재현 테스트 → 실패 확인 → 수정 → 재검증 루프
 
-# plan-pack — PRD + ARCH + ADR generator (Phase B-3)
+# plan-pack — PRD + ARCH + ADR + UI_GUIDE generator (Phase B-4)
 
 This bundle is **orchestrator-only**. The main Claude does not write PRD or
 ARCHITECTURE content directly — it asks the user, dispatches sub-agents
@@ -22,8 +22,9 @@ results to `<run_dir>/PRD.md` and `<run_dir>/ARCHITECTURE.md` via
 - `~/.claude/channels/assemble/runs/<rid>/PRD.md` — filled from `bundled/plan-pack/templates/PRD.md.template`
 - `~/.claude/channels/assemble/runs/<rid>/ARCHITECTURE.md` — filled from `bundled/plan-pack/templates/ARCHITECTURE.md.template`
 - `~/.claude/channels/assemble/runs/<rid>/ADR.md` — filled from `bundled/plan-pack/templates/ADR.md.template`
+- `~/.claude/channels/assemble/runs/<rid>/UI_GUIDE.md` — filled from `bundled/plan-pack/templates/UI_GUIDE.md.template`
 
-## Sub-agent role mapping (Phase B-3)
+## Sub-agent role mapping (Phase B-4)
 
 | Step | Work | Role | Preferred | Fallback |
 |---|---|---|---|---|
@@ -36,30 +37,32 @@ results to `<run_dir>/PRD.md` and `<run_dir>/ARCHITECTURE.md` via
 | 8 | ARCHITECTURE.md draft | `plan-implementation` | `general-purpose` | `Plan` |
 | 10 | ADR interview (6 questions) | (main, AskUserQuestion) | — | — |
 | 11 | ADR.md draft | `plan-implementation` | `general-purpose` | `Plan` |
-| 9 | 3-way cross-doc review (PRD + ARCH + ADR) | `second-opinion` | `codex:codex-rescue`, `superpowers:code-reviewer` | `general-purpose` |
+| 12 | UI_GUIDE interview (6 questions) | (main, AskUserQuestion) | — | — |
+| 13 | UI_GUIDE.md draft | `plan-implementation` | `general-purpose` | `Plan` |
+| 9 | 4-way cross-doc review (PRD + ARCH + ADR + UI_GUIDE) | `second-opinion` | `codex:codex-rescue`, `superpowers:code-reviewer` | `general-purpose` |
 
 Steps 2 and 3 fire as a *single message with two Agent calls* (parallel — unchanged from Phase B-1).
-Steps 8 and 11 are *single dispatch each* — B-2 through B-4 use single dispatch only; B-5 promotes all docs to parallel.
+Steps 8, 11, and 13 are *single dispatch each* — B-2 through B-4 use single dispatch only; B-5 promotes all docs to parallel.
 
 > **Note — `plan-implementation` role: preferred `general-purpose`, fallback `Plan`.**
-> Phases B-1 and B-2 used `Plan` as preferred for PRD/AC/ARCH/ADR drafting.
+> Phases B-1 and B-2 used `Plan` as preferred for PRD/AC/ARCH drafting.
 > `Plan`'s built-in description is "Software architect agent for designing
-> implementation plans", which empirically returned clean markdown for all
-> 11 dispatches across the B-2 (`20260428-194703-f5dd`) and B-3
+> implementation plans", which empirically returned clean markdown for the
+> bulk of dispatches across the B-2 (`20260428-194703-f5dd`) and B-3
 > (`20260428-214502-6b79`) dogfoods, but exhibited the predicted drift
 > at least once — B-3 Finding #3: `Plan` appended an unrequested
 > `### Critical Files for Implementation` section to a PRD body draft. The
-> orchestrator stripped it, but the drift was real and reproducible. As of
-> this commit (post-B-3) the role mapping is swapped: `general-purpose` is
-> now preferred, `Plan` is fallback for environments where `general-purpose`
-> is absent or unstable. The Phase B-2/B-3 dogfood evidence stands as the
-> baseline for the Plan-as-preferred path; future drift comparisons should
-> be against the `general-purpose`-as-preferred baseline that Phase B-4
-> dogfood will establish.
+> orchestrator stripped it, but the drift was real and reproducible. Hot-fix
+> branch `v4-plan-pack-content-role-fix` (commit `85366f1`) swapped the
+> mapping post-B-3: `general-purpose` is now preferred, `Plan` is fallback
+> for environments where `general-purpose` is absent or unstable. Phase B-4
+> inherits this swap into the new UI_GUIDE row without re-acting on it; the
+> Phase B-4 dogfood will produce the first 4-doc trace under
+> `general-purpose`-as-preferred.
 
 ## Workflow
 
-> NOTE — Phase B-3: steps 1–11 implemented. Steps 1–8 unchanged from Phase B-2; step 6 extended to cover ADR; step 9 extended to 3-way cross-doc review; steps 10 and 11 are new.
+> NOTE — Phase B-4: steps 1–13 implemented. Steps 1–11 unchanged from Phase B-3; step 6 extended to cover UI_GUIDE; step 9 extended to 4-way cross-doc review (with antipattern audit); steps 12 and 13 are new.
 
 ### Step 0 — resolve run_dir
 
@@ -348,6 +351,115 @@ Substitute the returned block into the ADR template:
     adr_path = write_run_artifact(rid, "ADR.md", filled_adr)
 
 Show `adr_path` to the user, then proceed to Step 9 (3-way cross-doc review).
+
+### Step 12 — UI_GUIDE interview (main Claude, AskUserQuestion)
+
+After Step 11 writes `ADR.md`, collect UI guide context. Ask 6 questions
+across **two `AskUserQuestion` calls of 3 questions each** (within the
+platform max-4 limit per call):
+
+Call 7 (U1–U3):
+
+1. Visual identity / aesthetic in one line — what should this UI feel like to a first-time user? (e.g. "high-density information panel, low-chrome", "playful editorial, big typography")
+2. Primary user flows you want to UI-prototype as priority screens — list 3 flows in one line each (e.g. "first-run onboarding", "main daily-use loop", "error/empty state")
+3. Required component patterns — list 3 components or interaction patterns the UI must include (e.g. "data table with inline edit", "command palette", "tabbed settings", "modal wizard")
+
+Call 8 (U4–U6):
+
+4. Brand color tokens (hex or named) — list up to 5 with role (e.g. "#0F1115 primary surface", "amber accent for warnings"). "no preference" is a valid answer (the sub-agent will then propose neutral tokens consistent with the design direction).
+5. Typography — primary font family + 1 supporting (e.g. "Inter UI / JetBrains Mono mono"). "no preference" is a valid answer.
+6. Antipattern emphasis — beyond the baseline list in the template, are there any project-specific things the UI must avoid? (e.g. "no skeuomorphic shadows", "no carousel home-page hero"). "none" is a valid answer.
+
+The interview deliberately surfaces antipattern emphasis (Q6) so gate B4.3
+(no antipattern artifacts in the rendered UI body) has user-supplied
+project-specific signal beyond the canonical baseline shipped in the
+template.
+
+### Step 13 — UI_GUIDE single dispatch + write `UI_GUIDE.md`
+
+Single Agent dispatch then `write_run_artifact(rid, "UI_GUIDE.md", filled)` —
+same orchestrator-only pattern as Steps 8 and 11.
+
+Wrap the UI interview answers + PRD `## Design direction` (already on disk)
++ template skeleton via `server.harness.wrap_with_preamble` (same canonical
+call pattern as Steps 2/3/8/11):
+
+    from server.harness import wrap_with_preamble
+    from server import read_run_artifact
+    prd_text = read_run_artifact(rid, "PRD.md") or ""
+    wrapped_ui = wrap_with_preamble(raw_ui_prompt)
+
+The dispatched prompt instructs the sub-agent to return the *entire UI guide
+body* as markdown, ready to substitute into the template's `{{UI_BODY}}`
+placeholder. The required emitted shape is the following five `## Section`
+headings in order (the sub-agent must emit each as a `## ` heading; do not
+emit `# ` or `### `):
+
+    ## Visual identity
+    <one-paragraph aesthetic statement, plus a short bullet list of "feels like" reference points>
+
+    ## Color tokens
+    <table or bullet list — token name, hex value, role, optional dark-mode pair>
+
+    ## Typography
+    <bullet list — family, weights, sizes, line-heights, primary use case>
+
+    ## Component patterns
+    <one section per component pattern from interview Q3 — describe layout, primary states, behavior. ≥3 components total.>
+
+    ## Priority screens
+    <one numbered subsection per priority flow from interview Q2 — describe screen layout in prose with explicit reference to which Component patterns it composes. ≥3 screens.>
+
+The sub-agent contract additionally requires: do NOT emit any of the
+antipattern keywords already enumerated in the template's `## Antipatterns
+to avoid` section (gradient-text, glass morphism, backdrop-blur,
+all-purple, emoji-as-decoration, Lorem ipsum, TODO/FIXME, "innovative",
+"seamless", etc.). Gate B4.3 enforces this on the rendered file.
+
+The Step 12 interview only collects user-side input for visual identity (Q1),
+priority flows (Q2), required components (Q3), color preferences (Q4),
+typography preferences (Q5), and project-specific antipatterns (Q6). The
+sub-agent must **synthesize the full content of all five sections from the
+loaded `prd_text` (`## Design direction` and `## Core features`) plus the
+interview answers** — no stub sections like "TBD: fill in colors". If a
+section cannot be synthesized (e.g. user said "no preference" for color and
+no PRD signal exists), the sub-agent must propose a defensible neutral
+default and document the choice in the section's first sentence.
+
+Dispatch to a `plan-implementation` sub-agent via a **single Agent call**
+(preferred: `general-purpose`; fallback: `Plan`). This is one of the three
+Phase B-4 single-dispatch verification locations (the others are Step 8 — ARCH
+and Step 11 — ADR). The role swap from B-3 Finding #3 hot-fix is inherited
+verbatim — the dispatched prompt does not need any extra negative wording
+about `### Critical Files`; `general-purpose` does not exhibit the drift
+that motivated the swap.
+
+Substitute the returned body into the UI_GUIDE template:
+
+    from pathlib import Path
+    from server import write_run_artifact
+
+    template = Path.home() / ".claude/skills/assemble/bundled/plan-pack/templates/UI_GUIDE.md.template"
+    # Pull design direction from PRD §6 — same string the sub-agent received as context
+    design_direction_lines: list[str] = []
+    collecting = False
+    for line in prd_text.splitlines():
+        if line.startswith("## Design direction"):
+            collecting = True
+            continue
+        if collecting:
+            if line.startswith("## "):
+                break
+            design_direction_lines.append(line)
+    design_direction = "\n".join(design_direction_lines).strip() or "(not specified in PRD)"
+
+    filled_ui = (template.read_text()
+        .replace("{{TASK}}", task)
+        .replace("{{DESIGN_DIRECTION}}", design_direction)
+        .replace("{{UI_BODY}}", ui_sub_agent_output.strip()))
+    ui_path = write_run_artifact(rid, "UI_GUIDE.md", filled_ui)
+
+Show `ui_path` to the user, then proceed to Step 9 (4-way cross-doc review).
 
 ### Step 9 — 3-way cross-doc second-opinion (PRD ↔ ARCH ↔ ADR consistency)
 

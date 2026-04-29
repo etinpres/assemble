@@ -361,3 +361,48 @@ def test_workflow_iteration_step_6_no_force():
     step6 = body[body.index("Step 6 —"):]
     # V4 identity rule: "no" must exit cleanly, even after extension
     assert "exits the workflow" in step6[:1000].lower()
+
+
+def test_skill_description_mentions_ui_guide():
+    from server import parse_skill_frontmatter
+    fm = parse_skill_frontmatter(SKILL)
+    desc = (fm.get("description") or "").upper()
+    assert "UI_GUIDE" in desc or "UI GUIDE" in desc, (
+        f"description does not mention UI_GUIDE: {fm.get('description')}"
+    )
+
+
+def test_workflow_step_12_ui_interview():
+    body = _body()
+    assert "Step 12" in body
+    step12 = body[body.index("Step 12"):]
+    assert "AskUserQuestion" in step12[:2000]
+    # Gate B4.1/B4.2 seeds: interview must surface visual identity, components, do/don't.
+    lower = step12[:2000].lower()
+    assert "visual" in lower or "tone" in lower or "aesthetic" in lower
+    assert "component" in lower or "pattern" in lower
+    assert "antipattern" in lower or "avoid" in lower or "don't" in lower or "do not" in lower
+
+
+def test_workflow_step_13_ui_single_dispatch_inherits_plan_fix():
+    body = _body()
+    assert "Step 13" in body
+    step13 = body[body.index("Step 13"):]
+    # Phase B spec §3: B-2 through B-4 are single-dispatch, not parallel
+    assert "single" in step13[:1200].lower()
+    assert "UI_GUIDE.md" in step13[:1200]
+    assert "wrap_with_preamble" in step13[:1200]
+    assert "write_run_artifact" in step13[:1200]
+    # B-3 Finding #3 fix carried into Step 13: general-purpose preferred, Plan fallback.
+    # Locate the role-mapping table and assert the Step 13 row's preferred column is general-purpose.
+    table = body[body.index("## Sub-agent role mapping"):body.index("## Workflow")]
+    # The Step 13 row mentions UI_GUIDE.md draft and uses plan-implementation role.
+    ui_row = [line for line in table.splitlines()
+              if line.startswith("| 13 ") or "UI_GUIDE.md draft" in line]
+    assert ui_row, f"no Step 13 row in role table; table=\n{table}"
+    row_text = " ".join(ui_row).lower()
+    assert "plan-implementation" in row_text
+    # Preferred general-purpose, fallback Plan — same swap as Steps 2/3/8/11
+    assert "general-purpose" in row_text
+    # Plan still appears as the fallback column (case-sensitive `Plan`)
+    assert "`Plan`" in " ".join(ui_row)
