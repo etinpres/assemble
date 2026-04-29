@@ -1,0 +1,22 @@
+# UI Guide: {{TASK}}
+
+> Visual / interaction guide for the UI layer. Generated alongside PRD.md, ARCHITECTURE.md, and ADR.md.
+> The `## Design direction` block below is copied from PRD §6 verbatim and anchors gate B4.2 (cross-doc antipattern audit).
+
+## Design direction (carried from PRD)
+{{DESIGN_DIRECTION}}
+
+## Antipatterns to avoid
+
+The following AI-slop patterns must NOT appear in any UI artifact this guide produces. Step 13's sub-agent contract forbids them; Step 9's cross-doc review re-checks the rendered guide for residue.
+
+- gradient-text headlines (e.g. `bg-gradient-to-r ... bg-clip-text text-transparent`) — overused; signals AI-template aesthetic
+- glass morphism / frosted-panel effects (`backdrop-blur-*`, semi-transparent cards over gradients) — visual noise without information density
+- backdrop-blur layered on gradients as the default surface treatment — inherits all the issues above
+- all-purple or all-violet brand palettes lifted from generic AI starter themes — distinctive only if intentional, default-purple is anti-distinctive
+- meaningless emoji bombing in headings or buttons (✨🚀🎯 used as decoration, not signal) — visual filler
+- residual `Lorem ipsum`, `placeholder`, `Sample text` strings left in shipped UI — unfinished by definition
+- unresolved `TODO: fill in` / `TBD` / `FIXME` markers in copy — same
+- ad-copy clichés: `innovative`, `next-generation`, `cutting-edge`, `seamless`, `revolutionary`, `unleash`, `empower`, `delightful` — drains specificity
+
+{{UI_BODY}}
