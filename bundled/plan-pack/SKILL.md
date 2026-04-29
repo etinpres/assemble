@@ -520,6 +520,16 @@ B-3 categories + three new UI_GUIDE-specific categories):
   scope for an ADR Decision (e.g. accessibility floor, dark-mode support,
   i18n) but is not addressed there is a finding (either an ADR gap or a
   UI assumption that should be promoted to a Decision).
+- **Numerical / unit consistency (cross-doc)**: any numerical constraint
+  that appears in two or more docs (resolution, pixel size, time budget,
+  accuracy threshold, sample count, byte size) MUST use consistent units.
+  Example: PRD `≥1080p` vs ARCH `≤1920px long edge` is inconsistent
+  (resolution standard vs pixel length, even if numerically equivalent
+  in landscape). PRD `30초 SLA` vs ARCH `30s timeout budget` vs ARCH
+  `30000ms watchdog` would each need normalization. Flag as a finding;
+  the resolution lives in whichever doc owns the constraint (typically
+  PRD for user-visible budgets, ARCH for internal budgets). Addresses
+  B-5 dogfood Finding #4 (1080p ↔ 1920px iter1 drift).
 
 Plus any other flaws, inconsistencies, or omissions — never bare agreement.
 
@@ -573,13 +583,13 @@ After Step 9 (4-way cross-doc review), ask the user via `AskUserQuestion`:
 
   > The constraint below applies to every iteration in the loop above, not only the first.
 
-  **Iteration scope discipline** (mandatory constraint on all iteration sub-agent prompts — addresses B-4 dogfood Findings #4 + #5):
+  **Iteration scope discipline** (mandatory constraint on all iteration sub-agent prompts — addresses B-4 Findings #4 + #5 and B-5 Findings #1 + #2):
 
   When constructing the iteration prompts for Steps 2/3, 8, 11, and 13, the orchestrator MUST include this constraint verbatim in every dispatched prompt's `[TASK]` block:
 
-  > Scope discipline: PRD `## Core features` is the authoritative scope. Do not introduce new features, modules, components, screens, or token sets that have no counterpart in the existing PRD `## Core features`. If iteration emphasis suggests a feature not yet in PRD, escalate to the user via the orchestrator instead of silently adding it. Items the ADR has explicitly deferred (e.g. via a `> **Future ADRs**` blockquote) MUST NOT be pre-emptively decided in this iteration's ARCH/ADR/UI_GUIDE re-drafts.
+  > Scope discipline: PRD `## Core features` is the authoritative scope. Do not introduce new features, modules, components, screens, or token sets that have no counterpart in the existing PRD `## Core features`. If iteration emphasis suggests a feature not yet in PRD, escalate to the user via the orchestrator instead of silently adding it. Items the ADR has explicitly deferred (e.g. via a `> **Future ADRs**` blockquote) MUST NOT be pre-emptively decided in this iteration's ARCH/ADR/UI_GUIDE re-drafts. Existing sections that are not the explicit target of the iteration emphasis MUST be returned verbatim — do not reword Reasoning/Tradeoffs/Rejected-alternatives blocks just because you are re-emitting the document. Pre-existing identifiers (variable names, token names, module names, component names) MUST NOT be renamed unless the rename IS the requested change; maintain identifier continuity across iterations.
 
-  This guard exists because B-4 dogfood iteration introduced two scope-creep findings: UI_GUIDE iter1 added dark-mode token pairs that ADR explicitly deferred, and ARCH iter1 added `edit`/`toggleAll` actions without a PRD signal which UI_GUIDE then composed Screen C around. Both exited unresolved at the 1-iteration cap.
+  This guard combines two guards. **B-4 origin (scope-creep)**: UI_GUIDE iter1 added dark-mode token pairs that ADR explicitly deferred, and ARCH iter1 added `edit`/`toggleAll` actions without a PRD signal which UI_GUIDE then composed Screen C around. **B-5 origin (cosmetic drift)**: iter1 ADR sub-agent reworded the Reasoning/Tradeoffs prose in Decisions 1–3 despite explicit "preserve verbatim" instructions, and iter1 UI_GUIDE renamed pre-existing color tokens (`--color-text-primary` → `--color-text`) without a request — both are cosmetic edits the sub-agent volunteered, not contract violations on PRD scope, but they break trace-byte stability across iterations. The verbatim+no-rename clauses close that latitude.
 
   **Orchestrator enforcement (concrete steps):**
   1. After a sub-agent returns its iteration re-draft (a string), the orchestrator scans the return for feature/module/component/screen/token names.

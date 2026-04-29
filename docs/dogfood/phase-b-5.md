@@ -140,7 +140,9 @@ The cap-1 forcing function that B-2/B-3/B-4 had no defense against is gone. In B
 
 ## Findings — wording/spec issues exposed by dogfood
 
-These are issues this dogfood discovered. Tracked here as Phase B-5+ post-tuning candidates.
+These are issues this dogfood discovered.
+
+> **Status update (post-merge):** Findings #1, #2, #4 addressed in `v4-b5-findings` branch (multi-iteration scope discipline now includes verbatim-preservation + no-rename clauses; Step 9 cross-doc review now includes a unit-consistency category). Each is locked in via `tests/contracts/contracts.json` entries `B-5-finding1-*`, `B-5-finding2-*`, `B-5-finding4-*`. Finding #3 is domain-level (Screen C timeout semantics for the receipt OCR product) and not actionable as a SKILL.md fix — surfaces a real iteration-2 design question rather than a workflow contract gap.
 
 ### #1 — Iter1 ADR sub-agent rewrote Decisions 1-3 instead of preserving verbatim
 

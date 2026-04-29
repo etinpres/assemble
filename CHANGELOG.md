@@ -5,7 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F)
+## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4)
+
+### Changed (B-5 Findings #1 #2 #4)
+- `bundled/plan-pack/SKILL.md` Step 6 iteration scope discipline block: extended the verbatim constraint with two new clauses — (a) "Existing sections that are not the explicit target of the iteration emphasis MUST be returned verbatim — do not reword Reasoning/Tradeoffs/Rejected-alternatives blocks just because you are re-emitting the document" closes Finding #1 (iter1 ADR reworded Decisions 1-3); (b) "Pre-existing identifiers (variable names, token names, module names, component names) MUST NOT be renamed unless the rename IS the requested change; maintain identifier continuity across iterations" closes Finding #2 (iter1 UI_GUIDE renamed `--color-text-primary` → `--color-text` without a request). The B-4 origin paragraph below the constraint was rewritten to summarize both B-4 (scope-creep) and B-5 (cosmetic drift) origins.
+- `bundled/plan-pack/SKILL.md` Step 9 cross-doc review prompt: added a 7th finding category — "Numerical / unit consistency (cross-doc)" — with PRD `≥1080p` vs ARCH `≤1920px long edge` as the canonical example. Closes Finding #4 (iter1 ARCH-PRD unit drift).
+
+### Added (B-5 Findings)
+- `tests/contracts/contracts.json` gains 3 entries: `B-5-finding1-verbatim-preservation`, `B-5-finding2-no-rename`, `B-5-finding4-unit-consistency`. Locks the new clauses against future drift (Item D meta-test catches removal).
+- `docs/dogfood/phase-b-5.md` § Findings: status note marking #1, #2, #4 as addressed in this branch. #3 remains open as a domain-level (not workflow-contract) iter-2 design question.
+
+### Notes (B-5 Findings)
+- Test count: 166 passed (163 + 3 new contracts meta).
+- Diff scope: bundled/plan-pack/SKILL.md + tests/contracts/contracts.json + docs/dogfood/phase-b-5.md + CHANGELOG.md. Server infrastructure unchanged.
 
 ### Added (Hygiene Pass — Items E + F)
 - `docs/contributing/dogfood-gate-patterns.md` — codifies the line-anchored placeholder-token regex pattern (`^TBD$|^TODO$|^미정$`) as the canonical form for future dogfood gates, replacing the word-boundary form (`\bTBD\b|\bTODO\b|미정`) that produced B-3 Finding #1's false positive on narrative prose. Past phase-*.md files left as historical records (Item F).
