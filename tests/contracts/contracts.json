@@ -56,6 +56,20 @@
       "spec_path": "bundled/plan-pack/SKILL.md",
       "section": "### Step 9",
       "tag": "B-5 Finding #4 — Step 9 cross-doc review unit consistency category"
+    },
+    {
+      "id": "B-5-B7-dispatches-jsonl-required",
+      "phrase": "the orchestrator MUST also call `record_dispatch` to\nappend a hash-only record to `runs/<rid>/dispatches.jsonl`",
+      "spec_path": "bundled/plan-pack/SKILL.md",
+      "section": "### Step 2",
+      "tag": "B-5 Item B-7 — record_dispatch mandatory contract (replayable B5.7 evidence)"
+    },
+    {
+      "id": "B-5-B7-verify-dispatches",
+      "phrase": "gate B5.7 verifies via `verify_dispatches(rid)` reading the\nJSONL",
+      "spec_path": "bundled/plan-pack/SKILL.md",
+      "section": "### Step 2",
+      "tag": "B-5 Item B-7 — verify_dispatches reads JSONL (replayable, not narration)"
     }
   ]
 }

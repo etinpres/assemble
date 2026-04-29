@@ -121,6 +121,28 @@ preamble bytes, verified at dogfood time via gate B5.7.
 
 > The orchestrator may dispatch a sub-agent prompt either by (a) calling `wrap_with_preamble(prompt)` and passing the result, or (b) inlining the preamble block literally as the prompt prefix. Both forms are acceptable. The contract is byte-identity: every dispatched prompt's preamble block, when isolated and hashed, MUST match the sha256 of `bundled/_shared/harness-preamble.md`. Drift in either direction (rewording, missing newline, added text) is a contract violation. Dogfood gate B5.7 verifies this.
 
+##### Replayable on-disk evidence (`runs/<rid>/dispatches.jsonl`)
+
+After every dispatch, the orchestrator MUST also call `record_dispatch` to
+append a hash-only record to `runs/<rid>/dispatches.jsonl`. This converts
+the byte-identity contract from orchestrator self-report into a replayable
+disk audit — gate B5.7 verifies via `verify_dispatches(rid)` reading the
+JSONL, not by trusting orchestrator narration.
+
+```python
+from server.harness import wrap_with_preamble, record_dispatch
+wrapped = wrap_with_preamble(raw_prompt)
+record_dispatch(rid, "step6.iter2.PRD", wrapped,
+                subagent_type="general-purpose",
+                description="iter2 PRD re-draft")
+# then dispatch via Agent(prompt=wrapped, ...)
+```
+
+The recorded payload is hashes only (no full prompt text), so
+`dispatches.jsonl` is privacy-safe and compact: `{ts, step, subagent_type,
+description, preamble_sha256, preamble_bytes, body_sha256, body_bytes}`.
+Audit constant lives at `server.harness.canonical_preamble_sha256()`.
+
 Then **fire both in a single message with two Agent calls** (true parallel
 dispatch — this is the Phase B-1 parallel-dispatch verification location
 *a*):
