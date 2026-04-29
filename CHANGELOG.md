@@ -5,7 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D)
+## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F)
+
+### Added (Hygiene Pass — Items E + F)
+- `docs/contributing/dogfood-gate-patterns.md` — codifies the line-anchored placeholder-token regex pattern (`^TBD$|^TODO$|^미정$`) as the canonical form for future dogfood gates, replacing the word-boundary form (`\bTBD\b|\bTODO\b|미정`) that produced B-3 Finding #1's false positive on narrative prose. Past phase-*.md files left as historical records (Item F).
+
+### Changed (Hygiene Pass — Items E + F)
+- `bundled/plan-pack/SKILL.md` ambiguity audit (Item E). Four HIGH ambiguities surfaced by `superpowers:code-reviewer` and resolved:
+  - Workflow §"Execution sequence" callout added at top — explicit `0 → 1 → (2 + 3) → 4 → 5 → 7 → 8 → 10 → 11 → 12 → 13 → 9 → 6` sequence with a one-line "step numbers reflect historical addition order, not execution order" note. Closes the HIGH-4 ambiguity (orchestrator could read step numbers and run 6→7→8 in numeric order).
+  - Step 9 cross-doc append snippet: branched the heading on `iteration_count` (bare for first-pass, suffixed for iterations); added a precondition assert that the heading isn't already present in `current` (catches HIGH-2 — Step 11 overwrite failure that would silently produce duplicate same-named sections). Note expanded to cover B-5 multi-iteration cap=7 instead of B-4 cap=1.
+  - Step 6 iteration write order step 7: "discard the old `## Cross-doc review` section" replaced with explicit "overwrite from scratch — re-run template fill, do NOT read existing file first" wording. Closes HIGH-1 (B-4 Task 6 incident class — "replace" misread as "add alongside").
+  - Step 6 iteration scope discipline enforcement: replaced the prose paragraph with a 6-step concrete enforcement procedure (scan → check PRD anchor → strip section → record stripped_items → conditionally append audit-header line). Closes HIGH-3 ("strip it" was ambiguous about what artifact, where to record).
+
+### Notes (Hygiene Pass)
+- Phase B-5 closed Items A + B (multi-iteration + parallel/byte-identity); Quality Pass closed Items C + D (test pattern + spec/test drift CI); this Hygiene Pass closes Items E + F. The full distribution-prep checklist from `project_assemble_v4_phase_b_posttuning.md` is now drained.
+- Test count: 163 passed (Quality Pass baseline). No new tests; this pass is documentation/clarity changes.
+- Diff scope: bundled/plan-pack/SKILL.md + docs/contributing/dogfood-gate-patterns.md + CHANGELOG.md. Server infrastructure (gate B5.4) unchanged.
 
 ### Added (Quality Pass — Items C + D)
 - `tests/contracts/contracts.json` — verbatim contract registry. Initial entries cover the 5 B-5 contracts (stop condition, iteration state, scope discipline preserved, platform-limit citation, preamble byte-identity). Contributors register new contracts here as new verbatim spec blocks ship (Item D).

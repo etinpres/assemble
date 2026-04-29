@@ -64,6 +64,14 @@ Steps 8, 11, and 13 are *single dispatch each* — B-2 through B-4 use single di
 
 > NOTE — Phase B-4: steps 1–13 implemented. Steps 1–11 unchanged from Phase B-3; step 6 extended to cover UI_GUIDE; step 9 extended to 4-way cross-doc review (with antipattern audit); steps 12 and 13 are new.
 
+> **Execution sequence (canonical — do not infer from step numbers):**
+>
+> ```
+> 0 → 1 → (2 + 3 in parallel) → 4 → 5 → 7 → 8 → 10 → 11 → 12 → 13 → 9 → 6
+> ```
+>
+> Step numbers reflect *historical addition order*, not execution order. Steps 7–13 are run in the sequence shown above (ARCH interview → ARCH dispatch → ADR interview → ADR dispatch → UI interview → UI dispatch). Step 9 (cross-doc review) runs *after* all four docs are written. Step 6 (iteration loop) is the final step. Do NOT run steps in numeric order.
+
 ### Step 0 — resolve run_dir
 
 Read `<rid>` from the active assemble run. The artifact lives at
@@ -527,10 +535,21 @@ on ADR, and that is where reviewers will look first):
     from server import read_run_artifact, write_run_artifact
     current = read_run_artifact(rid, "ADR.md") or ""
     audit_header = f"> 4-way cross-doc verified on {date.today().isoformat()} — {n_kept} kept / {n_dropped} dropped"
-    updated = current + "\n\n## Cross-doc review\n\n" + audit_header + "\n\n" + bullets
+    # First-pass uses bare heading; iterations use suffixed heading.
+    # `iteration_count` is 0 for first-pass, 1+ for iterations (read from
+    # runs/<rid>/iteration_state.json — see Step 6 multi-iteration loop).
+    heading = "## Cross-doc review" if iteration_count == 0 else f"## Cross-doc review (iteration {iteration_count})"
+    # Precondition: the chosen heading must not already exist in `current`.
+    # If it does, Step 11 (continued) failed to overwrite cleanly — abort
+    # rather than create a duplicate section.
+    assert heading not in current, (
+        f"contract violation: heading {heading!r} already in ADR.md; "
+        "Step 11 should have overwritten the file from scratch (see Step 6 step 7)"
+    )
+    updated = current + "\n\n" + heading + "\n\n" + audit_header + "\n\n" + bullets
     write_run_artifact(rid, "ADR.md", updated)
 
-> Note: when running on the iteration yes-path (Step 6), use header `## Cross-doc review (iteration N)` instead of bare `## Cross-doc review`, where N is the current iteration count (Phase B-4 caps at N=1). The first-pass review uses no suffix.
+> Note on heading semantics: first-pass (`iteration_count == 0`) uses bare `## Cross-doc review`. Each iteration appends a NEW section with suffix `(iteration N)`. Phase B-5 multi-iteration loop runs up to 7 iterations, so ADR.md may end up with `## Cross-doc review`, `## Cross-doc review (iteration 1)`, `## Cross-doc review (iteration 2)`, … each fresh. The assert above guards against duplicate same-named sections (which would signal Step 11's overwrite failed).
 
 Then proceed to Step 6 (iteration prompt).
 
@@ -560,7 +579,16 @@ After Step 9 (4-way cross-doc review), ask the user via `AskUserQuestion`:
 
   > Scope discipline: PRD `## Core features` is the authoritative scope. Do not introduce new features, modules, components, screens, or token sets that have no counterpart in the existing PRD `## Core features`. If iteration emphasis suggests a feature not yet in PRD, escalate to the user via the orchestrator instead of silently adding it. Items the ADR has explicitly deferred (e.g. via a `> **Future ADRs**` blockquote) MUST NOT be pre-emptively decided in this iteration's ARCH/ADR/UI_GUIDE re-drafts.
 
-  This guard exists because B-4 dogfood iteration introduced two scope-creep findings: UI_GUIDE iter1 added dark-mode token pairs that ADR explicitly deferred, and ARCH iter1 added `edit`/`toggleAll` actions without a PRD signal which UI_GUIDE then composed Screen C around. Both exited unresolved at the 1-iteration cap. The orchestrator owns enforcement: if a sub-agent's iteration return contains a feature/module/screen with no PRD anchor, strip it before substituting into the template, and surface the strip in the audit header on ADR.md's iteration cross-doc review section ("scope-discipline: N items stripped — <one-line summaries>").
+  This guard exists because B-4 dogfood iteration introduced two scope-creep findings: UI_GUIDE iter1 added dark-mode token pairs that ADR explicitly deferred, and ARCH iter1 added `edit`/`toggleAll` actions without a PRD signal which UI_GUIDE then composed Screen C around. Both exited unresolved at the 1-iteration cap.
+
+  **Orchestrator enforcement (concrete steps):**
+  1. After a sub-agent returns its iteration re-draft (a string), the orchestrator scans the return for feature/module/component/screen/token names.
+  2. For each name found, check whether it has a PRD anchor (i.e. appears verbatim in PRD `## Core features`, or is a direct elaboration of one of those features).
+  3. If the name has NO PRD anchor: delete the corresponding section/block from the returned string before passing it to the template-fill step. Do NOT write the unstripped return to disk.
+  4. Record stripped item names in a local `stripped_items: list[str]` (orchestrator-side, in-memory for this run).
+  5. When Step 9 (continued) constructs the audit header (the `> 4-way cross-doc verified on {date} — {n_kept} kept / {n_dropped} dropped` line), append a second blockquote line *only if* `stripped_items` is non-empty:
+     `> scope-discipline: {len(stripped_items)} items stripped — {', '.join(stripped_items)}`
+  6. If `stripped_items` is empty, omit the second line entirely (no need to broadcast a no-op).
 
   **Iteration write order** (explicit — do not improvise):
   1. Run Steps 2+3 in parallel (single message, two Agent calls): PRD body
@@ -587,8 +615,12 @@ After Step 9 (4-way cross-doc review), ask the user via `AskUserQuestion`:
      sections. (Cross-doc review lives on ADR.md only — no leftover to
      discard here.)
   7. **Step 11 (continued) overwrites `ADR.md`** with the new decisions
-     block — discard the old `## Cross-doc review` section here; Step 9
-     will regenerate it.
+     block. Overwrite from scratch — re-run the Step 11 template fill
+     (template + new decisions block + `{{TASK}}`) and `write_run_artifact`
+     the result. Do NOT read the existing `ADR.md` first; the file is
+     rewritten in full so the prior `## Cross-doc review` section
+     vanishes naturally. Step 9 (continued) re-introduces a fresh
+     `## Cross-doc review (iteration N)` section in step 10 below.
   8. **Step 13 (continued) overwrites `UI_GUIDE.md`** with the new
      sections.
   9. Run Step 9 again on the refreshed quadruple
