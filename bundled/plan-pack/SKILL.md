@@ -546,6 +546,14 @@ After Step 9 (4-way cross-doc review), ask the user via `AskUserQuestion`:
   the ARCH?", "what feels off in the ADR?", "what feels off in the
   UI_GUIDE?").
 
+  **Iteration scope discipline** (mandatory constraint on all iteration sub-agent prompts — addresses B-4 dogfood Findings #4 + #5):
+
+  When constructing the iteration prompts for Steps 2/3, 8, 11, and 13, the orchestrator MUST include this constraint verbatim in every dispatched prompt's `[TASK]` block:
+
+  > Scope discipline: PRD `## Core features` is the authoritative scope. Do not introduce new features, modules, components, screens, or token sets that have no counterpart in the existing PRD `## Core features`. If iteration emphasis suggests a feature not yet in PRD, escalate to the user via the orchestrator instead of silently adding it. Items the ADR has explicitly deferred (e.g. via a `> **Future ADRs**` blockquote) MUST NOT be pre-emptively decided in this iteration's ARCH/ADR/UI_GUIDE re-drafts.
+
+  This guard exists because B-4 dogfood iteration introduced two scope-creep findings: UI_GUIDE iter1 added dark-mode token pairs that ADR explicitly deferred, and ARCH iter1 added `edit`/`toggleAll` actions without a PRD signal which UI_GUIDE then composed Screen C around. Both exited unresolved at the 1-iteration cap. The orchestrator owns enforcement: if a sub-agent's iteration return contains a feature/module/screen with no PRD anchor, strip it before substituting into the template, and surface the strip in the audit header on ADR.md's iteration cross-doc review section ("scope-discipline: N items stripped — <one-line summaries>").
+
   **Iteration write order** (explicit — do not improvise):
   1. Run Steps 2+3 in parallel (single message, two Agent calls): PRD body
      re-draft + AC bash re-draft.

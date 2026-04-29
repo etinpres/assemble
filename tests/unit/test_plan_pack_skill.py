@@ -351,8 +351,9 @@ def test_workflow_iteration_write_order_explicit_adr():
     step6 = body[body.index("Step 6 —"):]
     # Finding #3 from B-2: iteration write order must be explicit, not implicit.
     # Look for an enumerated step list mentioning ADR overwrite.
-    assert "Iteration write order" in step6[:2000]
-    overwrite_block = step6[:2500].lower()
+    # Window widened post-B-4 scope-discipline insertion (B-4 dogfood Findings #4+#5 fix-up).
+    assert "Iteration write order" in step6[:5000]
+    overwrite_block = step6[:5500].lower()
     assert "overwrite" in overwrite_block
     assert "adr.md" in overwrite_block
 
@@ -447,8 +448,9 @@ def test_workflow_iteration_write_order_explicit_ui_guide():
     # Finding #3 from B-2 (carried into B-3, B-4): iteration write order must
     # be explicit, not implicit. Look for an enumerated step list mentioning
     # UI_GUIDE overwrite.
-    assert "Iteration write order" in step6[:2500]
-    overwrite_block = step6[:3000].lower()
+    # Window widened post-B-4 scope-discipline insertion (B-4 dogfood Findings #4+#5 fix-up).
+    assert "Iteration write order" in step6[:5000]
+    overwrite_block = step6[:5500].lower()
     assert "overwrite" in overwrite_block
     assert "ui_guide.md" in overwrite_block
 
@@ -461,3 +463,33 @@ def test_workflow_iteration_step_6_quad_prompt_no_force():
     assert ("no exits" in lower or "no →" in step6[:1200] or "no — done" in lower)
     # The yes-path option label must reflect the 4-doc surface
     assert ("all four" in lower or "four" in lower or "ui_guide" in lower)
+
+
+def test_workflow_iteration_scope_discipline():
+    """B-4 dogfood Findings #4 + #5 fix — iteration must constrain
+    sub-agents from introducing features/modules/screens not in PRD.
+
+    Repro: B-4 iter1 surfaced UI_GUIDE adding dark-mode tokens (deferred
+    in ADR) and ARCH adding `edit`/`toggleAll` actions without PRD signal,
+    which UI_GUIDE then composed Screen C around. Both exited unresolved
+    at the 1-iteration cap. The fix is a documented "scope discipline"
+    constraint in Step 6 yes-path that the orchestrator must apply when
+    constructing iteration sub-agent prompts.
+    """
+    body = _body()
+    step6 = body[body.index("Step 6 —"):]
+    # Step 6 must document scope discipline for iteration
+    lower = step6[:4000].lower()
+    assert ("scope discipline" in lower or "scope creep" in lower), (
+        "Step 6 missing 'scope discipline' / 'scope creep' wording — "
+        "B-4 dogfood Findings #4 + #5 fix not applied"
+    )
+    # PRD must be named as the scope authority (since drift was that
+    # ARCH/UI_GUIDE iter1 added features without PRD signal)
+    assert "prd" in lower, "scope discipline must reference PRD as authority"
+    # Must explicitly forbid introducing new features in iteration
+    assert ("do not introduce" in lower
+            or "must not introduce" in lower
+            or "must not add" in lower), (
+        "scope discipline must explicitly forbid introducing new features"
+    )
