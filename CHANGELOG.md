@@ -5,7 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4
+## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5
+
+### Added (Phase B-5)
+- `server/inventory.py` honors `ASSEMBLE_BUNDLED_ONLY=1`: when the env flag is set, `scan()` filters enumeration results down to entries under the assemble bundled root and returns the in-memory rebuild without persisting to cache. Lets blank-Mac dogfood gates simulate a fresh user with no installed skills without nuking `~/.claude/skills/` (Phase B-5 distribution prep).
+- plan-pack Step 6 multi-iteration loop with stop conditions: replaces the B-4 1-iteration cap with `RESOLVED ≥ 80% AND NEW ≤ 0` × 2 consecutive iterations (cap=7). Per-run state persists at `runs/<rid>/iteration_state.json` with three termination paths (`stop-condition-met`, `cap-reached`, `user-requested-stop`). Iteration scope discipline block (`33b3056`) preserved verbatim and now applies to every iteration in the loop, not only the first (Phase B-5 Item A).
+- `docs/research/2026-04-29-platform-limit.md` — empirical platform-limit experiment. T2/T3/T4/T5 trials (single-message dispatch of 2/3/4/5 `general-purpose` Agent calls) all returned without reject / rate-limit / silent-degrade. Documents the 5-way dispatch headroom and the decision branches it forced in B-5 (Phase B-5 Item B prep).
+- plan-pack Steps 2/3 + Step 6 step 4 caveat tightening: cite the platform-limit research; restrict sequential fallback to documented input dependency or retry-after only. The orchestrator's "Agent-call budget caution" no longer counts as sufficient grounds (Phase B-5 Item B-1).
+- plan-pack Steps 2/3 preamble byte-identity contract: orchestrator may call `wrap_with_preamble` OR inline the literal preamble; the contract is byte-identity (sha256 match against `bundled/_shared/harness-preamble.md`). Decouples function-call discipline (B-2 dogfood evidence: /tmp roundtrip awkwardness drove orchestrator to bypass) from byte-identity guarantee. Verified at dogfood time via gate B5.7 (Phase B-5 Item B-2).
+- `docs/plans/2026-04-30-v4-phase-b-5.md` — Phase B-5 implementation plan (5 tasks; Task 5 = review-before-merge gate, standard pattern).
+- `docs/dogfood/phase-b-5.md` — Phase B-5 dogfood result + gate B5.1–B5.7 evidence + pre-merge code-reviewer findings (run `20260429-135600-3b6d`).
+
+### Notes (Phase B-5)
+- B-5 dogfood verified 4-way parallel dispatch is platform-supported (5-way headroom from research doc) and exercised the multi-iteration loop's user-override termination path. B-3/B-4 sequential-fallback was orchestrator caution, not platform constraint.
+- Recurrence pattern: B-2 (4 prior CRITICALs / 1 NEW), B-3 (9/10 / 1 NEW), B-4 (12/12 / 2 NEW), B-5 (5/5 / 3 NEW). The 1-iteration cap-1 forcing function that B-2/B-3/B-4 had no defense against is gone. iter1 in B-5 could have continued; user chose to stop.
+- 4 dogfood findings captured (#1 iter1 ADR sub-agent reworded Decisions 1-3 despite verbatim instruction → iteration prompts need structural verbatim contract; #2 token rename drift; #3 Screen C Processing missing timeout/fallback semantics; #4 ARCH-PRD unit drift). All Phase B-5+ post-tuning candidates.
+- Pre-merge review (`superpowers:code-reviewer`) verdict: READY. AC1-AC10 all PASS. 2 IMPORTANT findings (preamble byte count typo, B5.7 evidence quality) addressed in fix-up commit before merge.
+- Phase B closure: B-5 closes the 4-doc plan-pack distribution prep checklist for Items A + B (multi-iteration + parallel/byte-identity). Items C/D/E/F remain queued for post-B-5 quality + hygiene passes per ledger `project_assemble_v4_phase_b_posttuning.md`.
 
 ### Added
 - `bundled/plan-pack/templates/UI_GUIDE.md.template` — UI guide shape with `{{TASK}}` + `{{DESIGN_DIRECTION}}` + `{{UI_BODY}}` placeholders; design direction carried in from PRD §6 to anchor the cross-doc antipattern audit; ships an `## Antipatterns to avoid` section with 8 canonical AI-slop bullets (gradient-text, glass morphism, backdrop-blur, all-purple palettes, emoji-as-decoration, Lorem ipsum / placeholder, TODO / FIXME, ad-copy clichés like "innovative" / "next-generation") (Phase B-4).
