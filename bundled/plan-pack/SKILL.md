@@ -11,11 +11,11 @@ description: Plan stage ★ bundle — produce PRD + ARCH + ADR + UI_GUIDE with 
 
 # plan-pack — PRD + ARCH + ADR + UI_GUIDE generator (Phase B-4)
 
-This bundle is **orchestrator-only**. The main Claude does not write PRD or
-ARCHITECTURE content directly — it asks the user, dispatches sub-agents
-wrapped via `server.harness.wrap_with_preamble`, then writes the combined
-results to `<run_dir>/PRD.md` and `<run_dir>/ARCHITECTURE.md` via
-`server.run_dir.write_run_artifact`.
+This bundle is **orchestrator-only**. The main Claude does not write PRD,
+ARCHITECTURE, ADR, or UI_GUIDE content directly — it asks the user,
+dispatches sub-agents wrapped via `server.harness.wrap_with_preamble`,
+then writes the combined results to `<run_dir>/{PRD,ARCHITECTURE,ADR,UI_GUIDE}.md`
+via `server.run_dir.write_run_artifact`.
 
 ## Artifact
 
@@ -191,7 +191,7 @@ The function returns the absolute path; show that path to the user.
 
 ### Step 7 — ARCH interview (main Claude, AskUserQuestion)
 
-> Execution order: Steps 7–8–10–11–9 run after Step 5 writes PRD.md; Step 6 (iteration) is the final workflow step.
+> Execution order: Steps 7–8–10–11–12–13–9 run after Step 5 writes PRD.md; Step 6 (iteration) is the final workflow step.
 
 After Step 5 writes `PRD.md`, collect architecture context. Ask 6 questions
 across **two `AskUserQuestion` calls of 3 questions each** (within the
