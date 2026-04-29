@@ -142,7 +142,7 @@ The cap-1 forcing function that B-2/B-3/B-4 had no defense against is gone. In B
 
 These are issues this dogfood discovered.
 
-> **Status update (post-merge):** Findings #1, #2, #4 addressed in `v4-b5-findings` branch (multi-iteration scope discipline now includes verbatim-preservation + no-rename clauses; Step 9 cross-doc review now includes a unit-consistency category). Each is locked in via `tests/contracts/contracts.json` entries `B-5-finding1-*`, `B-5-finding2-*`, `B-5-finding4-*`. Finding #3 is domain-level (Screen C timeout semantics for the receipt OCR product) and not actionable as a SKILL.md fix — surfaces a real iteration-2 design question rather than a workflow contract gap.
+> **Status update (post-merge):** Findings #1, #2, #4 addressed in `v4-b5-findings` branch (multi-iteration scope discipline now includes verbatim-preservation + no-rename clauses; Step 9 cross-doc review now includes a unit-consistency category). Each is locked in via `tests/contracts/contracts.json` entries `B-5-finding1-*`, `B-5-finding2-*`, `B-5-finding4-*`. Finding #3 closed in `v4-b5-iter3-supplemental` branch via post-merge supplemental iter2 + iter3 run on `runs/20260429-135600-3b6d/` — see § "Supplemental run: iter2 + iter3 (Finding #3 closure + B5.7 evidence backfill)" below for the detailed cycle.
 
 ### #1 — Iter1 ADR sub-agent rewrote Decisions 1-3 instead of preserving verbatim
 
@@ -172,7 +172,7 @@ These are issues this dogfood discovered.
 
 **Verdict.** Expected pattern — iteration resolves prior findings AND surfaces adjacent design questions. This is exactly what the multi-iteration loop is designed to handle. iter2/iter3 would address this.
 
-**Fix candidate.** No action needed in B-5. The iter1 finding rolls into the post-tuning track (as it would have under B-4's cap=1 too — the difference is now the loop CAN continue, just chose not to here).
+**Fix candidate.** ~~No action needed in B-5.~~ **CLOSED post-merge** via supplemental iter2 + iter3 run on the same run dir. iter2 added UI_GUIDE Screen D (failed/timeout fallback) + ADR Decision 5 (30초 timeout policy) + Screen C bullet update directing 30초 초과 → Screen D transition. iter3 confirmation pass verified no new findings. See § "Supplemental run: iter2 + iter3" below for the full cycle.
 
 ### #4 — Iter1 ARCH-PRD unit drift (1080p resolution vs 1920px pixel length)
 
@@ -191,6 +191,51 @@ Phase B-5 dogfood **passes** end-to-end — all 7 phase-specific gates (B5.1-B5.
 4 dogfood findings captured (#1 verbatim-preservation, #2 token rename drift, #3 Screen C timeout gap, #4 unit drift) — none blocking; all candidates for Phase B-5+ post-tuning quality pass.
 
 The 3 NEW findings exit unresolved at user-requested-stop. Under the new loop they could continue iterating to attempt resolution; user chose not to. This is exactly what the loop spec contracted — termination is data-driven (user agency / stop condition / cap), not hardcoded to 1 iteration.
+
+## Supplemental run: iter2 + iter3 (Finding #3 closure + B5.7 evidence backfill)
+
+Executed post-merge on the same run dir `runs/20260429-135600-3b6d/`, branch `v4-b5-iter3-supplemental`. Trigger: B-5 dogfood Finding #3 (Screen C 30초 timeout/fallback) was domain-level and the original iter1 stopped at user-requested-stop, leaving the `stop-condition-met` and `cap-reached` termination paths unexercised on disk. Running iter2 to close Finding #3 + iter3 to confirm gives B5.7 a second replayable evidence path.
+
+### Cycle summary
+
+| Iter | RESOLVED | UNRESOLVED | NEW | RESOLVED_PCT | Stop condition? | Termination |
+|---|---|---|---|---|---|---|
+| 0 (first-pass) | 0 | 0 | 5 | 0% | — | continue |
+| 1 (iter1) | 5 | 0 | 3 | 62.5% | NO (NEW≥1) | user-requested-stop (original) |
+| 2 (iter2 supplemental) | 3 | 0 | 0 | 100% | YES (1st time) | continue (need 2 consecutive) |
+| 3 (iter3 supplemental) | 0 | 0 | 0 | vacuous | YES (2nd consecutive) | **stop-condition-met** ✓ |
+
+### iter2 — closure of iter1 NEW (Finding #3 anchor)
+
+iter1 NEW findings → iter2 actions (4-way sub-agent dispatch on PRD/ARCH/UI_GUIDE/ADR):
+
+- **N1 (Finding #3, IMPORTANT [PRD↔UI_GUIDE]):** Screen C 30초 SLA 타임아웃/fallback 미정의 → **RESOLVED**. UI_GUIDE Screen C 마지막 bullet에 "30초 초과 시 Screen D로 전환" 추가, 신규 Screen D — Failed (OCR 실패/타임아웃) 정의 (안내 텍스트 + UploadZone 재노출 + 톤다운 — 레드 액센트 미사용), ADR Decision 5 신설 (30초 timeout policy 박음 + 자동 재시도/진행률 바/부분 결과 폴백/timeout 한계 완화 4개 reject alternative 명시).
+- **N2 (Finding #4, NIT [ARCH↔PRD]):** 1080p vs 1920px 단위 불일치 → **RESOLVED**. PRD Goal "(긴 변 ≥1920px, ≈1080p)"로 ARCH "≤1920px 긴 변" 단위와 정렬.
+- **N3 (Finding #2, NIT [UI_GUIDE↔자체]):** Token 이름 변경 마이그레이션 노트 부재 → **RESOLVED**. UI_GUIDE Color tokens 섹션 끝에 1단락 migration note 추가 (`--color-text-primary` → `--color-text` / `--color-text-secondary` → `--color-text-muted` / `--color-accent-pressed`는 `filter: brightness(0.85)`로 통합).
+
+iter2 Step 9 cross-doc review: NEW=0 across 7 categories. Stop condition first-pass satisfied.
+
+### iter3 — confirmation pass
+
+Per spec contract "two consecutive iterations both satisfy `RESOLVED ≥ 80% AND NEW ≤ 0`", iter3 ran as confirmation. iter2 introduced no new findings → iter3 sub-agents had nothing to address → 4-way verbatim re-output (PRD/ARCH/UI_GUIDE byte-identical to iter2; ADR with surgical heading bump 1–2 → 1–3 + iter3 supplemental block).
+
+iter3 Step 9 cross-doc review: NEW=0 confirmed. **two_consecutive_satisfied=true. Termination: `stop-condition-met`.**
+
+### Honest dispatch trace caveat
+
+- **iter2 dispatch was split** — orchestrator sent PRD as a solo Agent call first, then ARCH+UI_GUIDE+ADR as a 3-way single-message dispatch. This was an orchestrator implementation lapse, **not a platform limit**. The platform supports ≥5-way per `docs/research/2026-04-29-platform-limit.md`.
+- **iter3 dispatch was clean 4-way** — single message, 4 `Agent` tool_use blocks, all parallel. True B5.1-style evidence.
+- **Preamble byte-identity (B5.7)** — every iter2/iter3 sub-agent prompt + cross-doc review prompt began with the canonical 256-byte preamble (sha256 `858e9ff1cdc05ca73bb4009aab3acfc841169b30873d2fb00f2dfd546b86e159`). Verification is orchestrator self-report (no `runs/<rid>/dispatches.jsonl` server hook yet — that remains a B5.7 future item).
+
+### What this supplemental run added to B5.7 evidence
+
+The original B-5 dogfood § "Trace excerpts — gate B5.6" exercised the `user-requested-stop` termination path on disk. The other two paths (`stop-condition-met`, `cap-reached`) were declared exercisable by the same loop body but lacked replayable on-disk artifacts. This supplemental run closes that for `stop-condition-met`:
+
+- `iteration_state.json` now records all 4 iteration entries (first-pass + iter1 + iter2 + iter3) with the full set of `reason` values: `first-pass-complete-continue-to-iter-1`, `user-requested-stop`, `stop-condition-first-pass-satisfied`, `stop-condition-met`.
+- `termination.reason` rewritten from `user-requested-stop` to `stop-condition-met`, `iteration_at_stop=3`, `stop_condition_satisfied_consecutively=2`.
+- `supplemental_run_metadata` block records the dispatch split (iter2) and dispatch form (iter3), preamble sha256 for both, and `started_after_master_commit`.
+
+`cap-reached` remains the one termination path with no on-disk replayable evidence. Closing it would require running 7 iterations without stop condition firing, which is contrived — it's a terminal-cap safety net rather than a path the loop wants to take. Future option: a synthetic test that dispatches a malformed cross-doc review producing fake NEW findings each iter to force the cap; not pursued here.
 
 ## Pre-merge review (Task 5 will run)
 
