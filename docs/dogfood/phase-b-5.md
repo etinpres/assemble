@@ -23,7 +23,7 @@ $ shasum -a 256 ~/.claude/skills/assemble/bundled/_shared/harness-preamble.md
 858e9ff1cdc05ca73bb4009aab3acfc841169b30873d2fb00f2dfd546b86e159
 ```
 
-The canonical 130-byte preamble (4-rule HARNESS RULES block + trailing newline) hashes to `858e9ff1cdc05ca73bb4009aab3acfc841169b30873d2fb00f2dfd546b86e159`. Every dispatched prompt in the dogfood embedded this exact block as its prefix.
+The canonical preamble (130 characters / 256 bytes UTF-8 — the Korean expansion makes the byte count exceed the char count) hashes to `858e9ff1cdc05ca73bb4009aab3acfc841169b30873d2fb00f2dfd546b86e159`. The 4-rule HARNESS RULES block + trailing newline is the entire file. Every dispatched prompt in the dogfood embedded this exact block as its prefix.
 
 ## Workflow trace (Steps 0 → 13 + iteration 1)
 
@@ -81,7 +81,9 @@ Total wall-clock for the parallel turn ≈ max(durations) = 32601 ms (ADR, longe
 
 ## Trace excerpts — gate B5.7 (preamble byte-identity)
 
-Per-dispatch preamble hash audit. Each prompt's first 130 bytes were extracted (up to and including the `\n` after the 4th rule, before the blank line preceding `[TASK]`). All matched `858e9ff1cdc05ca73bb4009aab3acfc841169b30873d2fb00f2dfd546b86e159`.
+Per-dispatch preamble hash audit (orchestrator self-report). Each prompt's first 256 bytes / 130 characters were the canonical preamble — orchestrator inlined the literal preamble block verbatim as the prompt prefix. All match `858e9ff1cdc05ca73bb4009aab3acfc841169b30873d2fb00f2dfd546b86e159`.
+
+> **Note on evidence quality.** This run did not write per-dispatch transcripts to disk, so the table below is a self-report from the orchestrator that constructed the prompts, not a re-runnable disk audit. The text-shape contract (`test_steps_2_3_have_preamble_byte_identity_contract`) gates the SKILL.md spec; the dispatch-time hash audit gates each individual run. A future post-tuning enhancement could record per-dispatch preamble hashes into `runs/<rid>/dispatches.jsonl` so dogfood reports cite replayable evidence rather than an in-memory self-check.
 
 | Step | Description | Preamble hash |
 |---|---|---|
