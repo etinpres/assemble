@@ -169,9 +169,9 @@ Step 5 then combines + writes.
 Take the combined PRD body + AC bash from Step 2/3 and dispatch it as a
 *challenge* prompt to a `second-opinion` role (preferred:
 `codex:codex-rescue`, then `superpowers:code-reviewer`; fallback:
-`general-purpose` with the bare task prompt. (V4 spec memory describes a
-future `roles.json` carrying `fallback_context` per role; until that lands
-in a later phase, dispatches use the prompt as-is.)
+`general-purpose`). The dispatch uses the bare task prompt — V4 spec
+memory describes a future `roles.json` carrying `fallback_context` per
+role; until that lands in a later phase, dispatches use the prompt as-is.
 
 The dispatched prompt explicitly asks for *flaws, rebuttals, missing
 constraints, and tradeoffs not yet acknowledged* — never bare agreement.
@@ -207,8 +207,10 @@ The main Claude takes the verified bullets and either:
 - Appends a `## Review notes` section to the PRD body, **or**
 - Absorbs the critique by re-running Steps 2/3 in iteration mode.
 
-Phase B-1 takes the simpler path: append `## Review notes`. Iteration-mode
-absorption arrives in Step 6 (Task 7).
+On the first pass, take the simpler path: append `## Review notes` to
+the PRD body. Iteration-mode absorption is the responsibility of Step 6
+(see §"Iteration round-trip" + §"Multi-iteration loop"). Step 4 itself
+never re-dispatches Steps 2/3 — append-only on every invocation.
 
 ### Step 5 — combine + write (main Claude)
 
@@ -587,10 +589,12 @@ Then proceed to Step 6 (iteration prompt).
 
 ### Step 6 — iteration round-trip (one cycle)
 
-After Step 9 (4-way cross-doc review), ask the user via `AskUserQuestion`:
+**After the FIRST Step 9 cross-doc review only** (`iteration_count == 0`), ask the user via `AskUserQuestion`:
 
 > "All four docs saved — PRD.md, ARCHITECTURE.md, ADR.md, UI_GUIDE.md. Run one iteration?"
 > options: ["yes — refine all four", "no — done"]
+
+For `iteration_count ≥ 1`, the entry prompt is replaced by §"User exit override" below (`"Continue iterating?"`). The two prompts never both fire on the same iteration boundary.
 
 - **no → done: exits the workflow.** The user is never forced into a second
   pass. (V4 identity rule — see `project_assemble_v4_spec.md` § "절대 금지
@@ -615,7 +619,7 @@ After Step 9 (4-way cross-doc review), ask the user via `AskUserQuestion`:
 
   **Orchestrator enforcement (concrete steps):**
   1. After a sub-agent returns its iteration re-draft (a string), the orchestrator scans the return for feature/module/component/screen/token names.
-  2. For each name found, check whether it has a PRD anchor (i.e. appears verbatim in PRD `## Core features`, or is a direct elaboration of one of those features).
+  2. For each name found, check whether it has a PRD anchor: (a) the name appears verbatim in PRD `## Core features` bullet text, OR (b) the name appears verbatim in the sub-bullet/elaboration text directly under one of those bullets. String-match only — no semantic-similarity inference.
   3. If the name has NO PRD anchor: delete the corresponding section/block from the returned string before passing it to the template-fill step. Do NOT write the unstripped return to disk.
   4. Record stripped item names in a local `stripped_items: list[str]` (orchestrator-side, in-memory for this run).
   5. When Step 9 (continued) constructs the audit header (the `> 4-way cross-doc verified on {date} — {n_kept} kept / {n_dropped} dropped` line), append a second blockquote line *only if* `stripped_items` is non-empty:
@@ -625,10 +629,10 @@ After Step 9 (4-way cross-doc review), ask the user via `AskUserQuestion`:
   **Iteration write order** (explicit — do not improvise):
   1. Run Steps 2+3 in parallel (single message, two Agent calls): PRD body
      re-draft + AC bash re-draft.
-  2. Run Step 8 (ARCH re-draft) — single dispatch. Can fire in the same
-     parallel message as Steps 2+3 since the inputs are independent
-     (existing PRD + ARCH + ADR + UI_GUIDE + emphases), or sequentially
-     after Steps 2+3 if you prefer simpler control flow.
+  2. Run Step 8 (ARCH re-draft) — single dispatch. MUST fire in the same
+     parallel message as Steps 2+3 (inputs are independent: existing
+     PRD + ARCH + ADR + UI_GUIDE + emphases). Sequential fallback is
+     restricted to the two cases listed in step 4 below.
   3. Run Step 11 (ADR re-draft) — single dispatch. Same independence
      argument as Step 8; can be parallel with Steps 2+3 + 8.
   4. Run Step 13 (UI_GUIDE re-draft) — single dispatch. Same independence
