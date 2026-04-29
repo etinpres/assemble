@@ -406,3 +406,27 @@ def test_workflow_step_13_ui_single_dispatch_inherits_plan_fix():
     assert "general-purpose" in row_text
     # Plan still appears as the fallback column (case-sensitive `Plan`)
     assert "`Plan`" in " ".join(ui_row)
+
+
+def test_workflow_step_9_includes_ui_guide():
+    body = _body()
+    step9 = body[body.index("Step 9 —"):]
+    # The cross-doc review must now span UI_GUIDE as well
+    assert "UI_GUIDE" in step9[:2000]
+    assert "UI_GUIDE.md" in step9[:2500]
+
+
+def test_workflow_step_9_four_way_includes_antipattern_audit():
+    body = _body()
+    step9 = body[body.index("Step 9 —"):]
+    # Phase B-4 specific: Step 9 must call out the antipattern audit
+    # (the cross-check between UI_GUIDE body and PRD `## Design direction`).
+    lower = step9[:2500].lower()
+    assert "antipattern" in lower or "anti-pattern" in lower
+    assert "design direction" in lower
+    # Must explicitly enumerate the new pair categories beyond the 3 from B-3
+    assert "ui_guide" in lower or "ui guide" in lower
+    # Audit must be either part of category 4/5/6 (new pair labels) or
+    # called out as a dedicated antipattern category
+    assert ("prd ↔ ui_guide" in lower or "arch ↔ ui_guide" in lower
+            or "adr ↔ ui_guide" in lower or "audit" in lower)

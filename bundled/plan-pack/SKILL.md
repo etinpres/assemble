@@ -461,48 +461,70 @@ Substitute the returned body into the UI_GUIDE template:
 
 Show `ui_path` to the user, then proceed to Step 9 (4-way cross-doc review).
 
-### Step 9 — 3-way cross-doc second-opinion (PRD ↔ ARCH ↔ ADR consistency)
+### Step 9 — 4-way cross-doc second-opinion (PRD ↔ ARCH ↔ ADR ↔ UI_GUIDE consistency)
 
-After `ADR.md` is written (Step 11), dispatch a 3-way cross-doc consistency
-review. Read all three artifacts:
+After `UI_GUIDE.md` is written (Step 13), dispatch a 4-way cross-doc
+consistency review. Read all four artifacts:
 
     from server import read_run_artifact
     prd_text  = read_run_artifact(rid, "PRD.md") or ""
     arch_text = read_run_artifact(rid, "ARCHITECTURE.md") or ""
     adr_text  = read_run_artifact(rid, "ADR.md") or ""
+    ui_text   = read_run_artifact(rid, "UI_GUIDE.md") or ""
 
-Wrap all three together via `server.harness.wrap_with_preamble` and dispatch to a
-`second-opinion` role (preferred: `codex:codex-rescue`, then
+Wrap all four together via `server.harness.wrap_with_preamble` and dispatch
+to a `second-opinion` role (preferred: `codex:codex-rescue`, then
 `superpowers:code-reviewer`; fallback: `general-purpose`).
 
-The prompt must explicitly request three categories of finding:
+The prompt must explicitly request six categories of finding (the three
+B-3 categories + three new UI_GUIDE-specific categories):
 
-- **PRD ↔ ARCH (gap detection)**: features in PRD `## Core features` that have no
-  matching module in ARCH `## Module boundaries`, and architecture decisions in
-  ARCH that contradict items in PRD `## Excluded from MVP` (scope-creep risk).
-- **ARCH ↔ ADR (decision integrity)**: any architectural choice in ARCH that is
-  not backed by a Decision in ADR (missing rationale), and any Decision in ADR
-  that contradicts ARCH's stated patterns or module boundaries.
-- **PRD ↔ ADR (motivation traceability)**: any Decision in ADR whose Context
-  cannot be traced to a need stated in PRD `## Goal` / `## Core features` /
-  `## Risks`, and any PRD risk that has no Decision addressing it.
+- **PRD ↔ ARCH (gap detection)**: features in PRD `## Core features` that
+  have no matching module in ARCH `## Module boundaries`, and
+  architecture decisions in ARCH that contradict items in PRD
+  `## Excluded from MVP` (scope-creep risk).
+- **ARCH ↔ ADR (decision integrity)**: any architectural choice in ARCH
+  that is not backed by a Decision in ADR (missing rationale), and any
+  Decision in ADR that contradicts ARCH's stated patterns or module
+  boundaries.
+- **PRD ↔ ADR (motivation traceability)**: any Decision in ADR whose
+  Context cannot be traced to a need stated in PRD `## Goal` /
+  `## Core features` / `## Risks`, and any PRD risk that has no Decision
+  addressing it.
+- **PRD ↔ UI_GUIDE (design direction audit)**: every choice the UI guide
+  makes in `## Visual identity`, `## Color tokens`, `## Typography`, and
+  `## Component patterns` must be consistent with PRD §6 `## Design direction`.
+  Contradictions ("PRD says low-chrome / UI uses heavy
+  decoration") are findings; **violations of the antipattern list in the
+  UI_GUIDE template's `## Antipatterns to avoid` section are
+  CRITICAL findings** and seed gate B4.3.
+- **ARCH ↔ UI_GUIDE (component coverage)**: every priority screen in
+  UI_GUIDE `## Priority screens` must compose at least one ARCH
+  `## Module boundaries` module — orphan UI screens that don't map to a
+  module are findings (either UI overreach or missing ARCH module).
+- **ADR ↔ UI_GUIDE (UX decision integrity)**: any UI choice that is in
+  scope for an ADR Decision (e.g. accessibility floor, dark-mode support,
+  i18n) but is not addressed there is a finding (either an ADR gap or a
+  UI assumption that should be promoted to a Decision).
 
 Plus any other flaws, inconsistencies, or omissions — never bare agreement.
 
 Apply the triage protocol from Step 4b: verify each claim, drop unverifiable
 speculation, prepend a one-line audit header. Append verified review notes
-as a `## Cross-doc review` section to **`ADR.md`** (the last-written doc;
-keeps cross-doc context co-located with the doc most likely to be edited
-during iteration):
+as a `## Cross-doc review` section to **`ADR.md`** (the last-written doc
+*before* UI_GUIDE was added in B-4; keeping cross-doc context co-located
+with ADR.md preserves the B-3 convention and the same "doc most likely to
+be edited during iteration" reasoning still applies — design decisions ride
+on ADR, and that is where reviewers will look first):
 
     from datetime import date
     from server import read_run_artifact, write_run_artifact
     current = read_run_artifact(rid, "ADR.md") or ""
-    audit_header = f"> 3-way cross-doc verified on {date.today().isoformat()} — {n_kept} kept / {n_dropped} dropped"
+    audit_header = f"> 4-way cross-doc verified on {date.today().isoformat()} — {n_kept} kept / {n_dropped} dropped"
     updated = current + "\n\n## Cross-doc review\n\n" + audit_header + "\n\n" + bullets
     write_run_artifact(rid, "ADR.md", updated)
 
-> Note: when running on the iteration yes-path (Step 6), use header `## Cross-doc review (iteration N)` instead of bare `## Cross-doc review`, where N is the current iteration count (Phase B-3 caps at N=1). The first-pass review uses no suffix.
+> Note: when running on the iteration yes-path (Step 6), use header `## Cross-doc review (iteration N)` instead of bare `## Cross-doc review`, where N is the current iteration count (Phase B-4 caps at N=1). The first-pass review uses no suffix.
 
 Then proceed to Step 6 (iteration prompt).
 
