@@ -655,9 +655,10 @@ Step 9 review (e.g. "iteration cap (7) reached with 2 unresolved findings;
 exiting"), records `reason: "cap-reached"` in `iteration_state.json`, and
 stops. The user can still rerun `/assemble` for a fresh run.
 
-> **Dogfood evidence (Phase B-5, run `{{B5_RUN_ID}}` —
+> **Dogfood evidence (Phase B-5, run `20260429-135600-3b6d` —
 > `docs/dogfood/phase-b-5.md`):** the multi-iteration loop is exercised
 > end-to-end under `ASSEMBLE_BUNDLED_ONLY=1` (blank-Mac sim) with true
 > 4-way parallel iteration dispatch and sha256 preamble byte-identity
-> verification. The recorded termination reason is the canonical evidence
-> that the cap is now driven by data, not by spec.
+> verification. iter1 resolved 5/5 first-pass findings, introduced 3 NEW;
+> user-override path terminated the loop with `reason: user-requested-stop`,
+> recorded in `runs/20260429-135600-3b6d/iteration_state.json`.
