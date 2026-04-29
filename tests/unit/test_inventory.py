@@ -256,3 +256,31 @@ def test_prior_llm_classification_beats_heuristic(tmp_path, monkeypatch):
     e = inv["skills"]["dual-signal"]
     assert e["source"] == "llm-classified"
     assert e["mappings"] == [{"stage": "plan", "role": "custom"}]
+
+
+def test_bundled_only_excludes_user_skills(tmp_path, monkeypatch):
+    """ASSEMBLE_BUNDLED_ONLY=1 hides skills installed outside the assemble bundled tree.
+
+    Blank-Mac dogfood gates use this flag to simulate a fresh user with only
+    the bundled tools available, without nuking ~/.claude/skills/.
+    """
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    monkeypatch.setenv("ASSEMBLE_BUNDLED_ONLY", "1")
+    _touch(tmp_path / ".claude/skills/test_user_skill/SKILL.md",
+           "---\nname: test_user_skill\ndescription: a user-installed skill\n---\n")
+    _touch(tmp_path / ".claude/skills/assemble/bundled/plan-pack/SKILL.md",
+           "---\nname: plan-pack\ndescription: bundled plan helper\n---\n")
+    inv = scan()
+    assert "test_user_skill" not in inv["skills"]
+
+
+def test_bundled_only_keeps_bundled(tmp_path, monkeypatch):
+    """ASSEMBLE_BUNDLED_ONLY=1 still surfaces skills under the assemble bundled tree."""
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    monkeypatch.setenv("ASSEMBLE_BUNDLED_ONLY", "1")
+    _touch(tmp_path / ".claude/skills/test_user_skill/SKILL.md",
+           "---\nname: test_user_skill\ndescription: a user-installed skill\n---\n")
+    _touch(tmp_path / ".claude/skills/assemble/bundled/plan-pack/SKILL.md",
+           "---\nname: plan-pack\ndescription: bundled plan helper\n---\n")
+    inv = scan()
+    assert "plan-pack" in inv["skills"]
