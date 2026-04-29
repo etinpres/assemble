@@ -179,3 +179,42 @@ Both NEW findings exit unresolved at the Phase B-4 1-iteration cap.
 Phase B-4 dogfood **passes** end-to-end — all 5 phase-specific gates (B4.1–B4.5) green, all 5 common gates (C1–C5) green, gate B3.5 carry-over (≥1 finding distributed across ≥2 of 6 pairs) wildly exceeded (6/6 first-pass, 2/6 iter1). Workflow completed Steps 0–13 + iteration 1 with real artifacts on disk in run `20260429-103152-e35b`. 5 wording/spec findings captured (none blocking; Finding #2 escalates the multi-iteration post-tuning track to high priority based on B-2/B-3/B-4 corroboration).
 
 Branch `v4-phase-b-4` is **ready for Task 6 (review-before-merge gate)**: 5 implementation commits (Tasks 1–4 + 1 NIT fix-up `ebfc610`) + this dogfood report = 6 total expected, full regression at 147 passes, gate B4.4 (server/* unchanged) holds.
+
+## Pre-merge review (Task 6 Step 3 gate)
+
+Reviewer: `superpowers:code-reviewer` subagent against `git diff master..HEAD`.
+Verdict: **Not READY initially → READY after IMPORTANT + 2 NIT fix-up commit**.
+
+### Acceptance criteria results
+
+| AC | Status | Note |
+|---|---|---|
+| 1 | PASS | Step 13 row `plan-implementation` / `general-purpose` / `Plan` matches Steps 2/3/8/11 |
+| 2 | PASS | Forward-step pointer chain `0→1→2+3→4→5→7→8→10→11→12→13→9→6` consistent (Step 11 → Step 12 fixed in `ebfc610`) |
+| 3 | PASS | UI_GUIDE template uses `{{TASK}}` + `{{DESIGN_DIRECTION}}` + `{{UI_BODY}}`; Step 13 substitutes all three with PRD-on-disk design direction extraction |
+| 4 | PASS | Antipattern table 8 bullets ≥6, all canonical keywords present |
+| 5 | PASS | File sizes match disk; 147 tests pass; gate B4.4 server diff empty |
+| 6 | PASS | No PRD-only / PRD+ARCH / PRD+ARCH+ADR sub-mode exists in plan-pack to break |
+| 7 | PASS | Diff scope = `bundled/plan-pack/SKILL.md`, `bundled/plan-pack/templates/UI_GUIDE.md.template`, `docs/dogfood/phase-b-4.md`, `tests/e2e/test_plan_pack_inventory.py`, `tests/unit/test_plan_pack_skill.py` only |
+
+### IMPORTANT findings (addressed in fix-up commit on this branch)
+
+1. **SKILL.md:194 — stale execution-order banner.** Step 7 blockquote read `Steps 7–8–10–11–9` (B-3 era); should enumerate Steps 12 and 13 in the new B-4 chain. **Fixed**: now reads `Steps 7–8–10–11–12–13–9 run after Step 5 writes PRD.md`.
+
+### NIT findings (addressed in same fix-up commit)
+
+1. **SKILL.md:14-18 — orchestrator-only preamble stale prose.** Said "results to `<run_dir>/PRD.md` and `<run_dir>/ARCHITECTURE.md`" — never updated through B-3 or B-4. **Fixed**: now reads "PRD, ARCHITECTURE, ADR, or UI_GUIDE content directly … writes the combined results to `<run_dir>/{PRD,ARCHITECTURE,ADR,UI_GUIDE}.md`".
+2. **dogfood report progress.json size off by 24 bytes** (477 reported vs 501 actual on disk; runtime touch). Cosmetic; deferred.
+
+### Dogfood findings classified per "Out of scope"
+
+Reviewer confirmed all 5 dogfood findings are correctly classified:
+- Findings #1 (sequential dispatch), #4 (UI_GUIDE dark-mode scope creep), #5 (ARCH `edit`/`toggleAll` scope creep) — Phase B-5 / post-tuning track per plan §"Out of scope"
+- Finding #2 (multi-iteration justification third corroboration) — meta evidence, not a B-4 blocker
+- Finding #3 (gate B4.5 awk slice positive validation) — confirms design
+
+None reveal a contradiction in the merged code itself; none block merge.
+
+### Verdict
+
+**READY for merge** after the 1 IMPORTANT + 2 NIT fixes land on this branch (commit `_to_be_added_below_`).
