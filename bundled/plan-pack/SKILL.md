@@ -350,7 +350,7 @@ Substitute the returned block into the ADR template:
         .replace("{{DECISIONS_BLOCK}}", adr_sub_agent_output.strip()))
     adr_path = write_run_artifact(rid, "ADR.md", filled_adr)
 
-Show `adr_path` to the user, then proceed to Step 9 (3-way cross-doc review).
+Show `adr_path` to the user, then proceed to Step 12 (UI_GUIDE interview).
 
 ### Step 12 — UI_GUIDE interview (main Claude, AskUserQuestion)
 
