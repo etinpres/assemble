@@ -95,9 +95,7 @@ Call 2 (Q5–Q8):
 ### Step 2 — PRD body draft + Step 3 — AC bash draft (parallel dispatch)
 
 Wrap each sub-task prompt via `server.harness.wrap_with_preamble` before
-firing. Canonical call (use this pattern verbatim — do **not** hand-write
-the 4-rule preamble inline; hand-writing risks wording drift and breaks
-trace consistency):
+firing. Canonical call (this is the recommended pattern):
 
 ```python
 from server.harness import wrap_with_preamble
@@ -107,11 +105,19 @@ wrapped_ac   = wrap_with_preamble(raw_ac_prompt)
 
 Pass `wrapped_body` / `wrapped_ac` as the Agent `prompt` field. The
 function emits the exact 4-rule preamble + `[TASK]` block — see
-`server/harness.py`.
+`server/harness.py`. Inlining the preamble literal is permitted as an
+alternative to the function call; both must produce byte-identical
+preamble bytes, verified at dogfood time via gate B5.7.
+
+#### Preamble byte-identity
+
+> The orchestrator may dispatch a sub-agent prompt either by (a) calling `wrap_with_preamble(prompt)` and passing the result, or (b) inlining the preamble block literally as the prompt prefix. Both forms are acceptable. The contract is byte-identity: every dispatched prompt's preamble block, when isolated and hashed, MUST match the sha256 of `bundled/_shared/harness-preamble.md`. Drift in either direction (rewording, missing newline, added text) is a contract violation. Dogfood gate B5.7 verifies this.
 
 Then **fire both in a single message with two Agent calls** (true parallel
 dispatch — this is the Phase B-1 parallel-dispatch verification location
 *a*):
+
+> Sequential fallback is permitted only if a documented orchestrator constraint blocks parallel dispatch (e.g. dependent inputs); the platform itself does not constrain to <2. See `docs/research/2026-04-29-platform-limit.md`.
 
 - Sub-task A — PRD body. Role `plan-implementation` (preferred `general-purpose`,
   fallback `Plan`). Returns Goal / Users / Core features /
@@ -567,11 +573,15 @@ After Step 9 (4-way cross-doc review), ask the user via `AskUserQuestion`:
      argument as Step 8; can be parallel with Steps 2+3 + 8.
   4. Run Step 13 (UI_GUIDE re-draft) — single dispatch. Same independence
      argument; can be parallel with Steps 2+3 + 8 + 11. **This is the
-     true 4-way parallel-dispatch surface that B-5 is scheduled to
-     formalize**; B-4 iteration is a natural place to demonstrate it
-     opportunistically (single message, four Agent calls), but
-     sequential dispatch remains acceptable per the same B-3 dogfood
-     Finding #4 caveat (single-message Agent-call budget concerns).
+     true 4-way parallel-dispatch surface that B-5 formalizes** — fire all
+     four iteration dispatches in a single message with four Agent calls.
+
+     > Empirical evidence (`docs/research/2026-04-29-platform-limit.md`): a controlled platform-limit experiment dispatched 2 / 3 / 4 / 5 `general-purpose` Agent calls in a single message. All four trials returned successful — no reject, no rate-limit, no silent-degrade. The platform tolerates at least 5-way parallel dispatch in a single response. Sequential fallback is therefore an orchestrator timing choice, not a platform constraint, and MUST NOT be the default at the iteration write surface (Step 6 step 4).
+
+     Sequential fallback at this step is restricted to two cases: (a) a
+     documented input dependency exists between iteration dispatches, or
+     (b) the orchestrator detects a retry-after on a previous attempt.
+     General "Agent-call budget caution" is no longer sufficient grounds.
   5. **Step 5 overwrites `PRD.md`** with the new body + new AC bash.
   6. **Step 8 (continued) overwrites `ARCHITECTURE.md`** with the new
      sections. (Cross-doc review lives on ADR.md only — no leftover to

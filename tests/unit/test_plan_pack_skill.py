@@ -571,3 +571,24 @@ def test_step6_has_iteration_scope_discipline_preserved():
         "Iteration scope discipline block (33b3056) was modified or "
         "removed during the B-5 multi-iteration rewrite — regression"
     )
+
+
+def test_step6_step4_cites_platform_limit_research():
+    """B-5 Item B-1: Step 6 step 4 must cite docs/research/2026-04-29-platform-limit.md
+    so the parallel-dispatch caveat is empirically grounded, not folklore."""
+    body = _body()
+    step6 = _section(body, "### Step 6")
+    assert "docs/research/2026-04-29-platform-limit.md" in step6, (
+        "Step 6 step 4 missing platform-limit research citation — "
+        "B-5 Item B-1 caveat tightening spec drift"
+    )
+
+
+def test_steps_2_3_have_preamble_byte_identity_contract():
+    """B-5 Item B-2: Step 2/3 must contain the verbatim preamble byte-identity contract."""
+    body = _body()
+    step2 = _section(body, "### Step 2")
+    assert "every dispatched prompt's preamble block, when isolated and hashed, MUST match" in step2, (
+        "Steps 2/3 missing the preamble byte-identity contract — "
+        "B-5 Item B-2 wrap_with_preamble cluster spec drift"
+    )
