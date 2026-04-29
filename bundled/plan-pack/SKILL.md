@@ -95,9 +95,7 @@ Call 2 (Q5–Q8):
 ### Step 2 — PRD body draft + Step 3 — AC bash draft (parallel dispatch)
 
 Wrap each sub-task prompt via `server.harness.wrap_with_preamble` before
-firing. Canonical call (use this pattern verbatim — do **not** hand-write
-the 4-rule preamble inline; hand-writing risks wording drift and breaks
-trace consistency):
+firing. Canonical call (this is the recommended pattern):
 
 ```python
 from server.harness import wrap_with_preamble
@@ -107,11 +105,19 @@ wrapped_ac   = wrap_with_preamble(raw_ac_prompt)
 
 Pass `wrapped_body` / `wrapped_ac` as the Agent `prompt` field. The
 function emits the exact 4-rule preamble + `[TASK]` block — see
-`server/harness.py`.
+`server/harness.py`. Inlining the preamble literal is permitted as an
+alternative to the function call; both must produce byte-identical
+preamble bytes, verified at dogfood time via gate B5.7.
+
+#### Preamble byte-identity
+
+> The orchestrator may dispatch a sub-agent prompt either by (a) calling `wrap_with_preamble(prompt)` and passing the result, or (b) inlining the preamble block literally as the prompt prefix. Both forms are acceptable. The contract is byte-identity: every dispatched prompt's preamble block, when isolated and hashed, MUST match the sha256 of `bundled/_shared/harness-preamble.md`. Drift in either direction (rewording, missing newline, added text) is a contract violation. Dogfood gate B5.7 verifies this.
 
 Then **fire both in a single message with two Agent calls** (true parallel
 dispatch — this is the Phase B-1 parallel-dispatch verification location
 *a*):
+
+> Sequential fallback is permitted only if a documented orchestrator constraint blocks parallel dispatch (e.g. dependent inputs); the platform itself does not constrain to <2. See `docs/research/2026-04-29-platform-limit.md`.
 
 - Sub-task A — PRD body. Role `plan-implementation` (preferred `general-purpose`,
   fallback `Plan`). Returns Goal / Users / Core features /
@@ -546,6 +552,8 @@ After Step 9 (4-way cross-doc review), ask the user via `AskUserQuestion`:
   the ARCH?", "what feels off in the ADR?", "what feels off in the
   UI_GUIDE?").
 
+  > The constraint below applies to every iteration in the loop above, not only the first.
+
   **Iteration scope discipline** (mandatory constraint on all iteration sub-agent prompts — addresses B-4 dogfood Findings #4 + #5):
 
   When constructing the iteration prompts for Steps 2/3, 8, 11, and 13, the orchestrator MUST include this constraint verbatim in every dispatched prompt's `[TASK]` block:
@@ -565,11 +573,15 @@ After Step 9 (4-way cross-doc review), ask the user via `AskUserQuestion`:
      argument as Step 8; can be parallel with Steps 2+3 + 8.
   4. Run Step 13 (UI_GUIDE re-draft) — single dispatch. Same independence
      argument; can be parallel with Steps 2+3 + 8 + 11. **This is the
-     true 4-way parallel-dispatch surface that B-5 is scheduled to
-     formalize**; B-4 iteration is a natural place to demonstrate it
-     opportunistically (single message, four Agent calls), but
-     sequential dispatch remains acceptable per the same B-3 dogfood
-     Finding #4 caveat (single-message Agent-call budget concerns).
+     true 4-way parallel-dispatch surface that B-5 formalizes** — fire all
+     four iteration dispatches in a single message with four Agent calls.
+
+     > Empirical evidence (`docs/research/2026-04-29-platform-limit.md`): a controlled platform-limit experiment dispatched 2 / 3 / 4 / 5 `general-purpose` Agent calls in a single message. All four trials returned successful — no reject, no rate-limit, no silent-degrade. The platform tolerates at least 5-way parallel dispatch in a single response. Sequential fallback is therefore an orchestrator timing choice, not a platform constraint, and MUST NOT be the default at the iteration write surface (Step 6 step 4).
+
+     Sequential fallback at this step is restricted to two cases: (a) a
+     documented input dependency exists between iteration dispatches, or
+     (b) the orchestrator detects a retry-after on a previous attempt.
+     General "Agent-call budget caution" is no longer sufficient grounds.
   5. **Step 5 overwrites `PRD.md`** with the new body + new AC bash.
   6. **Step 8 (continued) overwrites `ARCHITECTURE.md`** with the new
      sections. (Cross-doc review lives on ADR.md only — no leftover to
@@ -595,18 +607,58 @@ After Step 9 (4-way cross-doc review), ask the user via `AskUserQuestion`:
 UI_GUIDE.md is always re-run alongside PRD, ARCH, and ADR in the iteration
 — they are produced as a quadruple and must remain consistent.
 
-Phase B-4 covers exactly **one iteration**. After the iteration completes
-(yes-path), the workflow exits unconditionally — even if the user requests
-another pass, the main Claude must reply "iteration cap reached for Phase B-4;
-rerun `/assemble` to start a new run" and stop. Multi-iteration support (3–7
-counts with stop conditions) is a Phase B post-tuning track. Note: B-3
-Finding #5 (a fresh CRITICAL surfacing only on iteration 1, exiting
-unresolved at the cap) is a third corroborating data point if it
-reproduces in B-4 — capture it in the dogfood report § Findings.
+#### Multi-iteration loop with stop conditions (Phase B-5)
 
-> **Dogfood evidence carried forward** (run `20260428-214502-6b79`, Phase B-3):
-> a single iteration resolved 9 of 10 prior findings (90%) and *introduced
-> 1 new IMPORTANT* (`--max-concurrency` knob naming inconsistency). The new
-> finding exited unresolved when the workflow hit the cap. Phase B-4 dogfood
-> (run id captured in `docs/dogfood/phase-b-4.md`) re-tests this with the
-> 4-way review surface and the antipattern audit dimension.
+Phase B-5 replaces the prior 1-iteration cap (B-1 through B-4) with an
+explicit stop-condition loop. Three consecutive phases (B-2, B-3, B-4) all
+showed the same recurrence — iteration resolves prior findings (4/4 → 9/10
+→ 12/12) but introduces NEW findings that exit unresolved at the cap. The
+loop below is the contracted answer.
+
+**Stop condition (verbatim — do not paraphrase in implementations):**
+
+> The orchestrator continues iterating while either condition holds: (a) Step 9 review reports `NEW ≥ 1` for the just-completed iteration, OR (b) the most recent two iterations have not both satisfied `RESOLVED ≥ 80% AND NEW ≤ 0`. Iteration stops when two consecutive iterations both satisfy `RESOLVED ≥ 80% AND NEW ≤ 0`, or when the iteration counter reaches 7, whichever comes first.
+
+**Iteration state tracking (verbatim):**
+
+> The orchestrator maintains a per-run state file at
+> `runs/<rid>/iteration_state.json` with shape
+> `{"iterations": [{"index": N, "resolved_pct": F, "new_count": N,
+> "stopped": bool, "reason": "..."}, ...]}`. The file is updated after
+> each Step 9 cross-doc review. Termination reason is one of
+> `stop-condition-met`, `cap-reached`, `user-requested-stop`.
+
+After each Step 9 review, the main Claude parses the RESOLVED/UNRESOLVED/NEW
+counts (Step 9 already produces these), computes `resolved_pct = RESOLVED /
+(RESOLVED + UNRESOLVED + NEW)`, appends a new entry to
+`iteration_state.json`, and decides whether to continue.
+
+##### User exit override
+
+After every iteration (including iterations 1 and 2 before the stop
+condition can have fired), the orchestrator asks via `AskUserQuestion`:
+
+> "Continue iterating?"
+> options: ["yes — run another iteration", "no — stop here"]
+
+A "no — stop here" answer terminates the loop unconditionally and records
+`reason: "user-requested-stop"` in `iteration_state.json`. The user is
+never forced through additional iterations to satisfy the stop condition
+(V4 identity rule — user agency is preserved).
+
+##### Iteration cap exceeded
+
+If the iteration counter reaches 7 without the stop condition firing and
+without a user no-answer, the orchestrator emits a one-line warning to the
+user citing the cap and the unresolved finding count from the most recent
+Step 9 review (e.g. "iteration cap (7) reached with 2 unresolved findings;
+exiting"), records `reason: "cap-reached"` in `iteration_state.json`, and
+stops. The user can still rerun `/assemble` for a fresh run.
+
+> **Dogfood evidence (Phase B-5, run `20260429-135600-3b6d` —
+> `docs/dogfood/phase-b-5.md`):** the multi-iteration loop is exercised
+> end-to-end under `ASSEMBLE_BUNDLED_ONLY=1` (blank-Mac sim) with true
+> 4-way parallel iteration dispatch and sha256 preamble byte-identity
+> verification. iter1 resolved 5/5 first-pass findings, introduced 3 NEW;
+> user-override path terminated the loop with `reason: user-requested-stop`,
+> recorded in `runs/20260429-135600-3b6d/iteration_state.json`.

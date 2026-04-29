@@ -293,6 +293,17 @@ def _home_for_scan() -> Path:
     return Path(env) if env else Path.home()
 
 
+def _bundled_only_active() -> bool:
+    """True iff ``ASSEMBLE_BUNDLED_ONLY=1`` is set in the environment.
+
+    Used by :func:`scan` to filter path enumeration results down to entries
+    that live under the assemble bundled root, simulating a "blank Mac" with
+    no user/plugin skills installed. The flag is a simulation aid for
+    blank-Mac dogfood gates; it does not affect classification cache state.
+    """
+    return os.environ.get("ASSEMBLE_BUNDLED_ONLY") == "1"
+
+
 def _inventory_path(home: Path) -> Path:
     return home / INVENTORY_REL
 
@@ -337,9 +348,14 @@ def _quarantine_corrupt_cache(cache: Path) -> None:
 def scan(force: bool = False) -> dict:
     home = _home_for_scan()
     cache = _inventory_path(home)
+    bundled_only = _bundled_only_active()
 
     # Fast path: cache valid and no watched path changed → return without locking.
-    if not force and cache.exists():
+    # When ASSEMBLE_BUNDLED_ONLY=1 is set, the cache is bypassed (it may carry
+    # entries written by a prior non-flag scan); the in-memory rebuild is
+    # returned without persisting back to disk so the cache stays clean for
+    # later non-flag callers.
+    if not bundled_only and not force and cache.exists():
         cached = read_json(cache)
         if cached is None:
             # File present but unparseable → corrupt. Quarantine before locking.
@@ -365,8 +381,14 @@ def scan(force: bool = False) -> dict:
                 return heuristic, "heuristic-classified"
             return [], "unclassified"
 
+        skill_paths = enumerate_skill_paths(home)
+        agent_paths = enumerate_agent_paths(home)
+        if bundled_only:
+            skill_paths = [p for p in skill_paths if _is_bundled(home, p)]
+            agent_paths = [p for p in agent_paths if _is_bundled(home, p)]
+
         skills: dict[str, dict] = {}
-        for path in enumerate_skill_paths(home):
+        for path in skill_paths:
             meta = parse_skill_frontmatter(path)
             name = meta["name"] or path.parent.name
             if name in skills:
@@ -387,7 +409,7 @@ def scan(force: bool = False) -> dict:
             skills[name] = entry
 
         agents: dict[str, dict] = {}
-        for path in enumerate_agent_paths(home):
+        for path in agent_paths:
             name = path.stem
             if name in agents:
                 continue  # user > plugin, first-wins (same rule as skills)
@@ -415,6 +437,10 @@ def scan(force: bool = False) -> dict:
             "agents": agents,
         }
 
+    if bundled_only:
+        # In-memory rebuild only — do not persist the filtered view to cache.
+        prior = read_json(cache) if cache.exists() else None
+        return _rebuild(prior or {})
     return update_json_locked(cache, _rebuild)
 
 
