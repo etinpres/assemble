@@ -26,8 +26,8 @@
 
 set -u
 
-mode="${ASSEMBLE_GUARD:-block}"
-# off mode removed in Spike II — see hook header.
+# ASSEMBLE_GUARD env var is documented in header; no runtime branching needed
+# since Spike II F13 (warn==block, off removed).
 
 input="$(cat)"
 
@@ -69,7 +69,7 @@ case "$tool" in
       cmd_excerpt="$(printf '%s' "$cmd" | head -c 200)"
       bash_msg="${bash_template//__CMD__/$cmd_excerpt}"
       printf '%s\n' "$bash_msg" >&2
-      # warn mode: stderr 메시지는 위에서 이미 출력. block 동등 exit 2.
+      # warn/block 모두 exit 2 (Spike II F13).
       exit 2
     fi
     exit 0

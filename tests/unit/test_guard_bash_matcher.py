@@ -15,7 +15,7 @@ from pathlib import Path
 HOOK = Path.home() / ".claude/skills/assemble/hooks/guard_run_dir.sh"
 
 
-def run_hook(tool_name: str, command: str, env: dict = None):
+def run_hook(tool_name: str, command: str, env: dict | None = None):
     payload = json.dumps({
         "tool_name": tool_name,
         "tool_input": {"command": command},
@@ -117,19 +117,26 @@ def test_all_whitelisted_artifacts_blocked_without_marker():
 
 
 def test_assemble_guard_off_does_not_disable():
-    """Spike II F13: off mode removed. ENV 설정해도 차단 유지."""
+    """Spike II F13: off mode removed — ENV setting must NOT disable hook."""
     cmd = (
         'python3 -c \'open("/Users/u/.claude/channels/assemble/runs/r/PRD.md", "w").write("x")\''
     )
     proc = run_hook("Bash", cmd, env={"ASSEMBLE_GUARD": "off"})
-    assert proc.returncode == 2, "off mode should NOT disable hook anymore"
+    assert proc.returncode == 2, (
+        f"off mode should NOT disable hook anymore — got {proc.returncode}\n"
+        f"stderr:\n{proc.stderr}"
+    )
 
 
 def test_assemble_guard_warn_still_exit2():
-    """warn mode가 더 이상 production escape hatch가 아님 — stderr + exit 2."""
+    """Spike II F13: warn is no longer a production escape hatch — stderr + exit 2."""
     cmd = (
         'python3 -c \'open("/Users/u/.claude/channels/assemble/runs/r/PRD.md", "w").write("x")\''
     )
     proc = run_hook("Bash", cmd, env={"ASSEMBLE_GUARD": "warn"})
-    assert proc.returncode == 2
-    assert "V4 GUARD" in proc.stderr or "plan-pack" in proc.stderr
+    assert proc.returncode == 2, (
+        f"warn must still exit 2 — got {proc.returncode}\nstderr:\n{proc.stderr}"
+    )
+    assert "V4 GUARD" in proc.stderr or "plan-pack" in proc.stderr, (
+        f"expected guard message substring in stderr, got:\n{proc.stderr}"
+    )
