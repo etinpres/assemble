@@ -31,7 +31,7 @@ Required body shape (5 `## ` sections in order):
 <numbered subsection per Q2 flow, ≥3, each composing components from above>
 ```
 
-DO NOT emit any antipattern keyword from template's `## Antipatterns to avoid` section: `gradient-text`, `glass morphism`, `backdrop-blur`, `all-purple`, emoji-as-decoration, "Lorem ipsum", "TODO/FIXME", "innovative", "seamless", etc.
+**Antipattern signals (conditional)**: do not emit the following as design directives unless the PRD `## Core features` *explicitly* requires the underlying capability — `gradient-text` (UI text gradients used as decoration), `glass morphism` (translucent panels with backdrop-blur), `all-purple` (single-hue palette without rationale), emoji-as-decoration, placeholder text ("Lorem ipsum", "TODO/FIXME"), and marketing adjectives ("innovative", "seamless", "next-gen"). When a PRD-domain feature legitimately requires one of these (e.g. paint app, photo editor, brand purple), include it and annotate `(domain-required by PRD § Core features)`.
 
 ## Final step (canonical save block)
 

@@ -8,15 +8,15 @@
 
 ## Antipatterns to avoid
 
-The following AI-slop patterns must NOT appear in any UI artifact this guide produces. Step 13's sub-agent contract forbids them; Step 9's cross-doc review re-checks the rendered guide for residue.
+The following AI-slop patterns are **conditional signals**, not absolute bans. Emit them only when the PRD `## Core features` explicitly requires the underlying capability (e.g. paint app gradients, photo editor color tools, deliberate brand purple). Annotate any legitimate exception inline as `(domain-required by PRD § Core features)`. Step 13's sub-agent contract enforces this conditional check; Step 9's cross-doc review re-checks the rendered guide for unannotated residue.
 
-- gradient-text headlines (e.g. `bg-gradient-to-r ... bg-clip-text text-transparent`) — overused; signals AI-template aesthetic
-- glass morphism / frosted-panel effects (`backdrop-blur-*`, semi-transparent cards over gradients) — visual noise without information density
+- gradient-text headlines (e.g. `bg-gradient-to-r ... bg-clip-text text-transparent`) — overused as decoration; valid only if the PRD requires text-gradient styling
+- glass morphism / frosted-panel effects (`backdrop-blur-*`, semi-transparent cards over gradients) — visual noise unless the PRD calls for layered translucency
 - backdrop-blur layered on gradients as the default surface treatment — inherits all the issues above
-- all-purple or all-violet brand palettes lifted from generic AI starter themes — distinctive only if intentional, default-purple is anti-distinctive
-- meaningless emoji bombing in headings or buttons (✨🚀🎯 used as decoration, not signal) — visual filler
-- residual `Lorem ipsum`, `placeholder`, `Sample text` strings left in shipped UI — unfinished by definition
-- unresolved `TODO: fill in` / `TBD` / `FIXME` markers in copy — same
-- ad-copy clichés: `innovative`, `next-generation`, `cutting-edge`, `seamless`, `revolutionary`, `unleash`, `empower`, `delightful` — drains specificity
+- all-purple or all-violet brand palettes lifted from generic AI starter themes — anti-distinctive unless purple is the deliberate brand color
+- meaningless emoji bombing in headings or buttons (✨🚀🎯 used as decoration, not signal) — visual filler unless the PRD specifies emoji as a UI affordance
+- residual `Lorem ipsum`, `placeholder`, `Sample text` strings left in shipped UI — always unfinished
+- unresolved `TODO: fill in` / `TBD` / `FIXME` markers in copy — always unfinished
+- ad-copy clichés: `innovative`, `next-generation`, `cutting-edge`, `seamless`, `revolutionary`, `unleash`, `empower`, `delightful` — drains specificity; never domain-required
 
 {{UI_BODY}}
