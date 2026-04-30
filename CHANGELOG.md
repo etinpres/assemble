@@ -5,7 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I
+## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II + Spike III
+
+### V4 Spike III (2026-04-30, B-8 dogfood ship)
+
+**B-7 carryforward + Spike I final-review carryforward closed**:
+
+- **N1 — PRD schema fix (Phase A)**: `prd_step2.md` rewritten from 2-replace (`{{TASK}}` + phantom `{{PRD_BODY}}`) to arch_step8 7-replace pattern (TASK + 6 section vars + AC marker route). `prd_step3.md` substitutes raw bash into the AC marker (template's existing fence preserved — no nested fence). New guard `tests/unit/test_prd_template_placeholder_match.py`. Eliminates the 6-placeholder leak that triggered F12 in B-7.
+- **F12 safety net (Phase B)**: new `server.dispatch_prompt(prompt_file: str) -> str` (load + `wrap_with_preamble`, no placeholder substitution — caller's responsibility per option B from B1 review). `record_dispatch` gains `prompt_file: Optional[str] = None` kwarg + 8-entry `ALLOWED_PROMPT_FILES` allowlist; default soft-warn, `ASSEMBLE_DISPATCH_STRICT=1` for hard ValueError. SKILL.md §"Step dispatch contract" rewritten as 5-step numbered contract referencing `dispatch_prompt`. New tests `tests/unit/test_dispatch_prompt.py` (5 tests).
+- **Spike I final-review carryforward (Phase C)**: bare `...` Ellipsis sentinels → `<TBD: 1-line description>` form across 5 sub-agent prompts (prd_step4, arch_step8, adr_step11, ui_step13, cross_doc_step9) + new guard `test_prompts_no_bare_ellipsis.py` (regex catches whitespace-padded, dash-prefixed, bullet-prefixed forms). Sub-agent prompt first-paragraph wording unified: `Print \`WROTE: <absolute path>\` on stdout — main parses with regex \`^WROTE: (.+)$\`. No other prose.` + new guard `test_prompts_print_contract.py`. SKILL.md Step 6 entry/exit options Korean-only (`4-doc` → `네 문서`, `cross-doc` → `문서 간`) + retuned C3 guard. New explicit "Step 6 prompt selector" table at top of `## Step 6 — iteration round-trip` resolving entry-vs-exit selector ambiguity. `ui_step13.md` antipattern keyword list reframed as **conditional signals, not absolute bans** (gradient/glass-morphism/all-purple legitimate when PRD `## Core features` requires; annotate `(domain-required by PRD § Core features)`). `prompts/` directory split into `subagent/` (7 files) + `orchestrator/` (1 file: iter_emphasis.md); `_resolve_prompt_path` resolver supports both layouts; SKILL.md §"Anti-bypass" 8-file allowlist updated.
+- **F3 (Korean phrasing drift) — accepted (Phase D)**: 9 sub-agent inferred phrasing artifacts from B-7 (`도구파 경량`, `리시완 DB`, etc.) accepted as inference limits per Spike III memory § option C. No code change; manual post-edit at distribution time. F3 reopens only if B-N rate climbs past ~12 violations per run.
+
+**B-8 dogfood result**: 12/13 acceptance criteria full PASS + 1 partial PASS (#13 first-pass clean, iter1 path 3 carryforwards). Run `20260430-211523-212a` (md-sync — markdown notes sync CLI). PRD/ARCH/ADR/UI_GUIDE all rendered with `{{...}}` zero leaks, AC fence single (no nested), `<TBD: ...>` zero leaks, 5 ADR decisions with 5 sub-headings each, Cross-doc review (first-pass + iteration 1) headings separated correctly, COUNTS keys (`resolved`/`unresolved`/`new`) consistent across both passes, Step 6 entry+exit options Korean-only verified live.
+
+**Carryforward to Spike IV** (3 items, all iter1-path):
+
+- A. iter1 4-way dispatch missing from `dispatches.jsonl` (orchestrator skipped `record_dispatch` after `dispatch_prompt` in iter1 emphasis path). Fix: SKILL.md Step 6 yes-path detail step 3 enumerate 4 `record_dispatch` calls.
+- B. iter1 `(no change)` doc mtime not updated — sub-agents elided verbatim write despite spec. Fix: tighten `iter_emphasis.md` step-1 or relax spec to skip-with-audit-row.
+- C. ADR sub-agent "Bash command prefix marker" hook v1 false-negative (intentional guard probe; `bash -c '# ASSEMBLE_SUBAGENT_LIFECYCLE_WRITE\n...'` pattern passes). Fix: `hooks/guard_run_dir.sh` Bash branch tightened to require marker as first comment of `python3 -c` invocation only; new hook test case for the false-negative shape.
+
+Source spec: `docs/specs/2026-04-30-v4-spike-iii-design.md`. Plan: `docs/plans/2026-05-02-v4-spike-iii.md`. Final memo: `docs/dogfood/spike-iii-final.md`.
+
+Spike III commits (in order): `9e7bbf5` (spec+plan), `044768f` (Phase A1), `6174852` (Phase B1), `51868bd` (B1 fix option B), `b4fbb4a` (B1 polish), `4eb0e75` (Phase B2), `1ba9dc4` (B2 polish), `89b861e` (Phase C1), `2ef13f5` (C1 polish), `c5df204` (Phase C2), `7d340e1` (Phase C3), `3dcfe84` (Phase C4), `1cb173f` (Phase C5), `14e4d21` (Phase C6), `a92277d` (Phase D1).
 
 ### V4 Spike I (2026-04-30, post-B-5 distribution prep)
 
