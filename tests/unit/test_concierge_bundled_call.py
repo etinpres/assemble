@@ -25,4 +25,4 @@ def test_v3_skill_md_lazy_load_paragraph_intact():
     """Original §9 lazy-load paragraph must still be present (don't replace, append)."""
     text = SKILL_PATH.read_text(encoding="utf-8")
     assert "build_stage_options()" in text
-    assert "lazy-load" in text.lower() or "## 9. Internals: lazy-load" in text
+    assert "## 9. Internals: lazy-load policy" in text

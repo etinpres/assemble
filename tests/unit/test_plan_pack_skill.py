@@ -805,11 +805,10 @@ def test_skill_md_documents_record_dispatch_signature():
     table column header → TypeError on first call. Grep ensures the verbatim
     signature + `No role kwarg` warning are present.
     """
-    from pathlib import Path
     text = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/SKILL.md").read_text(encoding="utf-8")
     # Verbatim signature parts
     assert "record_dispatch(" in text
     assert "subagent_type" in text and "wrote_path" in text
-    # No-role warning
-    assert "role" in text  # already present in role mapping; the new sentence
+    # No-role warning sentence (catches F2 regression)
+    assert "kwarg 없음" in text  # 새 시그니처 문장에만 등장
     assert "TypeError" in text
