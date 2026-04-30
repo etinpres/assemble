@@ -5,7 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene
+## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I
+
+### V4 Spike I (2026-04-30, post-B-5 distribution prep)
+
+**Sub-agent path-only return contract**: `bundled/plan-pack/SKILL.md` re-architected (732→323 lines) so sub-agents call `write_run_artifact` themselves and return only `WROTE: <path>` on stdout. Main Claude has zero artifact body access — eliminates the body-write bypass observed across 4 dogfoods (B-prime+K). 8 new prompt files in `bundled/plan-pack/prompts/` (prd_step2/3/4, arch_step8, adr_step11, ui_step13, cross_doc_step9 are sub-agent prompts with `ASSEMBLE_SUBAGENT_LIFECYCLE_WRITE` magic marker; iter_emphasis is orchestrator-facing).
+
+**harness-preamble v2**: rules 5 (한국어 quality — 좌히기/PRD emp/키디텍터 직역체 금지) + 6 (anti-downscale — task scope은 seed이지 contract가 아니다) added (J-5, L). sha256 changes `858e9ff1...→ df274505...`; pre-cutoff dogfood data accepted via `verify_dispatches` ALLOW_LIST.
+
+**hook v1 — Bash matcher**: `hooks/guard_run_dir.sh` adds Bash branch that blocks main Claude's `python3 + write_run_artifact` patterns; sub-agent legitimate dispatch passes via `ASSEMBLE_SUBAGENT_LIFECYCLE_WRITE` magic marker. `~/.claude/settings.json` PreToolUse matcher extended to `Edit|Write|NotebookEdit|Bash` (backup at `~/.claude/settings.json.pre-spike-i`).
+
+**Step 6 yes-path label fix (J-6)**: `"yes — refine all four"` → `"yes — 강조점 인터뷰 + 4-doc 재작성 + cross-doc 재검증"` (entry + multi-iter both).
+
+**Tests**: +4 hook test cases (`test_guard_bash_matcher.py`), +4 sub-agent path-only contract tests (`test_plan_pack_subagent_path_return.py`), +2 anti-fallback contract tests (`test_plan_pack_anti_fallback.py`), +2 harness ALLOW_LIST tests (`test_harness_dispatches.py`), +1 magic marker test in `test_plan_pack_skill.py`. Re-anchored 25 phrase-stale `test_plan_pack_skill.py` assertions and 6 of 8 `tests/contracts/contracts.json` entries to compressed SKILL.md (2 contracts removed — covered by runtime tests in `test_harness_dispatches.py`). Final: 192 passed, 0 failed.
+
+**Out of scope (deferred to Spike II)**: J-1/J-2/J-3/J-4 (menu layer dynamic Recommended) — Spike II. Item A multi-iter stop condition algorithm — Spike II. Items C/D/E/F (test pattern hygiene) — quality/hygiene passes.
+
+**B-6 acceptance criteria**: 0 main direct-write, 0 hook block on legitimate sub-agent path, new label workflow alignment, Korean quality clean, anti-downscale clean. See `docs/dogfood/spike-i-readiness.md`.
+
+Source spec: `docs/specs/2026-04-30-v4-spike-i-design.md` (commit `eeb6c96`).
+
+Spike I commits (in order): `6598788` (preamble v2), `5d9c325` (PRD prompts), `93da925` (ARCH/ADR/UI prompts), `877715f` (cross_doc + iter_emphasis), `02d2237` (SKILL.md rewrite), `9532dfa` (SKILL.md fix — role disambiguation + COUNTS missing), `cceec77` (test_plan_pack_skill.py grep), `95af374` (Task 6.5 — 25 stale assertions), `0e85dab` (sha256 + research memo), `9d4f254` (harness.py wrote_path + ALLOW_LIST), `17acc98` (hook Bash matcher), `0fbee91` (hook test cases), `14af40a` (subagent path-only contract test), `8e9555b` (anti-fallback contract test), `8611b0d` (contracts.json registry cleanup).
 
 ### Changed (MED/LOW ambiguity hygiene — Item E continuation)
 - `bundled/plan-pack/SKILL.md` fresh ambiguity audit (post B-7 + cap-reached state of the doc). The original Hygiene Pass (commit `e4f37df`) resolved 4 HIGH-priority items; the 4 MED + 1 LOW items it deferred were not captured to disk anywhere. The SKILL has changed substantially since (B-5 Findings, B-7 dispatches.jsonl additions), so this pass surfaces 5 actionable items via a fresh audit dispatch instead of archaeology.
