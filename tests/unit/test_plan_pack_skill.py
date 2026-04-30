@@ -796,3 +796,20 @@ def test_prompts_have_magic_marker():
             f"{fname} missing magic marker for hook v1 passthrough"
         )
         assert "WROTE:" in body, f"{fname} missing WROTE: stdout convention"
+
+
+def test_skill_md_documents_record_dispatch_signature():
+    """Spike II F2: SKILL.md must spell out record_dispatch's exact signature.
+
+    B-6 dogfood: main inferred `role=` kwarg from the Sub-agent role mapping
+    table column header → TypeError on first call. Grep ensures the verbatim
+    signature + `No role kwarg` warning are present.
+    """
+    from pathlib import Path
+    text = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/SKILL.md").read_text(encoding="utf-8")
+    # Verbatim signature parts
+    assert "record_dispatch(" in text
+    assert "subagent_type" in text and "wrote_path" in text
+    # No-role warning
+    assert "role" in text  # already present in role mapping; the new sentence
+    assert "TypeError" in text

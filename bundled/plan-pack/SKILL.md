@@ -93,6 +93,22 @@ For each dispatch step: (1) load the prompt file under `prompts/`,
 Agent tool. Sub-agent returns `WROTE: <path>` on stdout — parse with regex
 `^WROTE: (.+)$` and show. On `ERROR:` or missing `WROTE:`, follow §CRITICAL.
 
+`record_dispatch` 시그니처 (verbatim — `from server import record_dispatch`):
+
+```python
+record_dispatch(
+    run_id: str,
+    step: str,
+    prompt_text: str,
+    *,
+    subagent_type: str = "",
+    description: str = "",
+    wrote_path: Optional[str] = None,
+) -> Path
+```
+
+`role` kwarg 없음. 위 표 (Step → Role) 의 *Role* 은 prompt 본문에 자연어로 박히는 페르소나 라벨이고 `subagent_type` 은 항상 `"general-purpose"` 다. `record_dispatch(..., role=...)` 로 호출하면 `TypeError`.
+
 ### Step 1 — PRD interview (main Claude, AskUserQuestion)
 
 8 questions across **two `AskUserQuestion` calls of 4 questions each**
