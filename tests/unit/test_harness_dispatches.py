@@ -322,3 +322,24 @@ def test_v2_dogfood_data_still_verifies_under_v3_canonical(tmp_path, monkeypatch
     assert result["ok"], f"v2 ALLOW_LIST regression: {result}"
     assert result["total"] == 1
     assert result["mismatches"] == []
+
+
+def test_record_dispatch_new_schema_fields_default(tmp_path, monkeypatch):
+    """Spike IV: every new row carries `status` (default 'dispatched')
+    and `note` (default None) in addition to existing fields."""
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    monkeypatch.setenv("ASSEMBLE_DISPATCH_STRICT", "0")
+    rid = "test-spike-iv-default"
+    (tmp_path / ".claude/channels/assemble/runs" / rid).mkdir(parents=True)
+    from server.harness import record_dispatch
+    record_dispatch(
+        rid,
+        step="unit",
+        prompt_text="body",
+        prompt_file="prd_step2.md",
+    )
+    log = tmp_path / ".claude/channels/assemble/runs" / rid / "dispatches.jsonl"
+    import json
+    row = json.loads(log.read_text().splitlines()[0])
+    assert row["status"] == "dispatched"
+    assert row["note"] is None

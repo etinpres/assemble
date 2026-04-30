@@ -214,12 +214,14 @@ def _dispatches_path(run_id: str) -> Path:
 def record_dispatch(
     run_id: str,
     step: str,
-    prompt_text: str,
+    prompt_text: str = "",
     *,
     subagent_type: str = "",
     description: str = "",
     wrote_path: Optional[str] = None,
     prompt_file: Optional[str] = None,
+    status: str = "dispatched",
+    note: Optional[str] = None,
 ) -> Path:
     """Append one hash-only record to `runs/<run_id>/dispatches.jsonl`.
 
@@ -238,7 +240,9 @@ def record_dispatch(
           "body_sha256": "<64 hex chars>",
           "body_bytes": <int>,
           "wrote_path": "<str>" | null,
-          "prompt_file": "<allowed-name.md>" | null
+          "prompt_file": "<allowed-name.md>" | null,
+          "status": "dispatched" | "skipped" | "failed",
+          "note": "<str>" | null
         }
 
     `wrote_path` (Spike I §8.1): optional absolute path the dispatched
@@ -254,6 +258,14 @@ def record_dispatch(
     plain basename (no `/`, `\\`, leading dot) — same rule as
     `server.run_dir.run_artifact_path` — so a malformed `run_id` cannot
     escape the runs root.
+
+    `status` (Spike IV §1.1 A1): one of `"dispatched"` (default — the
+    orchestrator did dispatch), `"skipped"` (orchestrator chose not to
+    dispatch, e.g. iter1 (no change), but recorded the intent), or
+    `"failed"` (dispatch attempted, sub-agent returned ERROR or no WROTE).
+    `note` (Spike IV §1.2 B1): free-form annotation (e.g. user emphasis
+    string). Both default to dispatched/None for back-compat with
+    pre-Spike-IV callers.
     """
     if not run_id or not step:
         raise ValueError("run_id and step are required")
@@ -261,6 +273,10 @@ def record_dispatch(
         raise ValueError(f"unsafe run_id: {run_id!r}")
     if run_id != Path(run_id).name:
         raise ValueError(f"unsafe run_id: not a plain basename: {run_id!r}")
+    if status not in ("dispatched", "skipped", "failed"):
+        raise ValueError(
+            f"unknown status: {status!r} (allowed: dispatched/skipped/failed)"
+        )
 
     if prompt_file is not None and prompt_file not in ALLOWED_PROMPT_FILES:
         msg = (
@@ -271,7 +287,9 @@ def record_dispatch(
             raise ValueError(msg)
         print(f"[harness] WARN: {msg}", file=sys.stderr)
 
-    preamble, body = _split_preamble_body(prompt_text)
+    # When status="skipped" the orchestrator never built a real prompt,
+    # so prompt_text may be empty — use placeholder hashes.
+    preamble, body = _split_preamble_body(prompt_text or "")
     pre_bytes = preamble.encode("utf-8")
     body_bytes = body.encode("utf-8")
 
@@ -290,6 +308,8 @@ def record_dispatch(
         "body_bytes": len(body_bytes),
         "wrote_path": wrote_path,
         "prompt_file": prompt_file,
+        "status": status,
+        "note": note,
     }
 
     out = _dispatches_path(run_id)
@@ -297,6 +317,64 @@ def record_dispatch(
     with open(out, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
     return out
+
+
+def dispatch_and_record(
+    run_id: str,
+    *,
+    prompt_file: str,
+    step: str,
+    subagent_type: str = "general-purpose",
+    description: str = "",
+    wrote_path: Optional[str] = None,
+    status: str = "dispatched",
+    note: Optional[str] = None,
+) -> str:
+    """Compose `dispatch_prompt` and `record_dispatch` atomically.
+
+    Returns the wrapped prompt text (empty string when `status="skipped"`,
+    in which case the caller should not invoke the Agent tool — the
+    audit row alone documents the orchestrator's skip decision).
+
+    Spike IV §1.1 A1 (carryforward A): the iter1 4-way path elided the
+    audit row because `dispatch_prompt` and `record_dispatch` are two
+    independent calls. This wrapper makes the pairing un-skippable from
+    the orchestrator's side.
+
+    Spike IV §1.2 B1 (carryforward B): the `(no change)` iter1 case
+    flips to `status="skipped"` — main does NOT dispatch, only records.
+
+    Status semantics:
+        dispatched  — orchestrator returned the wrapped prompt, caller
+                      will invoke Agent tool with it.
+        skipped     — orchestrator chose not to dispatch (e.g. user
+                      emphasis was (no change)). Returns "".
+        failed      — orchestrator dispatched but sub-agent returned
+                      ERROR / no WROTE. Caller logs failure and surfaces
+                      to user via AskUserQuestion (per SKILL.md §CRITICAL
+                      retry path).
+    """
+    if status not in ("dispatched", "skipped", "failed"):
+        raise ValueError(
+            f"unknown status: {status!r} (allowed: dispatched/skipped/failed)"
+        )
+
+    prompt_text = ""
+    if status == "dispatched":
+        prompt_text = dispatch_prompt(prompt_file)
+
+    record_dispatch(
+        run_id,
+        step=step,
+        prompt_text=prompt_text,
+        subagent_type=subagent_type,
+        description=description,
+        wrote_path=wrote_path,
+        prompt_file=prompt_file,
+        status=status,
+        note=note,
+    )
+    return prompt_text
 
 
 def verify_dispatches(run_id: str) -> dict:
