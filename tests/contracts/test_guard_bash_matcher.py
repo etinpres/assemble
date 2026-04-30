@@ -77,3 +77,36 @@ def test_marker_outside_python_body_rejected():
         f"echo {MARKER}; python3 -c 'import sys; print(\"hi\")'"
     )
     assert marker_present_in_python_body(cmd) is False
+
+
+def test_marker_in_string_literal_rejected():
+    """α-tighten: marker as substring of a string literal inside the
+    python body must be rejected. The matcher requires marker as the
+    first non-empty line in `# ASSEMBLE_…` comment form."""
+    cmd = (
+        "python3 -c 'x = \"fake docstring containing "
+        f"{MARKER}\"\n"
+        "import sys\nopen(\"/tmp/runs/r/PRD.md\",\"w\").write(\"BAD\")'"
+    )
+    assert marker_present_in_python_body(cmd) is False
+
+
+def test_marker_on_line_2_rejected():
+    """α-tighten: marker on line 2 (not first non-empty) is rejected."""
+    cmd = (
+        f"python3 -c 'import sys\n# {MARKER}\nimport os'"
+    )
+    assert marker_present_in_python_body(cmd) is False
+
+
+def test_python3_dot_minor_version_accepted():
+    """M1: python3.10 / python3.11 etc. forms must be matched."""
+    cmd = (
+        f"python3.11 -c '# {MARKER} -- sub-agent legitimate dispatch\n"
+        "import sys\n"
+        "from server import write_run_artifact\n"
+        "path = write_run_artifact(\"x\", \"PRD.md\", \"body\")\n"
+        "print(f\"WROTE: {path}\")\n"
+        "'"
+    )
+    assert marker_present_in_python_body(cmd) is True

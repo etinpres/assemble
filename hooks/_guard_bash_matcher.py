@@ -3,31 +3,36 @@
 The hook delegates Bash command matching to this module so we can
 unit-test the matcher independently of the shell wrapper. The matcher
 returns True only when the canonical magic marker
-(`ASSEMBLE_SUBAGENT_LIFECYCLE_WRITE`) appears inside the body of a
-`python3 -c '...'` invocation or a `python3 << <delim>` heredoc.
+(`ASSEMBLE_SUBAGENT_LIFECYCLE_WRITE`) appears as the first non-empty
+line of a `python3 -c '...'` invocation or `python3 << <delim>` heredoc
+body, formatted as a Python comment.
 
 Carryforward C from B-8 dogfood: a Bash-comment prefix
 (`bash -c '# MARKER\\n<bash code>'`) must NOT count as a canonical
 save — the marker outside a python3 body is unauthorized.
+
+Spike IV §1.3 C1.3: the marker is treated as a comment-context signal,
+not a substring toggle. Marker inside a string literal, marker on a
+non-first line, or marker without a `#` prefix → False.
 """
 
 from __future__ import annotations
 
 import re
 import sys
-from typing import List
 
 MARKER = "ASSEMBLE_SUBAGENT_LIFECYCLE_WRITE"
 
 
-def _extract_python_dash_c_bodies(cmd: str) -> List[str]:
+def _extract_python_dash_c_bodies(cmd: str) -> list[str]:
     """Return the raw bodies of every `python3 -c '<body>'` (or `"<body>"`)
     invocation inside `cmd`. Single- or double-quoted; first matching pair
     only — escaped quotes inside the body are honored as part of the body.
+    Accepts `python3`, `python`, `python3.10`, `python3.11`, etc.
     """
-    bodies: List[str] = []
+    bodies: list[str] = []
     pattern = re.compile(
-        r"python3?\s+-c\s+(['\"])((?:\\.|(?!\1).)*)\1",
+        r"python3?(?:\.\d+)?\s+-c\s+(['\"])((?:\\.|(?!\1).)*)\1",
         re.DOTALL,
     )
     for match in pattern.finditer(cmd):
@@ -35,15 +40,16 @@ def _extract_python_dash_c_bodies(cmd: str) -> List[str]:
     return bodies
 
 
-def _extract_python_heredoc_bodies(cmd: str) -> List[str]:
+def _extract_python_heredoc_bodies(cmd: str) -> list[str]:
     """Return the raw bodies of every `python3 << <DELIM>` heredoc inside
     `cmd`. <DELIM> is one or more word chars (allow optional surrounding
     quotes — common shell idiom, e.g. `<< "EOF"`). Body extends from the
     line after `<< DELIM` to the line containing only DELIM.
+    Accepts `python3`, `python`, `python3.10`, `python3.11`, etc.
     """
-    bodies: List[str] = []
+    bodies: list[str] = []
     opener_re = re.compile(
-        r"python3?\s+<<-?\s*[\"']?(\w+)[\"']?\s*\n",
+        r"python3?(?:\.\d+)?\s+<<-?\s*[\"']?(\w+)[\"']?\s*\n",
     )
     for match in opener_re.finditer(cmd):
         delim = match.group(1)
@@ -60,14 +66,31 @@ def _extract_python_heredoc_bodies(cmd: str) -> List[str]:
     return bodies
 
 
-def marker_present_in_python_body(cmd: str) -> bool:
-    """Return True iff the canonical magic marker appears inside the
-    body of a python3 -c invocation or python3 heredoc within `cmd`.
+def _is_canonical_first_line(body: str) -> bool:
+    """Return True iff the first non-empty source line of `body`
+    starts with `# ASSEMBLE_SUBAGENT_LIFECYCLE_WRITE`. Only the
+    leading whitespace is stripped. Anything else (string literal,
+    non-comment line, marker as substring of a non-marker comment) → False.
+    """
+    for line in body.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        return stripped.startswith("# " + MARKER) or stripped.startswith("#" + MARKER)
+    return False
 
-    Matches anywhere in the body (not just first line) because
-    canonical save blocks may carry a leading docstring or shebang
-    above the marker comment line. The narrow guarantee is that the
-    marker is *inside* python3 code, not in a Bash comment or echo.
+
+def marker_present_in_python_body(cmd: str) -> bool:
+    """Return True iff a python3 invocation in `cmd` carries the
+    canonical marker as the first non-empty line of its body, in
+    Python comment form.
+
+    Spike IV §1.3 C1.3: the marker is treated as a comment-context
+    signal, not a substring toggle. Marker inside a string literal,
+    marker on a non-first line, or marker without a `#` prefix → False.
+    Match permits a leading shebang only if the shebang is followed
+    immediately by the marker comment (still considered "first non-empty
+    line" for canonical save blocks).
     """
     if MARKER not in cmd:
         return False
@@ -75,10 +98,10 @@ def marker_present_in_python_body(cmd: str) -> bool:
         _extract_python_dash_c_bodies(cmd)
         + _extract_python_heredoc_bodies(cmd)
     )
-    return any(MARKER in body for body in bodies)
+    return any(_is_canonical_first_line(body) for body in bodies)
 
 
-def main(argv: List[str]) -> int:
+def main() -> int:
     """CLI entry — read Bash command from stdin (one argument: nothing).
 
     Exit code:
@@ -90,4 +113,4 @@ def main(argv: List[str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    sys.exit(main())
