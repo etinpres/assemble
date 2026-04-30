@@ -108,3 +108,47 @@ def strip_bash_fence(s: str) -> str:
     if lines and lines[-1].lstrip().startswith("```"):
         lines = lines[:-1]
     return "\n".join(lines).strip()
+
+
+def update_iteration_state(run_id: str, counts: dict) -> Path:
+    """Append one iteration record to `runs/<run_id>/iteration_state.json`.
+
+    Spike II §3.1 F15 + D9: orchestrator metadata write helper. Main Claude
+    parses the `COUNTS: resolved=<N> unresolved=<N> new=<N>` line emitted by
+    Step 9 sub-agent, computes `resolved_pct`, and calls this in one line:
+
+        from server import update_iteration_state
+        update_iteration_state("20260501-abcd", {
+            "resolved_pct": 0.85, "new_count": 0,
+            "stopped": False, "reason": ""
+        })
+
+    The hook whitelist (Spike II §3.1 F8) lets main do this directly under
+    `runs/<rid>/iteration_state.json` — no sub-agent dispatch needed
+    (B-6 dogfood showed delegation cost = 23 tool uses, 58.6k tokens).
+
+    File schema:
+        {"iterations": [{"index": 0, ...}, {"index": 1, ...}, ...]}
+
+    Append-only. `index` is auto-assigned by current list length. Atomic
+    via `write_run_artifact`.
+
+    Returns the absolute path of iteration_state.json.
+    """
+    import json as _json
+    target = run_artifact_path(run_id, "iteration_state.json")  # validates
+    if target.exists():
+        try:
+            state = _json.loads(target.read_text(encoding="utf-8"))
+        except (_json.JSONDecodeError, OSError):
+            # Corrupt or unreadable — start fresh. Don't silently mask
+            # a programmer error; raising would block the workflow.
+            state = {"iterations": []}
+    else:
+        state = {"iterations": []}
+    if "iterations" not in state or not isinstance(state["iterations"], list):
+        state["iterations"] = []
+    entry = {"index": len(state["iterations"]), **counts}
+    state["iterations"].append(entry)
+    return write_run_artifact(run_id, "iteration_state.json",
+                               _json.dumps(state, indent=2, ensure_ascii=False))

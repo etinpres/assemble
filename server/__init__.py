@@ -40,6 +40,7 @@ from server.run_dir import (
     read_run_artifact,
     run_artifact_path,
     strip_bash_fence,
+    update_iteration_state,
 )
 from server.harness import (
     wrap_with_preamble,
@@ -65,7 +66,7 @@ __all__ = [
     "build_sequence_prompt", "parse_sequence_response",
     # run_dir
     "write_run_artifact", "read_run_artifact", "run_artifact_path",
-    "strip_bash_fence",
+    "strip_bash_fence", "update_iteration_state",
     # harness
     "wrap_with_preamble", "record_dispatch", "verify_dispatches",
     "canonical_preamble_sha256",

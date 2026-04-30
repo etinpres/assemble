@@ -1,3 +1,4 @@
+import json
 import threading
 
 import pytest
@@ -127,3 +128,52 @@ def test_concurrent_writes_dont_corrupt(tmp_path, monkeypatch):
     assert not errors
     final = read_run_artifact(rid, "PRD.md")
     assert final in payloads, f"got mid-write garble: {final!r}"
+
+
+def test_update_iteration_state_creates_new_file(tmp_path, monkeypatch):
+    """Spike II F15: 첫 호출 시 파일 신규 생성 + index=0."""
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    from server import update_iteration_state
+    rid = "20260501-newfile"
+    path = update_iteration_state(rid, {"resolved_pct": 0.5, "new_count": 1})
+    assert path.exists()
+    state = json.loads(path.read_text())
+    assert state["iterations"] == [{"index": 0, "resolved_pct": 0.5, "new_count": 1}]
+
+
+def test_update_iteration_state_appends_to_existing(tmp_path, monkeypatch):
+    """기존 파일에 append + index auto-increment."""
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    from server import update_iteration_state
+    rid = "20260501-append"
+    update_iteration_state(rid, {"resolved_pct": 0.7})
+    update_iteration_state(rid, {"resolved_pct": 0.85})
+    path = update_iteration_state(rid, {"resolved_pct": 0.9, "stopped": True})
+    state = json.loads(path.read_text())
+    assert len(state["iterations"]) == 3
+    assert state["iterations"][0]["index"] == 0
+    assert state["iterations"][1]["index"] == 1
+    assert state["iterations"][2]["index"] == 2
+    assert state["iterations"][2]["stopped"] is True
+
+
+def test_update_iteration_state_corrupt_file_resets(tmp_path, monkeypatch):
+    """깨진 JSON 파일이면 fresh start, raise 안 함."""
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    from server import update_iteration_state, run_artifact_path
+    rid = "20260501-corrupt"
+    p = run_artifact_path(rid, "iteration_state.json")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("{not valid json")
+    path = update_iteration_state(rid, {"new_count": 0})
+    state = json.loads(path.read_text())
+    assert state["iterations"] == [{"index": 0, "new_count": 0}]
+
+
+def test_update_iteration_state_unsafe_run_id_rejected(tmp_path, monkeypatch):
+    """run_dir validation 재사용 — path traversal 거절."""
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    from server import update_iteration_state
+    import pytest
+    with pytest.raises(ValueError):
+        update_iteration_state("../../etc", {"x": 1})
