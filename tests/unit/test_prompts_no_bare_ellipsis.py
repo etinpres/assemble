@@ -9,15 +9,15 @@ PROMPTS_DIR = (
 )
 
 # Match a triple-quoted block, then check each interior line.
+# Regex catches whitespace-padded `...`, dash-prefixed `- ...`, and
+# bullet-prefixed `* ...` — all common bare-sentinel forms a contributor
+# might re-introduce inside a save-block list.
 TRIPLE_QUOTED_RE = re.compile(r'"""(.*?)"""', re.DOTALL)
-BARE_ELLIPSIS_LINE_RE = re.compile(r"^\s*\.\.\.\s*$")
+BARE_ELLIPSIS_LINE_RE = re.compile(r"^\s*[-*]?\s*\.\.\.\s*$")
 
 
 def _all_prompts() -> list[Path]:
-    out = []
-    for p in PROMPTS_DIR.rglob("*.md"):
-        out.append(p)
-    return out
+    return list(PROMPTS_DIR.rglob("*.md"))
 
 
 def test_no_bare_ellipsis_in_save_blocks():

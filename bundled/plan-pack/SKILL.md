@@ -132,6 +132,12 @@ For each dispatch step:
 5. Sub-agent prints `WROTE: <path>` on stdout — parse with regex
    `^WROTE: (.+)$`. On `ERROR:` or missing `WROTE:`, follow §CRITICAL.
 
+Sub-agents MUST replace every `<TBD: ...>` sentinel inside their
+canonical save-block triple-quoted strings with concrete content before
+printing `WROTE:`. A literal `<TBD: ...>` (or bare `...`) reaching
+`write_run_artifact` is a contract violation — surface as `ERROR:` and
+follow §CRITICAL. Spike III §2.1 + `tests/unit/test_prompts_no_bare_ellipsis.py`.
+
 `record_dispatch` 시그니처 (verbatim — `from server import record_dispatch`):
 
 ```python
