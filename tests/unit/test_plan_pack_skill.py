@@ -880,3 +880,20 @@ def test_skill_md_step9_includes_counts_regex():
     """Spike II F10: SKILL.md Step 9 에 main parsing regex pin."""
     text = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/SKILL.md").read_text(encoding="utf-8")
     assert r"COUNTS: resolved=\d+ unresolved=\d+ new=\d+" in text
+
+
+def test_iter_emphasis_uses_per_doc_substitution():
+    """Spike II F14: iter_emphasis 가 single-doc placeholder 패턴."""
+    prompt = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/prompts/iter_emphasis.md").read_text(encoding="utf-8")
+    assert "{{DOC_NAME}}" in prompt
+    assert "{{EMPHASIS_SECTION_TITLE}}" in prompt or "{{EMPHASIS_SECTION_BODY}}" in prompt
+    # Old multi-doc placeholders should NOT all be present (4-doc full substitution removed)
+    bad = sum(p in prompt for p in ("{{PRD_TEXT}}", "{{ARCH_TEXT}}", "{{ADR_TEXT}}", "{{UI_TEXT}}"))
+    assert bad <= 1, "iter_emphasis should not embed all 4 doc bodies — F14 압축"
+
+
+def test_skill_md_step6_yespath_uses_per_doc_emphasis():
+    """SKILL.md Step 6 yes-path detail 본문도 per-doc 패턴 명시."""
+    text = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/SKILL.md").read_text(encoding="utf-8")
+    assert "{{DOC_NAME}}" in text
+    assert "Per-doc emphasis" in text or "per-doc" in text.lower()

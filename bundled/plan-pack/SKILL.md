@@ -288,11 +288,17 @@ the same iteration boundary.
    sub-questions (PRD/ARCH/ADR/UI). Each answer can be "(no change)" or a
    specific concern.
 
-2. **Substitute placeholders in `prompts/iter_emphasis.md` header**
-   before constructing the four iteration sub-agent prompts:
-   `{{ITERATION_COUNT}}`, `{{EMPHASIS}}` (per-doc), `{{PRD_TEXT}}`,
-   `{{ARCH_TEXT}}`, `{{ADR_TEXT}}`, `{{UI_TEXT}}`. The emphasis header
-   embeds the iteration scope discipline rule verbatim — do not paraphrase:
+2. **Per-doc emphasis substitution (Spike II F14):** main constructs ONE
+   prompt per doc — 4 prompts total, each based on `iter_emphasis.md` —
+   with placeholders: `{{ITERATION_COUNT}}`, `{{RUN_ID}}`, `{{DOC_NAME}}`
+   (one of `PRD.md`/`ARCHITECTURE.md`/`ADR.md`/`UI_GUIDE.md`),
+   `{{EMPHASIS}}` (per-doc answer from emphasis interview),
+   `{{EMPHASIS_SECTION_TITLE}}` (canonical heading, e.g. `## Core features`),
+   `{{EMPHASIS_SECTION_BODY}}` (current text of that one section, read by
+   main from the live doc). 4-doc 전체 placeholder substitute 금지 — sub-agent
+   가 자기 doc 만 보면 충분 (B-6 iter1 redraft cost 109k tokens 의 주요 원인).
+   The emphasis header embeds the iteration scope discipline rule verbatim
+   — do not paraphrase:
 
    > Scope discipline: PRD `## Core features` is the authoritative scope.
    > Do not introduce new features, modules, components, screens, or

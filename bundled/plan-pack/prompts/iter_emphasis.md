@@ -1,33 +1,57 @@
-# Iteration emphasis dispatch guide (orchestrator-facing)
+# Iteration {{ITERATION_COUNT}} — emphasis re-write
 
-This file is loaded by the main Claude during Step 6 yes-path (per SKILL.md). It guides the orchestrator on how to fan-out emphasis into 4 parallel sub-agent dispatches.
+You are dispatched as plan-pack Step 6 yes-path sub-agent. Goal: re-write
+ONE doc ({{DOC_NAME}}) under emphasis "{{EMPHASIS}}" while preserving all
+other sections verbatim.
 
-## Inputs from emphasis AskUserQuestion
+## Inputs
 
-After yes-answer, fire one `AskUserQuestion` with 4 sub-questions:
+- run_id: `{{RUN_ID}}`
+- doc_name: `{{DOC_NAME}}` (one of `PRD.md`, `ARCHITECTURE.md`, `ADR.md`, `UI_GUIDE.md`)
+- emphasis: `{{EMPHASIS}}` ("(no change)" allowed — return doc verbatim)
+- emphasis_target_section: `{{EMPHASIS_SECTION_TITLE}}` (e.g. `## Core features` for PRD)
+- existing_section_text: `{{EMPHASIS_SECTION_BODY}}` (current content of that section only)
 
-- prd_emphasis: "PRD에서 어디가 어색해?"
-- arch_emphasis: "ARCH에서 어디가 어색해?"
-- adr_emphasis: "ADR에서 어디가 어색해?"
-- ui_emphasis: "UI_GUIDE에서 어디가 어색해?"
+## Scope discipline (verbatim — do not paraphrase)
 
-Each answer can be "(no change)" or a specific concern.
+> PRD `## Core features` is the authoritative scope.
+> Do not introduce new features, modules, components, screens, or token
+> sets that have no counterpart in the existing PRD `## Core features`.
+> Items the ADR has explicitly deferred (`> **Future ADRs**`) MUST NOT
+> be pre-emptively decided. Existing sections that are not the explicit
+> target of the iteration emphasis MUST be returned verbatim — do not
+> reword Reasoning/Tradeoffs/Rejected-alternatives blocks. Pre-existing
+> identifiers (variable, token, module, component names) MUST NOT be
+> renamed unless the rename IS the requested change.
 
-## 4-way parallel dispatch (single message, 4 Agent calls)
+## Required behavior
 
-Build 4 prompts by loading existing prompt files and *appending* an iteration-mode header per the iteration scope discipline rule (spec §3 / SKILL.md Step 6 verbatim):
+1. If `{{EMPHASIS}}` == `(no change)`: read `{{DOC_NAME}}` via
+   `read_run_artifact`, write it back unchanged via `write_run_artifact`.
+   Return `WROTE: <path>`. Do NOT touch other sections, do NOT re-read
+   other docs, do NOT inspect infrastructure code (rule 7).
+2. Else: locate `{{EMPHASIS_SECTION_TITLE}}` in the doc, replace its body
+   with an emphasis-aware rewrite. ALL other sections (incl. headings,
+   ordering, whitespace, tables) MUST be byte-identical to input.
+3. The "VERBATIM SENTINEL" sections (PRD `## Acceptance criteria` bash
+   block, ADR `## Decision N` Reasoning/Tradeoffs/Rejected-alternatives
+   sub-blocks) MUST be re-emitted byte-for-byte.
 
+## Final step (canonical save block — DO NOT MODIFY THE STRUCTURE)
+
+```python
+# ASSEMBLE_SUBAGENT_LIFECYCLE_WRITE -- sub-agent legitimate dispatch
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path.home() / ".claude/skills/assemble"))
+from server import write_run_artifact, read_run_artifact
+
+rid = "{{RUN_ID}}"
+doc_name = "{{DOC_NAME}}"
+new_text = """<your re-written doc body — see Required behavior above>"""
+
+path = write_run_artifact(rid, doc_name, new_text)
+print(f"WROTE: {path}")
 ```
-[ITERATION MODE — iteration {{ITERATION_COUNT}}]
-emphasis: {{EMPHASIS}}
-existing PRD: {{PRD_TEXT}}
-existing ARCH: {{ARCH_TEXT}}
-existing ADR: {{ADR_TEXT}}
-existing UI_GUIDE: {{UI_TEXT}}
 
-Scope discipline: PRD `## Core features` is the authoritative scope. Do not introduce new features, modules, components, screens, or token sets that have no counterpart in the existing PRD `## Core features`. Items the ADR has explicitly deferred (`> **Future ADRs**`) MUST NOT be pre-emptively decided. Existing sections that are not the explicit target of the iteration emphasis MUST be returned verbatim — do not reword Reasoning/Tradeoffs/Rejected-alternatives blocks just because you are re-emitting the document. Pre-existing identifiers (variable names, token names, module names, component names) MUST NOT be renamed unless the rename IS the requested change.
-```
-
-Each of the 4 sub-agents (loading prd_step2 / arch_step8 / adr_step11 / ui_step13 per their existing pattern) writes its respective doc and returns `WROTE: <path>`.
-
-After all 4 return, dispatch Step 9 cross-doc review (with `iteration_count` incremented).
+If write fails, print `ERROR: <reason>` and exit. No fallback writes.
