@@ -23,3 +23,40 @@ def test_anti_fallback_explicit_wording():
     ]
     for phrase in must_phrases:
         assert phrase in body, f"anti-fallback wording missing: {phrase!r}"
+
+
+def test_skill_md_critical_block_bans_settings_json_edit():
+    """Spike II F9: §CRITICAL must explicitly ban ASSEMBLE_GUARD disable.
+
+    B-6 dogfood: main attempted to add `ASSEMBLE_GUARD: "off"` to
+    ~/.claude/settings.json after hook blocked it. Rule must be in §CRITICAL
+    so it's loaded into main's context (not just sub-agent preamble).
+    """
+    text = SKILL.read_text(encoding="utf-8")
+    assert "ASSEMBLE_GUARD" in text
+    assert "settings.json" in text
+    # The actual ban phrase
+    assert ("환경 변수 무력화 시도 금지" in text) or ("disable" in text.lower() and "settings.json" in text)
+
+
+def test_skill_md_critical_block_bans_subagent_metadata_delegation():
+    """Spike II F11: §CRITICAL must ban delegating orchestrator metadata.
+
+    B-6: main dispatched sub-agent to update iteration_state.json after
+    hook blocked direct write. iteration_state.json is orchestrator
+    responsibility per cross_doc_step9.md — sub-agent delegation = bypass.
+    """
+    text = SKILL.read_text(encoding="utf-8")
+    assert "iteration_state.json" in text
+    assert "위임 금지" in text or "delegate" in text.lower()
+    # The 8-file allowlist for sub-agent dispatch
+    assert "prompts/" in text and "8" in text
+
+
+def test_skill_md_critical_block_lists_8_prompt_files():
+    """Sub-agent dispatch limited to 8 prompts/<step>.md files."""
+    text = SKILL.read_text(encoding="utf-8")
+    for prompt_name in ("prd_step2", "prd_step3", "prd_step4", "arch_step8",
+                        "adr_step11", "ui_step13", "cross_doc_step9",
+                        "iter_emphasis"):
+        assert prompt_name in text, f"§CRITICAL must list {prompt_name}"
