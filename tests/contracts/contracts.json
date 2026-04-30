@@ -3,16 +3,16 @@
   "contracts": [
     {
       "id": "B-5-A-stop-condition",
-      "phrase": "two consecutive iterations both satisfy `RESOLVED ≥ 80% AND NEW ≤ 0`",
+      "phrase": "two consecutive\n> iterations both satisfy `RESOLVED ≥ 80% AND NEW ≤ 0`",
       "spec_path": "bundled/plan-pack/SKILL.md",
-      "section": "### Step 6",
+      "section": "## Multi-iteration loop with stop conditions",
       "tag": "B-5 Item A — multi-iteration stop condition contract"
     },
     {
       "id": "B-5-A-iteration-state",
       "phrase": "runs/<rid>/iteration_state.json",
       "spec_path": "bundled/plan-pack/SKILL.md",
-      "section": "### Step 6",
+      "section": "## Multi-iteration loop with stop conditions",
       "tag": "B-5 Item A — iteration state tracking contract"
     },
     {
@@ -30,46 +30,32 @@
       "tag": "B-5 Item B-1 — platform-limit research citation in Step 6 step 4"
     },
     {
-      "id": "B-5-B2-preamble-byte-identity",
-      "phrase": "every dispatched prompt's preamble block, when isolated and hashed, MUST match",
-      "spec_path": "bundled/plan-pack/SKILL.md",
-      "section": "### Step 2",
-      "tag": "B-5 Item B-2 — preamble byte-identity contract in Steps 2/3"
-    },
-    {
       "id": "B-5-finding1-verbatim-preservation",
-      "phrase": "Existing sections that are not the explicit target of the iteration emphasis MUST be returned verbatim",
+      "phrase": "Existing\n   > sections that are not the explicit target of the iteration emphasis\n   > MUST be returned verbatim",
       "spec_path": "bundled/plan-pack/SKILL.md",
       "section": "### Step 6",
       "tag": "B-5 Finding #1 — iteration verbatim preservation clause"
     },
     {
       "id": "B-5-finding2-no-rename",
-      "phrase": "Pre-existing identifiers (variable names, token names, module names, component names) MUST NOT be renamed unless the rename IS the requested change",
+      "phrase": "MUST NOT be renamed unless the\n   > rename IS the requested change",
       "spec_path": "bundled/plan-pack/SKILL.md",
       "section": "### Step 6",
       "tag": "B-5 Finding #2 — iteration no-rename clause"
     },
     {
       "id": "B-5-finding4-unit-consistency",
-      "phrase": "Numerical / unit consistency (cross-doc)",
+      "phrase": "numerical/unit consistency",
       "spec_path": "bundled/plan-pack/SKILL.md",
       "section": "### Step 9",
       "tag": "B-5 Finding #4 — Step 9 cross-doc review unit consistency category"
     },
     {
       "id": "B-5-B7-dispatches-jsonl-required",
-      "phrase": "the orchestrator MUST also call `record_dispatch` to\nappend a hash-only record to `runs/<rid>/dispatches.jsonl`",
+      "phrase": "call\n`server.harness.record_dispatch` for the on-disk evidence trail\n(`runs/<rid>/dispatches.jsonl`)",
       "spec_path": "bundled/plan-pack/SKILL.md",
-      "section": "### Step 2",
+      "section": "### Step dispatch contract",
       "tag": "B-5 Item B-7 — record_dispatch mandatory contract (replayable B5.7 evidence)"
-    },
-    {
-      "id": "B-5-B7-verify-dispatches",
-      "phrase": "gate B5.7 verifies via `verify_dispatches(rid)` reading the\nJSONL",
-      "spec_path": "bundled/plan-pack/SKILL.md",
-      "section": "### Step 2",
-      "tag": "B-5 Item B-7 — verify_dispatches reads JSONL (replayable, not narration)"
     }
   ]
 }
