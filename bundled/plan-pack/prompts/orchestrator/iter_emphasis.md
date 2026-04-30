@@ -8,7 +8,7 @@ other sections verbatim.
 
 - run_id: `{{RUN_ID}}`
 - doc_name: `{{DOC_NAME}}` (one of `PRD.md`, `ARCHITECTURE.md`, `ADR.md`, `UI_GUIDE.md`)
-- emphasis: `{{EMPHASIS}}` ("(no change)" allowed — return doc verbatim)
+- emphasis: `{{EMPHASIS}}` (orchestrator never sends `(no change)` — see step 1)
 - emphasis_target_section: `{{EMPHASIS_SECTION_TITLE}}` (e.g. `## Core features` for PRD)
 - existing_section_text: `{{EMPHASIS_SECTION_BODY}}` (current content of that section only)
 
