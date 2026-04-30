@@ -107,13 +107,30 @@ exists, treat the workflow as iteration mode (Step 6 yes-path entry).
 
 ### Step dispatch contract (Steps 2/3/4/8/11/13/9)
 
-For each dispatch step: (1) load the prompt file under `prompts/`,
-(2) substitute the placeholders listed in that step, (3) wrap via
-`server.harness.wrap_with_preamble`, (4) call
+For each dispatch step:
+
+1. `prompt_text = server.dispatch_prompt("<file>.md")` — loads the prompt
+   under `bundled/plan-pack/prompts/{subagent,orchestrator}/` (resolver
+   checks both subdirs + flat fallback) and prepends the harness preamble
+   via `server.harness.wrap_with_preamble` (byte-identity contract
+   surface). Unknown `<file>.md` raises `ValueError` (anti-bypass guard,
+   Spike III §1.2). The function does **not** substitute placeholders —
+   `{{KEY}}` tokens come back intact.
+2. Substitute placeholders against `prompt_text` yourself, e.g.
+   `prompt_text = prompt_text.replace("{{TASK}}", task)`. The orchestrator
+   owns which `{{KEY}}` tokens are caller-substituted (Inputs section)
+   vs. preserved for the sub-agent's own `.replace` instructions inside
+   the canonical save block. A naive global `.replace` over both classes
+   would corrupt the latter — Spike III §1.2 rationale.
+3. call
 `server.harness.record_dispatch` for the on-disk evidence trail
-(`runs/<rid>/dispatches.jsonl`), (5) dispatch to `general-purpose` via the
-Agent tool. Sub-agent returns `WROTE: <path>` on stdout — parse with regex
-`^WROTE: (.+)$` and show. On `ERROR:` or missing `WROTE:`, follow §CRITICAL.
+(`runs/<rid>/dispatches.jsonl`) — invoke as
+`server.record_dispatch(run_id, step, prompt_text, subagent_type="general-purpose", prompt_file="<file>.md", description="...", wrote_path=...)`
+to append the hash-only audit row. The `prompt_file=` kwarg matches
+the allowlist (Spike III §1.2).
+4. Dispatch to `general-purpose` via the Agent tool with `prompt_text`.
+5. Sub-agent prints `WROTE: <path>` on stdout — parse with regex
+   `^WROTE: (.+)$`. On `ERROR:` or missing `WROTE:`, follow §CRITICAL.
 
 `record_dispatch` 시그니처 (verbatim — `from server import record_dispatch`):
 
@@ -126,10 +143,11 @@ record_dispatch(
     subagent_type: str = "",
     description: str = "",
     wrote_path: Optional[str] = None,
+    prompt_file: Optional[str] = None,
 ) -> Path
 ```
 
-`role` kwarg 없음. 위 표 (Step → Role) 의 *Role* 은 prompt 본문에 자연어로 박히는 페르소나 라벨이고 `subagent_type` 은 항상 `"general-purpose"` 다. `record_dispatch(..., role=...)` 로 호출하면 `TypeError`.
+`role` kwarg 없음. 위 표 (Step → Role) 의 *Role* 은 prompt 본문에 자연어로 박히는 페르소나 라벨이고 `subagent_type` 은 항상 `"general-purpose"` 다. `record_dispatch(..., role=...)` 로 호출하면 `TypeError`. `prompt_file` 은 `ALLOWED_PROMPT_FILES` 외 값이면 stderr 경고 (default) 또는 `ValueError` (`ASSEMBLE_DISPATCH_STRICT=1`).
 
 ### Step 1 — PRD interview (main Claude, AskUserQuestion)
 
