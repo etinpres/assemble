@@ -42,7 +42,9 @@ fi
 case "$tool" in
   Edit|Write|NotebookEdit) ;;
   Bash)
-    # v1: 메인의 Bash + python3/sh -c 우회 차단 (Spike I §6)
+    # v2 (Spike IV §1.3 C1): context-aware marker matcher delegated to
+    # hooks/_guard_bash_matcher.py. The helper returns 0 iff the magic
+    # marker appears inside a python3 body (canonical save block).
     if command -v jq >/dev/null 2>&1; then
       cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // ""' 2>/dev/null)"
     else
@@ -53,19 +55,21 @@ case "$tool" in
     # Trigger: python3/python/sh -c/bash -c invocation
     #   AND (runs/<rid>/<f>.{md,json,txt} OR write_run_artifact OR runs_dir)
     if echo "$cmd" | grep -qE '(python3|python|sh -c|bash -c)' \
-       && echo "$cmd" | grep -qE '(runs/[^/]+/(PRD|ARCHITECTURE|ADR|UI_GUIDE)\.md|write_run_artifact|runs_dir)'; then
-      # Passthrough: magic marker 존재 시 sub-agent canonical save로 인정
-      if echo "$cmd" | grep -q 'ASSEMBLE_SUBAGENT_LIFECYCLE_WRITE'; then
+       && echo "$cmd" | grep -qE '(runs/[^/]+/(PRD|ARCHITECTURE|ADR|UI_GUIDE|BUG_REPORT)\.md|write_run_artifact|runs_dir)'; then
+      # Passthrough: marker present in python3 body → canonical save
+      hook_dir="$(dirname "$0")"
+      if printf '%s' "$cmd" | python3 "$hook_dir/_guard_bash_matcher.py" >/dev/null 2>&1; then
         exit 0
       fi
       # Block
       bash_template='[V4 GUARD — Item B-prime] Bash → plan-pack artifact 직접 write 차단
-메인 Claude의 python3/sh -c 우회로 plan-pack artifact (PRD/ARCHITECTURE/ADR/UI_GUIDE.md) 쓰기 시도 감지.
+메인 Claude의 python3/sh -c 우회로 plan-pack/debugger artifact 쓰기 시도 감지.
 명령 일부: __CMD__
-이유: Spike I 후 plan-pack 본문은 sub-agent 가 자체 write 책임 — 메인은 dispatch + path 수령만.
+이유: Spike I 후 ★ bundle 본문은 sub-agent 가 자체 write 책임 — 메인은 dispatch + path 수령만.
 복구: sub-agent dispatch 로 재시도하세요. (canonical save block 에 magic marker 포함됨)
 참고: orchestrator 메타파일 (iteration_state.json, dispatches.jsonl) 은 main 직접 write 허용 (server 함수 사용 권장).
-디버깅: ASSEMBLE_GUARD=warn 으로 stderr 추가 정보 확인 (차단은 유지). off 모드 없음.'
+디버깅: ASSEMBLE_GUARD=warn 으로 stderr 추가 정보 확인 (차단은 유지). off 모드 없음.
+v2 (Spike IV §1.3): magic marker 는 python3 -c 또는 heredoc body 안에서만 인정 — Bash 코멘트 prefix 우회 차단.'
       cmd_excerpt="$(printf '%s' "$cmd" | head -c 200)"
       bash_msg="${bash_template//__CMD__/$cmd_excerpt}"
       printf '%s\n' "$bash_msg" >&2

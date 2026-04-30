@@ -46,9 +46,19 @@ def test_a_main_python3_write_blocked():
 
 
 def test_b_subagent_marker_passes():
-    """Case B: same as A but with magic marker → exit 0"""
-    cmd = ('# ASSEMBLE_SUBAGENT_LIFECYCLE_WRITE\n'
-           'python3 -c "from server import write_run_artifact; write_run_artifact(\\"r\\", \\"PRD.md\\", \\"x\\")"')
+    """Case B: same as A but with magic marker → exit 0.
+
+    Spike IV §1.3 C1 (hook v2): the marker must live INSIDE the python3
+    body (-c arg or heredoc), not as a Bash-comment prefix. v1's prefix
+    form (`# MARKER\\npython3 -c ...`) is the carryforward C bypass and
+    is now blocked.
+    """
+    cmd = (
+        "python3 -c '# ASSEMBLE_SUBAGENT_LIFECYCLE_WRITE\n"
+        "from server import write_run_artifact\n"
+        "write_run_artifact(\"r\", \"PRD.md\", \"x\")\n"
+        "'"
+    )
     proc = run_hook("Bash", cmd)
     assert proc.returncode == 0, f"expected pass (exit 0), got {proc.returncode}\nstderr:\n{proc.stderr}"
 
