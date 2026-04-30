@@ -62,15 +62,19 @@ design_direction = "\n".join(design_direction_lines).strip() or "(not specified 
 
 ui_body = """
 ## Visual identity
-...
+<TBD: 1 paragraph aesthetic + 2-3 "feels like" reference apps/sites from U1 + PRD Design direction>
+
 ## Color tokens
-...
+<TBD: table or bullets — token name, hex, role, optional dark-mode pair from U4>
+
 ## Typography
-...
+<TBD: bullets — family, weights, sizes, line-heights, primary use from U5>
+
 ## Component patterns
-...
+<TBD: one section per Q3 / U3 component, ≥3 sections, each with 2-3 sub-bullets>
+
 ## Priority screens
-...
+<TBD: numbered subsection per U2 flow, ≥3, each composing components from above>
 """.strip()
 
 template = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/templates/UI_GUIDE.md.template").read_text()

@@ -33,8 +33,8 @@ n_kept = ...    # int
 n_dropped = ... # int
 audit = f"> verified by sub-agent on {date.today().isoformat()} — {n_kept} kept / {n_dropped} dropped"
 bullets = """
-- ...
-- ...
+- <TBD: 1 verified critique bullet from triage step 4b — runtime claim, contradiction, or missing constraint, kept after verification>
+- <TBD: 1 verified critique bullet (drop entry if n_kept < 2)>
 """.strip()
 section = f"\n\n## Review notes\n\n{audit}\n\n{bullets}\n"
 

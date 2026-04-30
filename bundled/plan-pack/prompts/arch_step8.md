@@ -29,12 +29,12 @@ from server import write_run_artifact
 rid = "{{RUN_ID}}"
 task = """{{TASK}}"""
 
-stack = """..."""
-directory_tree = """..."""
-patterns = """..."""
-data_flow = """..."""
-external_deps = """..."""
-module_boundaries = """..."""
+stack = """<TBD: 1-paragraph stack summary from A1 — language, framework, runtime, persistence>"""
+directory_tree = """<TBD: tree -L 2 style ASCII tree of top-level dirs from A2>"""
+patterns = """<TBD: 1 paragraph naming the chosen pattern from A3 + rationale>"""
+data_flow = """<TBD: 3 numbered steps tracing primary user flow from A4>"""
+external_deps = """<TBD: bullet list from A5; literal "none" if no third-party services>"""
+module_boundaries = """<TBD: bullet per module from A6 with one-line responsibility>"""
 
 template = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/templates/ARCHITECTURE.md.template").read_text()
 filled = (template

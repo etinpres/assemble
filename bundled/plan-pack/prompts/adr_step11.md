@@ -50,17 +50,17 @@ task = """{{TASK}}"""
 arch_text = read_run_artifact(rid, "ARCHITECTURE.md") or ""
 
 decisions_block = """
-## Decision 1: ...
+## Decision 1: <TBD: 1-line decision title from D1 selection>
 ### Context
-...
+<TBD: 1 paragraph synthesized from PRD Goal/Risks + ARCH module relevant to D1 — never stub fillers>
 ### Decision
-...
+<TBD: 1 paragraph stating what was chosen, sourced from D1 + Call 6 sub-question (a)>
 ### Reasoning
-...
+<TBD: 1 paragraph — why this beats alternatives, cite the strongest rejected option from Call 6 (a)>
 ### Rejected alternatives
-- ...
+- <TBD: 1 alternative — one-line reason rejected, from Call 6 (a)>
 ### Tradeoffs
-- ...
+- <TBD: 1 tradeoff — one-line consequence, from Call 6 (b)>
 """.strip()
 
 template = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/templates/ADR.md.template").read_text()
