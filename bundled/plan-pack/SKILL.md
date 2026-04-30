@@ -218,11 +218,22 @@ Step 4b triage, picks heading (`## Cross-doc review` for first-pass,
 assert `heading not in adr_text`, and rewrites `ADR.md`.
 
 Sub-agent prints **two** stdout lines — `WROTE: <path>` and
-`COUNTS: resolved=<N> unresolved=<N> new=<N>`. Parse both. Update
-`runs/<rid>/iteration_state.json` with the COUNTS values (drives the
-multi-iteration stop condition). If the `COUNTS:` line is missing or
-unparseable (non-integer values, missing key), treat as Step 9 dispatch
-failure per §CRITICAL — surface to user, do NOT advance to Step 6.
+`COUNTS: resolved=<N> unresolved=<N> new=<N>`. Parse both. To update
+`runs/<rid>/iteration_state.json` (drives the multi-iteration stop
+condition), call `server.update_iteration_state` directly — *do not*
+dispatch a sub-agent for this:
+
+```python
+from server import update_iteration_state
+update_iteration_state(rid, {
+    "resolved_pct": resolved / max(resolved + unresolved + new, 1),
+    "new_count": new,
+    "stopped": False,
+    "reason": "",
+})
+```
+
+orchestrator metadata 는 §CRITICAL 룰 (Spike II F11) 에 의해 sub-agent 위임 금지. hook 화이트리스트 (Spike II F8) 가 main 직접 write 를 허용한다. If the `COUNTS:` line is missing or unparseable (non-integer values, missing key), treat as Step 9 dispatch failure per §CRITICAL — surface to user, do NOT advance to Step 6.
 
 If the precondition assert fires (heading already in ADR.md from a failed
 prior iteration overwrite), the sub-agent prints
@@ -317,8 +328,10 @@ ones at the cap).
 
 After each Step 9 review the main Claude parses the
 `COUNTS: resolved=N unresolved=N new=N` second-stdout line, computes
-`resolved_pct = resolved / (resolved + unresolved + new)`, appends a new
-entry to `iteration_state.json`, and decides whether to continue.
+`resolved_pct = resolved / (resolved + unresolved + new)`, calls
+`update_iteration_state(rid, {...})` (server function, see Step 9), and
+decides whether to continue. The function appends to `iterations[]` with
+auto-assigned `index`.
 
 ### User exit override
 

@@ -812,3 +812,13 @@ def test_skill_md_documents_record_dispatch_signature():
     # No-role warning sentence (catches F2 regression)
     assert "kwarg 없음" in text  # 새 시그니처 문장에만 등장
     assert "TypeError" in text
+
+
+def test_skill_md_step9_uses_update_iteration_state():
+    """Spike II F15: Step 9 must instruct main to use server function."""
+    text = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/SKILL.md").read_text(encoding="utf-8")
+    assert "update_iteration_state" in text
+    # Both Step 9 detail + Multi-iteration loop wording reference it
+    assert text.count("update_iteration_state") >= 2
+    # And the §CRITICAL ban on sub-agent metadata delegation is reinforced
+    assert "do not" in text.lower() or "위임 금지" in text
