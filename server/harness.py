@@ -19,12 +19,25 @@ import datetime
 import hashlib
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Optional
 
 
 _PREAMBLE_REL = ".claude/skills/assemble/bundled/_shared/harness-preamble.md"
+
+
+ALLOWED_PROMPT_FILES = (
+    "prd_step2.md",
+    "prd_step3.md",
+    "prd_step4.md",
+    "arch_step8.md",
+    "adr_step11.md",
+    "ui_step13.md",
+    "cross_doc_step9.md",
+    "iter_emphasis.md",
+)
 
 
 def _preamble_path() -> Path:
@@ -73,6 +86,72 @@ def wrap_with_preamble(prompt: str) -> str:
     if pre is None:
         return prompt
     return f"{pre}\n[TASK]\n{prompt}"
+
+
+def _resolve_prompt_path(prompt_file: str) -> Path:
+    """Return the on-disk path for a known prompt file.
+
+    After Phase C6 (Spike III §2.6) the directory layout is:
+        bundled/plan-pack/prompts/subagent/<name>.md   (7 files)
+        bundled/plan-pack/prompts/orchestrator/<name>.md (1 file: iter_emphasis.md)
+
+    Phase B implementation predates the move — the resolver checks the
+    legacy flat path first, then the two subdirs. After C6 lands, the
+    flat path stops resolving; this resolver continues to work without
+    edits.
+
+    Honors ASSEMBLE_HOME (mirrors `_preamble_path`) so test fixtures can
+    redirect the lookup root.
+    """
+    base = Path(os.environ.get("ASSEMBLE_HOME", str(Path.home()))) / (
+        ".claude/skills/assemble/bundled/plan-pack/prompts"
+    )
+    # Try subdirs first (post-C6 layout), fall back to flat (pre-C6).
+    for sub in ("subagent", "orchestrator", ""):
+        candidate = base / sub / prompt_file if sub else base / prompt_file
+        if candidate.exists():
+            return candidate
+    raise FileNotFoundError(
+        f"prompt_file {prompt_file!r} not found under {base} (or subdirs)"
+    )
+
+
+def dispatch_prompt(prompt_file: str, **placeholders) -> str:
+    """Load a known prompt, substitute placeholders, prepend harness preamble.
+
+    Allowlist-checked: `prompt_file` must be in `ALLOWED_PROMPT_FILES` —
+    raises ValueError with §CRITICAL pointer otherwise.
+
+    Placeholder substitution: every `{{KEY}}` in the loaded text is replaced
+    with the matching `placeholders[KEY]`. Unknown placeholders (kwargs that
+    don't appear in the file) raise KeyError so caller typos surface
+    immediately. Missing placeholders (file uses `{{KEY}}` but caller didn't
+    pass `KEY=...`) leave the literal `{{KEY}}` in place — sub-agent will
+    fail to fill, surfaced via Spike III §1.1 guard test.
+
+    Returns: the wrapped prompt ready for Agent dispatch.
+    """
+    if prompt_file not in ALLOWED_PROMPT_FILES:
+        raise ValueError(
+            f"prompt_file {prompt_file!r} not allowed. "
+            f"See SKILL.md §CRITICAL anti-bypass + ALLOWED_PROMPT_FILES "
+            f"in server.harness for the 8-file allowlist."
+        )
+    text = _resolve_prompt_path(prompt_file).read_text(encoding="utf-8")
+
+    # Reject unknown kwargs (typo guard).
+    declared = set(re.findall(r"\{\{([A-Z_]+)\}\}", text))
+    unknown = set(placeholders) - declared
+    if unknown:
+        raise KeyError(
+            f"placeholders {sorted(unknown)} are not in {prompt_file}; "
+            f"declared placeholders: {sorted(declared)}"
+        )
+
+    rendered = text
+    for key, value in placeholders.items():
+        rendered = rendered.replace("{{" + key + "}}", value)
+    return wrap_with_preamble(rendered)
 
 
 # `wrap_with_preamble` emits `<pre>\n[TASK]\n<prompt>` where `pre` is
@@ -150,6 +229,7 @@ def record_dispatch(
     subagent_type: str = "",
     description: str = "",
     wrote_path: Optional[str] = None,
+    prompt_file: Optional[str] = None,
 ) -> Path:
     """Append one hash-only record to `runs/<run_id>/dispatches.jsonl`.
 
@@ -191,6 +271,15 @@ def record_dispatch(
     if run_id != Path(run_id).name:
         raise ValueError(f"unsafe run_id: not a plain basename: {run_id!r}")
 
+    if prompt_file is not None and prompt_file not in ALLOWED_PROMPT_FILES:
+        msg = (
+            f"prompt_file {prompt_file!r} not in ALLOWED_PROMPT_FILES "
+            f"(SKILL.md §CRITICAL anti-bypass)"
+        )
+        if os.environ.get("ASSEMBLE_DISPATCH_STRICT") == "1":
+            raise ValueError(msg)
+        print(f"[harness] WARN: {msg}", file=sys.stderr)
+
     preamble, body = _split_preamble_body(prompt_text)
     pre_bytes = preamble.encode("utf-8")
     body_bytes = body.encode("utf-8")
@@ -209,6 +298,7 @@ def record_dispatch(
         "body_sha256": hashlib.sha256(body_bytes).hexdigest(),
         "body_bytes": len(body_bytes),
         "wrote_path": wrote_path,
+        "prompt_file": prompt_file,
     }
 
     out = _dispatches_path(run_id)

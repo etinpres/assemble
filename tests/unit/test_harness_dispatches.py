@@ -41,7 +41,8 @@ def test_record_dispatch_creates_run_dir_and_jsonl(tmp_path, monkeypatch):
     prompt = h.wrap_with_preamble("body content")
     out = h.record_dispatch("rid-001", "step6.iter2.PRD", prompt,
                              subagent_type="general-purpose",
-                             description="iter2 PRD re-draft")
+                             description="iter2 PRD re-draft",
+                             prompt_file="prd_step2.md")
     assert out.exists()
     assert out == _runs_root(tmp_path) / "rid-001" / "dispatches.jsonl"
     rows = _read_jsonl(out)
@@ -50,6 +51,8 @@ def test_record_dispatch_creates_run_dir_and_jsonl(tmp_path, monkeypatch):
     assert rec["step"] == "step6.iter2.PRD"
     assert rec["subagent_type"] == "general-purpose"
     assert rec["description"] == "iter2 PRD re-draft"
+    # B1 (Spike III §1.2): prompt_file is recorded in the audit trail.
+    assert rec["prompt_file"] == "prd_step2.md"
 
 
 def test_record_dispatch_preamble_sha_matches_canonical(tmp_path, monkeypatch):
