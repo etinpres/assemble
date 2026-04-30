@@ -52,7 +52,7 @@
     },
     {
       "id": "B-5-B7-dispatches-jsonl-required",
-      "phrase": "call\n`server.harness.record_dispatch` for the on-disk evidence trail\n(`runs/<rid>/dispatches.jsonl`)",
+      "phrase": "call\n   `server.harness.record_dispatch` for the on-disk evidence trail\n   (`runs/<rid>/dispatches.jsonl`)",
       "spec_path": "bundled/plan-pack/SKILL.md",
       "section": "### Step dispatch contract",
       "tag": "B-5 Item B-7 — record_dispatch mandatory contract (replayable B5.7 evidence)"

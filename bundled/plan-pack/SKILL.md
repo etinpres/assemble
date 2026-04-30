@@ -123,11 +123,11 @@ For each dispatch step:
    the canonical save block. A naive global `.replace` over both classes
    would corrupt the latter — Spike III §1.2 rationale.
 3. call
-`server.harness.record_dispatch` for the on-disk evidence trail
-(`runs/<rid>/dispatches.jsonl`) — invoke as
-`server.record_dispatch(run_id, step, prompt_text, subagent_type="general-purpose", prompt_file="<file>.md", description="...", wrote_path=...)`
-to append the hash-only audit row. The `prompt_file=` kwarg matches
-the allowlist (Spike III §1.2).
+   `server.harness.record_dispatch` for the on-disk evidence trail
+   (`runs/<rid>/dispatches.jsonl`) — invoke as
+   `server.record_dispatch(run_id, step, prompt_text, subagent_type="general-purpose", prompt_file="<file>.md", description="...", wrote_path=...)`
+   to append the hash-only audit row. The `prompt_file=` kwarg matches
+   the allowlist (Spike III §1.2).
 4. Dispatch to `general-purpose` via the Agent tool with `prompt_text`.
 5. Sub-agent prints `WROTE: <path>` on stdout — parse with regex
    `^WROTE: (.+)$`. On `ERROR:` or missing `WROTE:`, follow §CRITICAL.
