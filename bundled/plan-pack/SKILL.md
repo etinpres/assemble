@@ -45,7 +45,8 @@ run_dir, each from a matching template under `bundled/plan-pack/templates/`:
 ## Sub-agent role mapping (Phase B-4 + Spike I)
 
 All dispatches use `general-purpose` (preferred + fallback). Role and
-prompt file vary per step:
+prompt file vary per step. (*Role* = prompt persona shaping the
+sub-agent's behavior; Agent tool type is always `general-purpose`.)
 
 | Step | Role | Prompt file |
 |---|---|---|
@@ -196,7 +197,9 @@ assert `heading not in adr_text`, and rewrites `ADR.md`.
 Sub-agent prints **two** stdout lines — `WROTE: <path>` and
 `COUNTS: resolved=<N> unresolved=<N> new=<N>`. Parse both. Update
 `runs/<rid>/iteration_state.json` with the COUNTS values (drives the
-multi-iteration stop condition).
+multi-iteration stop condition). If the `COUNTS:` line is missing or
+unparseable (non-integer values, missing key), treat as Step 9 dispatch
+failure per §CRITICAL — surface to user, do NOT advance to Step 6.
 
 If the precondition assert fires (heading already in ADR.md from a failed
 prior iteration overwrite), the sub-agent prints
