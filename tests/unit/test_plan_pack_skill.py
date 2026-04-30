@@ -58,9 +58,12 @@ def test_skill_is_orchestrator_only():
     assert "orchestrator-only" in body.lower()
 
 
-def test_skill_references_run_dir_helper():
+def test_skill_step_5_is_deleted():
+    """Spike I §8.2 카테고리 1: Step 5 (main-write artifact assembly) is
+    deleted in Spike I — sub-agents now write directly via the lifecycle
+    hook. The orchestrator no longer assembles or writes artifacts."""
     body = _body()
-    assert "write_run_artifact" in body
+    assert "### Step 5" not in body, "Step 5 should be deleted in Spike I"
 
 
 def test_skill_references_harness_wrapper():
@@ -216,23 +219,32 @@ def test_workflow_step_8_arch_single_dispatch():
     # Phase B spec §3: B-2 through B-4 are single-dispatch, not parallel
     assert "single" in step8.lower()
     assert "ARCHITECTURE.md" in step8
-    assert "wrap_with_preamble" in step8
-    assert "write_run_artifact" in step8
+    # Spike I §8.2 카테고리 1: orchestrator dispatches sub-agent prompt
+    # file; sub-agent writes the artifact and returns `WROTE:` on stdout.
+    assert "prompts/arch_step8.md" in step8
 
 
-def test_workflow_step_8_handles_sub_agent_headings():
-    """Dogfood finding #1: sub-agent returns markdown with `## Stack`,
-    `## Directory tree` etc. headings, but template already has them.
-    Naive substitution would duplicate. Step 8 must show how to extract
-    section bodies before substituting."""
+def test_workflow_step_8_uses_subagent_wrote_convention():
+    """Spike I §8.2 카테고리 1: With sub-agent path-only contract, the
+    sub-agent writes the artifact directly (no main-Claude template
+    substitution). The SKILL must document the `WROTE:` stdout
+    convention as the dispatch contract for Step 8 (and all other
+    dispatch steps).
+
+    The convention lives in the central `### Step dispatch contract`
+    block (Steps 2/3/4/8/11/13/9), not duplicated per step — assert
+    that contract block exists and explicitly enumerates Step 8."""
     body = _body()
-    step8 = _section(body, "### Step 8")
-    # The pseudocode must include the section parser, not just a raw
-    # `template.replace(..., a1)` map (which is what tripped this dogfood).
-    assert "split_sections" in step8, (
-        "Step 8 must show section-body extraction (dogfood finding #1). "
-        "Naive .replace(...) of full sub-agent output would duplicate "
-        "## headings already in the template."
+    contract = _section(body, "### Step dispatch contract")
+    assert "WROTE:" in contract, (
+        "Dispatch contract section missing `WROTE:` stdout convention "
+        "(Spike I sub-agent return contract — replaces dogfood finding #1 "
+        "split_sections logic now that sub-agent writes directly)."
+    )
+    # Step 8 must be enumerated in the contract block's heading
+    assert "8" in contract.split("\n", 1)[0], (
+        "Step 8 not enumerated in dispatch contract heading — "
+        "the `WROTE:` return convention must apply to Step 8"
     )
 
 
@@ -347,8 +359,9 @@ def test_workflow_step_11_adr_single_dispatch():
     # Phase B spec §3: B-2 through B-4 are single-dispatch, not parallel
     assert "single" in step11.lower()
     assert "ADR.md" in step11
-    assert "wrap_with_preamble" in step11
-    assert "write_run_artifact" in step11
+    # Spike I §8.2 카테고리 1: orchestrator dispatches sub-agent prompt
+    # file; sub-agent writes the artifact and returns `WROTE:` on stdout.
+    assert "prompts/adr_step11.md" in step11
     # Decision count contract for gate B3.2
     assert "3" in step11 or "three" in step11.lower()
 
@@ -429,8 +442,9 @@ def test_workflow_step_13_ui_single_dispatch_inherits_plan_fix():
     # Phase B spec §3: B-2 through B-4 are single-dispatch, not parallel
     assert "single" in step13.lower()
     assert "UI_GUIDE.md" in step13
-    assert "wrap_with_preamble" in step13
-    assert "write_run_artifact" in step13
+    # Spike I §8.2 카테고리 1: orchestrator dispatches sub-agent prompt
+    # file; sub-agent writes the artifact and returns `WROTE:` on stdout.
+    assert "prompts/ui_step13.md" in step13
     # B-3 Finding #3 fix carried into Step 13: general-purpose preferred, Plan fallback.
     # Locate the role-mapping table and assert the Step 13 row's preferred column is general-purpose.
     table = body[body.index("## Sub-agent role mapping"):body.index("## Workflow")]
@@ -588,3 +602,29 @@ def test_steps_2_3_have_preamble_byte_identity_contract():
         "Steps 2/3 missing the preamble byte-identity contract — "
         "B-5 Item B-2 wrap_with_preamble cluster spec drift"
     )
+
+
+# -------------------------------------------------------------------------
+# Spike I §8.2 카테고리 1: sub-agent prompt path-only contract
+# -------------------------------------------------------------------------
+
+
+def test_prompts_have_magic_marker():
+    """Spike I §8.2 카테고리 1: every sub-agent dispatch prompt must carry
+    the `ASSEMBLE_SUBAGENT_LIFECYCLE_WRITE` magic marker (so the hook v1
+    passthrough recognises legitimate dispatches) and document the
+    `WROTE:` stdout return convention.
+
+    Covers all 7 dispatch prompts (excludes `iter_emphasis.md` — that's
+    a prompt fragment used by the orchestrator's iteration AskUserQuestion
+    flow, not a sub-agent dispatch payload).
+    """
+    plan_pack = Path.home() / ".claude/skills/assemble/bundled/plan-pack/prompts"
+    for fname in ["prd_step2.md", "prd_step3.md", "prd_step4.md",
+                  "arch_step8.md", "adr_step11.md", "ui_step13.md",
+                  "cross_doc_step9.md"]:
+        body = (plan_pack / fname).read_text()
+        assert "ASSEMBLE_SUBAGENT_LIFECYCLE_WRITE" in body, (
+            f"{fname} missing magic marker for hook v1 passthrough"
+        )
+        assert "WROTE:" in body, f"{fname} missing WROTE: stdout convention"
