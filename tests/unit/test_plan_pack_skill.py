@@ -837,3 +837,22 @@ def test_skill_md_korean_label_policy_section():
     assert "Korean label policy" in text or "라벨 정책" in text
     assert "(추천)" in text
     assert "(승인)" in text  # 잘못된 사례 명시
+
+
+def test_skill_md_step10_call5_call6_explicit():
+    """Spike II F6: Call 5 / Call 6 형태 명확."""
+    text = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/SKILL.md").read_text(encoding="utf-8")
+    assert "Call 5" in text and "Call 6" in text
+    # Call 5 shape: single call, 3 sub-questions
+    assert "single" in text.lower() or "*single*" in text or "1 AskUserQuestion call" in text
+    # Call 6 shape: 3 calls
+    assert "3 separate" in text or "3 AskUserQuestion calls" in text
+
+
+def test_skill_md_step10_min_selected_3():
+    """Spike II F5: gate B3.2 — minSelected 3 강제."""
+    text = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/SKILL.md").read_text(encoding="utf-8")
+    assert "minSelected: 3" in text or "minSelected=3" in text or "minSelected`: 3" in text
+    assert "maxSelected: 5" in text or "maxSelected=5" in text or "maxSelected`: 5" in text
+    # main count validation
+    assert "최소 3개" in text or "verify the user selected" in text

@@ -182,12 +182,15 @@ External dependencies, Module boundaries), fills
 
 ### Step 10 — ADR interview (main Claude, AskUserQuestion)
 
-After Step 8 returns, 6 questions across **two `AskUserQuestion` calls of
-3 questions each**. Call 5 (D1–D3): three most consequential design
-choices (title only). Call 6 (D4–D6): for each decision, strongest
-rejected alternative + main tradeoff + decision-specific risks/unknowns
-(numbered 1/2/3). Three decisions = minimum (gate B3.2); volunteer more
-→ N ≥ 3.
+After Step 8 returns, **two phases** of `AskUserQuestion`:
+
+**Call 5** — *single* `AskUserQuestion` call with **3 sub-questions** (D1, D2, D3 — title only). Each sub-question shape: PRD Q1–Q4 batch shape (multi-select: choose top decisions). multi-select schema MUST include `minSelected: 3, maxSelected: 5` (gate B3.2 minimum). After response, main MUST verify the user selected ≥ 3 decisions; if fewer, re-prompt the same Call 5 with the message "최소 3개 결정이 필요합니다" — do NOT proceed with 2 decisions even if AskUserQuestion returns successfully.
+
+**Call 6** — *3 separate* `AskUserQuestion` calls, **one per decision** chosen in Call 5, each with **3 sub-questions**: (a) strongest rejected alternative, (b) main tradeoff, (c) decision-specific risks/unknowns. The three sub-questions are numbered 1/2/3 within each call. Three calls in sequence, NOT parallel — each subsequent call's wording references the prior decision title for user context.
+
+Three decisions = minimum (gate B3.2); volunteer more → N ≥ 3, accept up to 5.
+
+(Spike II F5/F6: spec 모호함 차단 — "1-question multi-select" 또는 single 6-question call 자유 재해석 금지.)
 
 ### Step 11 — ADR dispatch
 
