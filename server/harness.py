@@ -19,7 +19,6 @@ import datetime
 import hashlib
 import json
 import os
-import re
 import sys
 from pathlib import Path
 from typing import Optional
@@ -116,20 +115,24 @@ def _resolve_prompt_path(prompt_file: str) -> Path:
     )
 
 
-def dispatch_prompt(prompt_file: str, **placeholders) -> str:
-    """Load a known prompt, substitute placeholders, prepend harness preamble.
+def dispatch_prompt(prompt_file: str) -> str:
+    """Load a known prompt and prepend the harness preamble.
 
     Allowlist-checked: `prompt_file` must be in `ALLOWED_PROMPT_FILES` —
-    raises ValueError with §CRITICAL pointer otherwise.
+    raises ValueError with §CRITICAL pointer otherwise. The file is
+    resolved via `_resolve_prompt_path` (subagent/, orchestrator/, then
+    flat fallback) so this function ships independent of the Phase C6
+    file move.
 
-    Placeholder substitution: every `{{KEY}}` in the loaded text is replaced
-    with the matching `placeholders[KEY]`. Unknown placeholders (kwargs that
-    don't appear in the file) raise KeyError so caller typos surface
-    immediately. Missing placeholders (file uses `{{KEY}}` but caller didn't
-    pass `KEY=...`) leave the literal `{{KEY}}` in place — sub-agent will
-    fail to fill, surfaced via Spike III §1.1 guard test.
+    Placeholder substitution is the caller's responsibility — the
+    orchestrator already knows which `{{KEY}}` tokens belong to its
+    Inputs section vs. the sub-agent's own `.replace("{{KEY}}", var)`
+    instructions inside the canonical save block. A naive global
+    `.replace` would corrupt the latter. See spec §1.2 (B2 — option B)
+    for the rationale.
 
-    Returns: the wrapped prompt ready for Agent dispatch.
+    Returns: the wrapped prompt (preamble + [TASK] + body) ready for
+    the caller's substitution pass + Agent dispatch.
     """
     if prompt_file not in ALLOWED_PROMPT_FILES:
         raise ValueError(
@@ -138,20 +141,7 @@ def dispatch_prompt(prompt_file: str, **placeholders) -> str:
             f"in server.harness for the 8-file allowlist."
         )
     text = _resolve_prompt_path(prompt_file).read_text(encoding="utf-8")
-
-    # Reject unknown kwargs (typo guard).
-    declared = set(re.findall(r"\{\{([A-Z_]+)\}\}", text))
-    unknown = set(placeholders) - declared
-    if unknown:
-        raise KeyError(
-            f"placeholders {sorted(unknown)} are not in {prompt_file}; "
-            f"declared placeholders: {sorted(declared)}"
-        )
-
-    rendered = text
-    for key, value in placeholders.items():
-        rendered = rendered.replace("{{" + key + "}}", value)
-    return wrap_with_preamble(rendered)
+    return wrap_with_preamble(text)
 
 
 # `wrap_with_preamble` emits `<pre>\n[TASK]\n<prompt>` where `pre` is
@@ -247,7 +237,8 @@ def record_dispatch(
           "preamble_bytes": <int>,
           "body_sha256": "<64 hex chars>",
           "body_bytes": <int>,
-          "wrote_path": "<str>" | null
+          "wrote_path": "<str>" | null,
+          "prompt_file": "<allowed-name.md>" | null
         }
 
     `wrote_path` (Spike I §8.1): optional absolute path the dispatched

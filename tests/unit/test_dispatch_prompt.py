@@ -1,7 +1,10 @@
-"""Phase B guard — server.dispatch_prompt enforces allowlist + substitutes
-all placeholders + wraps with harness preamble."""
+"""Phase B guard — server.dispatch_prompt enforces allowlist + load + wrap.
 
-import os
+Post-B1 fix (option B): substitution removed from dispatch_prompt; the
+caller (orchestrator) now owns placeholder substitution. See spec §1.2
+(B2 option B) for rationale.
+"""
+
 import pytest
 from pathlib import Path
 
@@ -25,39 +28,23 @@ def test_allowed_prompt_files_is_eight():
 
 def test_dispatch_prompt_unknown_file_raises():
     with pytest.raises(ValueError, match=r"prompt_file.*not allowed"):
-        server.dispatch_prompt("evil.md", RUN_ID="x", TASK="y")
+        server.dispatch_prompt("evil.md")
 
 
-def test_dispatch_prompt_substitutes_all_placeholders():
-    out = server.dispatch_prompt(
-        "prd_step2.md",
-        RUN_ID="r1",
-        TASK="build a thing",
-        INTERVIEW_ANSWERS="Q1 ... Q8 ...",
-    )
-    # Harness preamble must be prepended (rule 7 is the canonical sentinel).
-    # Real rule 7: "다른 스킬의 인프라 코드(...) read·grep 금지" — match the
-    # distinctive trailing phrase that uniquely identifies rule 7.
+def test_dispatch_prompt_returns_wrapped_prompt_with_placeholders_intact():
+    """option B: dispatch_prompt loads + wraps only. Substitution is the
+    caller's responsibility — `{{KEY}}` tokens MUST survive intact so the
+    caller can route them itself (orchestrator-only inputs vs. sub-agent's
+    own .replace instructions). See spec §1.2 (B2 option B)."""
+    out = server.dispatch_prompt("prd_step2.md")
+    # Harness preamble must be prepended
     assert "read·grep 금지" in out
-    # All declared placeholders substituted
-    assert "{{RUN_ID}}" not in out
-    assert "{{TASK}}" not in out
-    assert "{{INTERVIEW_ANSWERS}}" not in out
-    # User content lands in the body
-    assert "build a thing" in out
-    assert "r1" in out
-
-
-def test_dispatch_prompt_unknown_placeholder_raises():
-    """Typo in caller surfaces immediately, not at sub-agent runtime."""
-    with pytest.raises(KeyError, match=r"BOGUS"):
-        server.dispatch_prompt(
-            "prd_step2.md",
-            RUN_ID="r1",
-            TASK="t",
-            INTERVIEW_ANSWERS="a",
-            BOGUS="x",
-        )
+    # All declared placeholders must survive intact
+    assert "{{RUN_ID}}" in out
+    assert "{{TASK}}" in out
+    assert "{{INTERVIEW_ANSWERS}}" in out
+    # Body content from the on-disk prompt must be present
+    assert "PRD body sub-agent" in out  # opening paragraph
 
 
 def test_record_dispatch_strict_mode_rejects_unknown_prompt_file(
