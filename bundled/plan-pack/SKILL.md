@@ -10,6 +10,7 @@ description: Plan stage ★ bundle — produce PRD + ARCH + ADR + UI_GUIDE with 
 4. 버그 수정 시 재현 테스트 → 실패 확인 → 수정 → 재검증 루프
 5. 사용자에게 표시되는 한국어 라벨·옵션은 자연스러운 한국어로 정제
 6. task scope은 seed이지 contract가 아니다 — 풀번들 4개 doc 모두 작성
+7. 다른 스킬 인프라 코드 read·grep 금지 — 자기 task 무관 분석은 우회 시도 신호
 
 ## CRITICAL — orchestrator-only enforcement
 
