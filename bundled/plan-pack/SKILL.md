@@ -294,7 +294,7 @@ ask the user via `AskUserQuestion`:
 
 > "네 문서 작성 완료 — PRD.md, ARCHITECTURE.md, ADR.md, UI_GUIDE.md.
 > 한 차례 반복 진행할까?"
-> options: ["yes — 강조점 인터뷰 + 4-doc 재작성 + cross-doc 재검증", "no — 종료"]
+> options: ["yes — 강조점 인터뷰 + 네 문서 재작성 + 문서 간 재검증", "no — 종료"]
 
 For `iteration_count ≥ 1`, the entry prompt is replaced by §"User exit
 override" below (`"반복을 계속할까?"`). The two prompts never both fire on
@@ -390,7 +390,7 @@ After every iteration (including iterations 1 and 2 before the stop
 condition can have fired), ask via `AskUserQuestion`:
 
 > "반복을 계속할까?"
-> options: ["yes — 강조점 인터뷰 + 4-doc 재작성 + cross-doc 재검증 한 라운드 더", "no — 여기서 종료"]
+> options: ["yes — 강조점 인터뷰 + 네 문서 재작성 + 문서 간 재검증 한 라운드 더", "no — 여기서 종료"]
 
 "no" terminates the loop and records `reason: "user-requested-stop"`. The
 user is never forced through additional iterations (V4 identity rule).

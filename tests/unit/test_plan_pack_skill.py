@@ -897,3 +897,21 @@ def test_skill_md_step6_yespath_uses_per_doc_emphasis():
     text = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/SKILL.md").read_text(encoding="utf-8")
     assert "{{DOC_NAME}}" in text
     assert "Per-doc emphasis" in text or "per-doc" in text.lower()
+
+
+def test_step6_options_are_korean_only():
+    """C3 — Step 6 entry/exit options must not contain '4-doc' or 'cross-doc'
+    English tokens. Code identifiers (DOC_NAME, prompt filenames) are exempt."""
+    from pathlib import Path
+    skill = (
+        Path.home() / ".claude/skills/assemble/bundled/plan-pack/SKILL.md"
+    ).read_text()
+    # Find AskUserQuestion option blocks (lines starting with '> options:')
+    option_lines = [
+        line for line in skill.splitlines()
+        if line.lstrip().startswith("> options:")
+    ]
+    assert option_lines, "no AskUserQuestion option blocks found in SKILL.md"
+    for line in option_lines:
+        assert "4-doc" not in line, f"4-doc in: {line}"
+        assert "cross-doc" not in line, f"cross-doc in: {line}"
