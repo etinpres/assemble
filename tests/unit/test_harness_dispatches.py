@@ -195,8 +195,15 @@ def test_verify_dispatches_empty_file_is_ok(tmp_path, monkeypatch):
     assert res["missing_file"] is False
 
 
+# v1 sha256 (pre-Spike I): kept here as fallback for dogfood data written
+# before 2026-04-30. v2 is the live value. See
+# docs/research/2026-04-30-preamble-v2-cutoff.md for the cutoff memo.
+EXPECTED_PREAMBLE_V2_SHA = "df27450513c019a9dd395d8f62c99b445e7a16b4fcdbb5cba52c352397993549"
+EXPECTED_PREAMBLE_V1_SHA = "858e9ff1cdc05ca73bb4009aab3acfc841169b30873d2fb00f2dfd546b86e159"  # noqa: ALLOW_LIST
+
+
 def test_record_dispatch_full_byte_identity_with_real_canonical_preamble(monkeypatch):
-    """Smoke test against the actual repo preamble file (sha 858e9ff1...).
+    """Smoke test against the actual repo preamble file (sha df274505... v2).
     No stubbed home — uses the real bundled preamble. Records into a tmp
     dispatches.jsonl under a tmp ASSEMBLE_HOME with the canonical preamble
     file copied in, so we exercise the actual canonical sha.
@@ -213,4 +220,4 @@ def test_record_dispatch_full_byte_identity_with_real_canonical_preamble(monkeyp
     import server.harness as h
     importlib.reload(h)
     assert h.canonical_preamble_sha256() == expected_sha
-    assert expected_sha == "858e9ff1cdc05ca73bb4009aab3acfc841169b30873d2fb00f2dfd546b86e159"
+    assert expected_sha == EXPECTED_PREAMBLE_V2_SHA
