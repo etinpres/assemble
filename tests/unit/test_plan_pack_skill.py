@@ -822,3 +822,18 @@ def test_skill_md_step9_uses_update_iteration_state():
     assert text.count("update_iteration_state") >= 2
     # And the §CRITICAL ban on sub-agent metadata delegation is reinforced
     assert "do not" in text.lower() or "위임 금지" in text
+
+
+def test_skill_md_rule5_includes_loanword_examples():
+    """Spike II F3: Rule 5 head에 외래어 표기 사례."""
+    text = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/SKILL.md").read_text(encoding="utf-8")
+    for sample in ("architecture→아키텍처", "family→패밀리", "top-level→최상위", "recommended→추천"):
+        assert sample in text, f"missing: {sample}"
+
+
+def test_skill_md_korean_label_policy_section():
+    """Spike II F4: (추천) 통일 정책이 명시."""
+    text = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/SKILL.md").read_text(encoding="utf-8")
+    assert "Korean label policy" in text or "라벨 정책" in text
+    assert "(추천)" in text
+    assert "(승인)" in text  # 잘못된 사례 명시

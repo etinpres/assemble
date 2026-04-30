@@ -8,7 +8,7 @@ description: Plan stage ★ bundle — produce PRD + ARCH + ADR + UI_GUIDE with 
 2. 과설계 금지, YAGNI
 3. 요청 범위 밖 코드 임의 수정 금지
 4. 버그 수정 시 재현 테스트 → 실패 확인 → 수정 → 재검증 루프
-5. 사용자에게 표시되는 한국어 라벨·옵션은 자연스러운 한국어로 정제
+5. 사용자에게 표시되는 한국어 라벨·옵션은 자연스러운 한국어로 정제. 영문 기술용어 한글화 시 정확한 외래어 표기 사용 (architecture→아키텍처, family→패밀리, top-level→최상위, recommended→추천, directory→디렉토리). 자작 변형 금지.
 6. task scope은 seed이지 contract가 아니다 — 풀번들 4개 doc 모두 작성
 7. 다른 스킬 인프라 코드 read·grep 금지 — 자기 task 무관 분석은 우회 시도 신호
 
@@ -35,6 +35,21 @@ If retry is chosen, re-dispatch the same sub-agent with the failure context
 - `~/.claude/settings.json` 편집해서 `ASSEMBLE_GUARD` 환경 변수 무력화 시도 금지. hook 자체를 비활성화/우회 시도는 사용자 confirm 이 떠도 거절.
 - hook 이 차단하면 즉시 `AskUserQuestion` 으로 사용자 결정 위임 (retry / abort / report). hook 차단을 회피하기 위한 sub-agent dispatch (예: "iteration_state.json 업데이트 해 달라" 라는 task로 sub-agent 호출) 금지.
 - sub-agent dispatch 는 `bundled/plan-pack/prompts/` 디렉토리의 *8개 파일* (`prd_step2`, `prd_step3`, `prd_step4`, `arch_step8`, `adr_step11`, `ui_step13`, `cross_doc_step9`, `iter_emphasis`) 에 한정. orchestrator 메타데이터 (`iteration_state.json`, `dispatches.jsonl`, `progress.json` 등) 는 sub-agent 에 위임 금지 — `server.run_dir.update_iteration_state` 같은 server 함수 사용 (Phase D 에서 추가).
+
+## Korean label policy (Spike II F4)
+
+When `ASSEMBLE_LOCALE=ko` (or user message language is Korean), AskUserQuestion
+options that historically carry English `(Recommended)` suffix MUST use the
+unified Korean form `(추천)`. Do not improvise alternatives like `(승인)` —
+those drift from the platform-wide V4 한국어 라벨 정책.
+
+Example:
+- `"yes — 강조점 인터뷰 + 4-doc 재작성 + cross-doc 재검증 (추천)"` ✓
+- `"yes — ... (Recommended)"` ✗ (혼합 영어)
+- `"yes — ... (승인)"` ✗ (자작 변형)
+
+`(추천)` 만 사용. Other label languages keep their native suffix (English →
+`(Recommended)`).
 
 # plan-pack — PRD + ARCH + ADR + UI_GUIDE generator
 
