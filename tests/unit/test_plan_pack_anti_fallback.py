@@ -36,7 +36,7 @@ def test_skill_md_critical_block_bans_settings_json_edit():
     assert "ASSEMBLE_GUARD" in text
     assert "settings.json" in text
     # The actual ban phrase
-    assert ("환경 변수 무력화 시도 금지" in text) or ("disable" in text.lower() and "settings.json" in text)
+    assert "환경 변수 무력화 시도 금지" in text, "F9 ban phrase missing"
 
 
 def test_skill_md_critical_block_bans_subagent_metadata_delegation():
@@ -48,9 +48,9 @@ def test_skill_md_critical_block_bans_subagent_metadata_delegation():
     """
     text = SKILL.read_text(encoding="utf-8")
     assert "iteration_state.json" in text
-    assert "위임 금지" in text or "delegate" in text.lower()
-    # The 8-file allowlist for sub-agent dispatch
-    assert "prompts/" in text and "8" in text
+    assert "위임 금지" in text, "F11 위임 금지 phrase missing"
+    # The 8-file allowlist for sub-agent dispatch (verbatim phrase from §CRITICAL)
+    assert "*8개 파일*" in text, "F11 8-file allowlist phrase missing"
 
 
 def test_skill_md_critical_block_lists_8_prompt_files():
@@ -60,3 +60,20 @@ def test_skill_md_critical_block_lists_8_prompt_files():
                         "adr_step11", "ui_step13", "cross_doc_step9",
                         "iter_emphasis"):
         assert prompt_name in text, f"§CRITICAL must list {prompt_name}"
+
+
+def test_skill_md_critical_allowlist_matches_disk():
+    """Spike II F11: §CRITICAL 8-file allowlist must match prompts/ directory.
+
+    If a 9th prompt file is added (e.g., new step in Spike III/IV) without
+    updating §CRITICAL, this test fails and forces an atomic update of the
+    rule wording. Prevents silent allowlist drift.
+    """
+    prompts_dir = Path.home() / ".claude/skills/assemble/bundled/plan-pack/prompts"
+    on_disk = sorted(p.stem for p in prompts_dir.glob("*.md"))
+    assert len(on_disk) == 8, (
+        f"prompts/ now has {len(on_disk)} files; update §CRITICAL allowlist"
+    )
+    text = SKILL.read_text(encoding="utf-8")
+    for name in on_disk:
+        assert name in text, f"prompts/{name}.md not in §CRITICAL allowlist"

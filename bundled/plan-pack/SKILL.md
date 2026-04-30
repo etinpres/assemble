@@ -33,7 +33,7 @@ If retry is chosen, re-dispatch the same sub-agent with the failure context
 
 - `~/.claude/settings.json` 편집해서 `ASSEMBLE_GUARD` 환경 변수 무력화 시도 금지. hook 자체를 비활성화/우회 시도는 사용자 confirm 이 떠도 거절.
 - hook 이 차단하면 즉시 `AskUserQuestion` 으로 사용자 결정 위임 (retry / abort / report). hook 차단을 회피하기 위한 sub-agent dispatch (예: "iteration_state.json 업데이트 해 달라" 라는 task로 sub-agent 호출) 금지.
-- sub-agent dispatch 는 `bundled/plan-pack/prompts/` 디렉토리의 *8개 파일* (`prd_step2`, `prd_step3`, `prd_step4`, `arch_step8`, `adr_step11`, `ui_step13`, `cross_doc_step9`, `iter_emphasis`) 에 한정. orchestrator 메타데이터 (`iteration_state.json`, `dispatches.jsonl`, `progress.json` 등) 는 sub-agent 에 위임 금지 — `server.run_dir.update_iteration_state` 같은 server 함수 사용.
+- sub-agent dispatch 는 `bundled/plan-pack/prompts/` 디렉토리의 *8개 파일* (`prd_step2`, `prd_step3`, `prd_step4`, `arch_step8`, `adr_step11`, `ui_step13`, `cross_doc_step9`, `iter_emphasis`) 에 한정. orchestrator 메타데이터 (`iteration_state.json`, `dispatches.jsonl`, `progress.json` 등) 는 sub-agent 에 위임 금지 — `server.run_dir.update_iteration_state` 같은 server 함수 사용 (Phase D 에서 추가).
 
 # plan-pack — PRD + ARCH + ADR + UI_GUIDE generator
 
