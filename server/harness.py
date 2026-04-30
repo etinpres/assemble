@@ -86,6 +86,15 @@ def wrap_with_preamble(prompt: str) -> str:
 _TASK_DELIM = "\n[TASK]\n"
 
 
+# Spike I §8.3: pre-cutoff (2026-04-30) dogfood data was written under the
+# v1 preamble. Live data uses v2 (`canonical_preamble_sha256()`). The
+# verify_dispatches ALLOW_LIST accepts both so old runs still verify green.
+# See docs/research/2026-04-30-preamble-v2-cutoff.md for the cutoff memo.
+_PREAMBLE_V1_SHA256 = (
+    "858e9ff1cdc05ca73bb4009aab3acfc841169b30873d2fb00f2dfd546b86e159"
+)
+
+
 def canonical_preamble_sha256() -> Optional[str]:
     """sha256 hex of the canonical preamble file's bytes.
 
@@ -135,6 +144,7 @@ def record_dispatch(
     *,
     subagent_type: str = "",
     description: str = "",
+    wrote_path: Optional[str] = None,
 ) -> Path:
     """Append one hash-only record to `runs/<run_id>/dispatches.jsonl`.
 
@@ -151,8 +161,15 @@ def record_dispatch(
           "preamble_sha256": "<64 hex chars>",
           "preamble_bytes": <int>,
           "body_sha256": "<64 hex chars>",
-          "body_bytes": <int>
+          "body_bytes": <int>,
+          "wrote_path": "<str>" | null
         }
+
+    `wrote_path` (Spike I §8.1): optional absolute path the dispatched
+    sub-agent is expected to write its primary artifact to (e.g.
+    `/tmp/<rid>/PRD.md`). Defaults to `None` for back-compat with callers
+    that don't yet pass it. Recorded as-is (no validation) — downstream
+    audits can cross-check existence at verify time.
 
     Returns the absolute path of the dispatches.jsonl file (created on
     first call; parent run dir created if missing).
@@ -186,6 +203,7 @@ def record_dispatch(
         "preamble_bytes": len(pre_bytes),
         "body_sha256": hashlib.sha256(body_bytes).hexdigest(),
         "body_bytes": len(body_bytes),
+        "wrote_path": wrote_path,
     }
 
     out = _dispatches_path(run_id)
@@ -201,7 +219,8 @@ def verify_dispatches(run_id: str) -> dict:
     Returns:
         {
           "ok": bool,                       # True iff every record's
-                                            # preamble_sha256 == canonical
+                                            # preamble_sha256 is in the
+                                            # ALLOW_LIST (v1 + v2)
           "total": int,                     # records read
           "canonical_preamble_sha256": str | None,
           "mismatches": [
@@ -215,11 +234,18 @@ def verify_dispatches(run_id: str) -> dict:
     A run with zero dispatches recorded is treated as `ok=False` only
     when `dispatches.jsonl` is missing entirely (`missing_file=True`).
     An empty file is `ok=True, total=0`.
+
+    Spike I §8.3: the comparison uses an ALLOW_LIST of `{v1, v2}` shas
+    so dogfood data persisted under the pre-cutoff (2026-04-30) v1
+    preamble still verifies green. `want` in mismatches reports the
+    current canonical (v2) so the audit message points at the live
+    expectation.
     """
+    canonical = canonical_preamble_sha256()
     out: dict = {
         "ok": True,
         "total": 0,
-        "canonical_preamble_sha256": canonical_preamble_sha256(),
+        "canonical_preamble_sha256": canonical,
         "mismatches": [],
         "missing_file": False,
     }
@@ -228,7 +254,10 @@ def verify_dispatches(run_id: str) -> dict:
         out["ok"] = False
         out["missing_file"] = True
         return out
-    canonical = out["canonical_preamble_sha256"]
+    # ALLOW_LIST: pre-cutoff v1 + live v2 (when canonical is loadable).
+    allow_list = {_PREAMBLE_V1_SHA256}
+    if canonical is not None:
+        allow_list.add(canonical)
     with open(path, "r", encoding="utf-8") as f:
         for line_no, raw in enumerate(f, start=1):
             raw = raw.strip()
@@ -237,7 +266,7 @@ def verify_dispatches(run_id: str) -> dict:
             rec = json.loads(raw)
             out["total"] += 1
             got = rec.get("preamble_sha256")
-            if canonical is None or got != canonical:
+            if got not in allow_list:
                 out["ok"] = False
                 out["mismatches"].append({
                     "line": line_no,

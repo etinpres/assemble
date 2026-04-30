@@ -221,3 +221,74 @@ def test_record_dispatch_full_byte_identity_with_real_canonical_preamble(monkeyp
     importlib.reload(h)
     assert h.canonical_preamble_sha256() == expected_sha
     assert expected_sha == EXPECTED_PREAMBLE_V2_SHA
+
+
+def test_record_dispatch_wrote_path_optional(tmp_path, monkeypatch):
+    """Spike I §8.1: record_dispatch accepts optional `wrote_path` kwarg.
+
+    Default (omitted) → record's `wrote_path` is None (back-compat).
+    Provided → record's `wrote_path` is the supplied string.
+    """
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    _stub_preamble(tmp_path)
+    h = _reload_harness()
+    prompt = h.wrap_with_preamble("wrapped prompt")
+    # call without wrote_path (back-compat)
+    h.record_dispatch(
+        "rid-wrote",
+        "step8",
+        prompt,
+        subagent_type="general-purpose",
+        description="test",
+    )
+    # call with wrote_path (new)
+    h.record_dispatch(
+        "rid-wrote",
+        "step8",
+        prompt,
+        subagent_type="general-purpose",
+        description="test",
+        wrote_path="/tmp/foo/PRD.md",
+    )
+    rows = _read_jsonl(_runs_root(tmp_path) / "rid-wrote" / "dispatches.jsonl")
+    assert len(rows) == 2
+    assert rows[0]["wrote_path"] is None
+    assert rows[1]["wrote_path"] == "/tmp/foo/PRD.md"
+
+
+def test_verify_dispatches_accepts_v1_v2_sha(tmp_path, monkeypatch):
+    """Spike I §8.3: verify_dispatches must accept both v1 and v2 preamble sha
+    so pre-cutoff dogfood data (written before 2026-04-30 with v1 preamble)
+    still verifies green when read back under the v2 canonical preamble.
+    """
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    # Stub the v2 preamble on disk (canonical_preamble_sha256 returns v2 sha).
+    # Then write a dispatches.jsonl record by hand whose preamble_sha256 is
+    # the v1 sha — simulating data persisted under the old preamble.
+    _stub_preamble(tmp_path)
+    h = _reload_harness()
+    rid = "rid-v1-data"
+    runs_dir = _runs_root(tmp_path) / rid
+    runs_dir.mkdir(parents=True, exist_ok=True)
+    record = {
+        "ts": "2026-04-29T00:00:00Z",
+        "step": "legacy.step",
+        "subagent_type": "general-purpose",
+        "description": "pre-cutoff data",
+        "preamble_sha256": EXPECTED_PREAMBLE_V1_SHA,
+        "preamble_bytes": 256,
+        "body_sha256": hashlib.sha256(b"body").hexdigest(),
+        "body_bytes": 4,
+        "wrote_path": None,
+    }
+    (runs_dir / "dispatches.jsonl").write_text(
+        json.dumps(record, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    res = h.verify_dispatches(rid)
+    assert res["ok"] is True, (
+        f"verify_dispatches must accept v1 sha for back-compat, "
+        f"got mismatches={res['mismatches']}"
+    )
+    assert res["total"] == 1
+    assert res["mismatches"] == []
