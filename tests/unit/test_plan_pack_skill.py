@@ -361,21 +361,16 @@ def test_workflow_step_9_uses_second_opinion_role():
 
 def test_workflow_iteration_step_6_includes_arch():
     body = _body()
-    # Spike I rewrite compressed Step 6 yes-path: re-dispatch is now
-    # named via prompt files (`arch_step8.md`) rather than "Step 8" or
-    # "ARCHITECTURE.md" verbatim, and the verb is "re-dispatch" /
-    # "overwrite" rather than "re-draft" / "re-runs". The contract is
-    # preserved through the prompt-file naming (arch_step8.md == Step 8
-    # ARCH dispatch, by table mapping).
+    # Spike IV rewrite replaced per-step prompt files with iter_emphasis.md
+    # dispatched via dispatch_and_record. ARCHITECTURE.md is still enumerated
+    # in step 1 of the yes-path as a dispatch target (one of the 4 docs).
     step6 = _section(body, "### Step 6 yes-path detail")
-    assert "arch_step8.md" in step6, (
-        "iteration yes-path must re-dispatch ARCH via arch_step8.md"
+    assert "ARCHITECTURE.md" in step6, (
+        "iteration yes-path must enumerate ARCHITECTURE.md as a dispatch target"
     )
-    assert "ARCH" in step6  # via {{ARCH_TEXT}} placeholder + parallel-dispatch line
     assert ("re-dispatch" in step6.lower()
-            or "overwrite" in step6.lower()
-            or "re-draft" in step6.lower()
-            or "re-runs" in step6.lower())
+            or "dispatch" in step6.lower()
+            or "iter_emphasis" in step6.lower())
 
 
 def test_workflow_iteration_has_explicit_write_order():
@@ -383,21 +378,22 @@ def test_workflow_iteration_has_explicit_write_order():
     yes-path must show numbered write-order steps so the main Claude
     follows a deterministic sequence.
 
-    Spike I rewrite (commit 02d2237) collapsed the per-doc enumerated
-    overwrite list into a single sentence ("Each sub-agent overwrites
-    its doc via write_run_artifact and returns WROTE: <path>"). The
-    deterministic-sequence contract still holds — the yes-path is now
-    numbered 1-5 and step 4 explicitly carries the overwrite verb.
+    Spike IV rewrite (B2) replaced the per-doc overwrite enumeration with
+    dispatch_and_record + iter_emphasis.md. The deterministic-sequence
+    contract still holds — the yes-path is numbered 1-4 and step 4
+    explicitly carries the WROTE-parsing step.
     """
     body = _body()
     step6 = _section(body, "### Step 6 yes-path detail")
-    # The yes-path is a numbered list; "overwrite" + "write_run_artifact"
+    # The yes-path is a numbered list; dispatch_and_record + WROTE: parsing
     # together prove deterministic-sequence ownership without requiring
-    # per-doc enumeration prose.
-    assert "overwrites" in step6.lower() or "overwrite" in step6.lower()
-    assert "write_run_artifact" in step6, (
-        "Step 6 yes-path must reference write_run_artifact as the "
-        "deterministic write surface (replaces enumerated write-order block)"
+    # per-doc overwrite enumeration prose.
+    assert "dispatch_and_record" in step6, (
+        "Step 6 yes-path must reference dispatch_and_record as the "
+        "deterministic dispatch surface (Spike IV B2)"
+    )
+    assert "WROTE:" in step6, (
+        "Step 6 yes-path must reference WROTE: line parsing (step 4)"
     )
 
 
@@ -481,26 +477,28 @@ def test_workflow_step_9_three_way_consistency():
 
 def test_workflow_iteration_step_6_includes_adr():
     body = _body()
-    # Spike I rewrite compressed Step 6 yes-path: ADR re-dispatch is named
-    # via prompt file (`adr_step11.md`) rather than "ADR.md" verbatim.
+    # Spike IV rewrite replaced per-step prompt files with iter_emphasis.md
+    # dispatched via dispatch_and_record. ADR.md is still enumerated in
+    # step 1 of the yes-path as a dispatch target.
     step6 = _section(body, "### Step 6 yes-path detail")
-    assert "adr_step11.md" in step6, (
-        "iteration yes-path must re-dispatch ADR via adr_step11.md"
+    assert "ADR.md" in step6, (
+        "iteration yes-path must enumerate ADR.md as a dispatch target"
     )
-    assert "ADR" in step6  # via {{ADR_TEXT}} placeholder
+    assert "ADR" in step6
 
 
 def test_workflow_iteration_write_order_explicit_adr():
     body = _body()
-    # Spike I rewrite (commit 02d2237) collapsed the "Iteration write
-    # order" enumerated block. The deterministic-overwrite contract for
-    # ADR survives via the parallel-dispatch line referencing
-    # `adr_step11.md` and the "Each sub-agent overwrites its doc" sentence.
+    # Spike IV rewrite (B2) replaced adr_step11.md iteration dispatch with
+    # dispatch_and_record("iter_emphasis.md"). ADR.md is still the dispatch
+    # target, enumerated in step 1 of the yes-path.
     step6 = _section(body, "### Step 6 yes-path detail")
-    assert "overwrite" in step6.lower()
-    assert "adr_step11.md" in step6, (
-        "Step 6 yes-path must reference adr_step11.md as the ADR re-dispatch "
-        "prompt (replaces verbatim ADR.md overwrite enumeration)"
+    assert "ADR.md" in step6, (
+        "Step 6 yes-path must enumerate ADR.md as a dispatch target"
+    )
+    assert "dispatch_and_record" in step6 or "iter_emphasis.md" in step6, (
+        "Step 6 yes-path must reference dispatch_and_record or iter_emphasis.md "
+        "(Spike IV B2 iteration dispatch contract)"
     )
 
 def test_workflow_iteration_step_6_no_force():
@@ -613,15 +611,16 @@ def test_workflow_iteration_step_6_includes_ui_guide():
 
 def test_workflow_iteration_write_order_explicit_ui_guide():
     body = _body()
-    # Spike I rewrite (commit 02d2237) collapsed the "Iteration write
-    # order" enumerated block. The deterministic-overwrite contract for
-    # UI_GUIDE survives via the parallel-dispatch line referencing
-    # `ui_step13.md` and the "Each sub-agent overwrites its doc" sentence.
+    # Spike IV rewrite (B2) replaced ui_step13.md iteration dispatch with
+    # dispatch_and_record("iter_emphasis.md"). UI_GUIDE.md is still the
+    # dispatch target, enumerated in step 1 of the yes-path.
     step6 = _section(body, "### Step 6 yes-path detail")
-    assert "overwrite" in step6.lower()
-    assert "ui_step13.md" in step6, (
-        "Step 6 yes-path must reference ui_step13.md as the UI_GUIDE "
-        "re-dispatch prompt (replaces verbatim UI_GUIDE.md overwrite enumeration)"
+    assert "UI_GUIDE.md" in step6, (
+        "Step 6 yes-path must enumerate UI_GUIDE.md as a dispatch target"
+    )
+    assert "dispatch_and_record" in step6 or "iter_emphasis.md" in step6, (
+        "Step 6 yes-path must reference dispatch_and_record or iter_emphasis.md "
+        "(Spike IV B2 iteration dispatch contract)"
     )
 
 

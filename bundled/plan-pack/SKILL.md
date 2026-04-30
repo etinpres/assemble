@@ -316,24 +316,51 @@ the exit-side wording).
 - **yes → emphasis interview + 4-way parallel re-dispatch + cross-doc
   re-review**.
 
-### Step 6 yes-path detail
+### Step 6 yes-path detail — iteration N (N ≥ 1)
 
-1. **Emphasis interview** (main Claude, AskUserQuestion). Per
-   `prompts/orchestrator/iter_emphasis.md`, fire one `AskUserQuestion` with 4
-   sub-questions (PRD/ARCH/ADR/UI). Each answer can be "(no change)" or a
-   specific concern.
+After user picks "yes — 강조점 인터뷰 + 네 문서 재작성 + 문서 간 재검증 (추천)":
 
-2. **Per-doc emphasis substitution (Spike II F14):** main constructs ONE
-   prompt per doc — 4 prompts total, each based on `iter_emphasis.md` —
-   with placeholders: `{{ITERATION_COUNT}}`, `{{RUN_ID}}`, `{{DOC_NAME}}`
-   (one of `PRD.md`/`ARCHITECTURE.md`/`ADR.md`/`UI_GUIDE.md`),
-   `{{EMPHASIS}}` (per-doc answer from emphasis interview),
-   `{{EMPHASIS_SECTION_TITLE}}` (canonical heading, e.g. `## Core features`),
-   `{{EMPHASIS_SECTION_BODY}}` (current text of that one section, read by
-   main from the live doc). 4-doc 전체 placeholder substitute 금지 — sub-agent
-   가 자기 doc 만 보면 충분 (B-6 iter1 redraft cost 109k tokens 의 주요 원인).
-   The emphasis header embeds the iteration scope discipline rule verbatim
-   — do not paraphrase:
+1. For each of `PRD.md`, `ARCHITECTURE.md`, `ADR.md`, `UI_GUIDE.md`,
+   `AskUserQuestion`: "이번 라운드에서 `<DOC>`의 강조할 측면 한 줄
+   요약 — 변경 없으면 `(no change)`".
+2. Build the iter1 dispatch list. For each doc:
+   - If user emphasis is empty or literal `(no change)`:
+
+     ```python
+     server.dispatch_and_record(
+         run_id,
+         prompt_file="iter_emphasis.md",
+         step=f"step6.iter{N}.{DOC}",
+         status="skipped",
+         note=f"user emphasis: (no change)",
+     )
+     # No Agent dispatch. Audit row written.
+     ```
+
+   - Else, prepare the wrapped prompt (caller substitutes per-doc
+     placeholders before sending to Agent):
+
+     ```python
+     prompt = server.dispatch_and_record(
+         run_id,
+         prompt_file="iter_emphasis.md",
+         step=f"step6.iter{N}.{DOC}",
+         description=f"iter{N} {DOC} emphasis redraft",
+     )
+     # Substitute {{RUN_ID}} / {{DOC_NAME}} / {{EMPHASIS}} / etc. in
+     # `prompt` before invoking Agent. Audit row already written by
+     # dispatch_and_record.
+     ```
+
+3. Send a single message with one Agent call per non-skipped doc
+   (parallel dispatch, V4 결정 #11). Each Agent call uses
+   `subagent_type="general-purpose"` and the substituted prompt.
+   `docs/research/2026-04-29-platform-limit.md` confirms 4-way + 5-way
+   works. Sequential fallback only on documented input dependency or
+   detected retry-after.
+
+   Each substituted prompt embeds the iteration scope discipline rule
+   verbatim — do not paraphrase:
 
    > Scope discipline: PRD `## Core features` is the authoritative scope.
    > Do not introduce new features, modules, components, screens, or
@@ -346,20 +373,13 @@ the exit-side wording).
    > token, module, component names) MUST NOT be renamed unless the
    > rename IS the requested change.
 
-3. **4-way parallel dispatch** (single message, 4 Agent calls):
-   `prd_step2.md`+`prd_step3.md` (combined PRD pair = 1 of 4),
-   `arch_step8.md`, `adr_step11.md`, `ui_step13.md`, each prepended with
-   the substituted emphasis header. `docs/research/2026-04-29-platform-limit.md`
-   confirms 4-way + 5-way works. Sequential fallback only on documented
-   input dependency or detected retry-after.
+4. Parse `WROTE: <path>` lines from each sub-agent. Re-dispatch
+   `cross_doc_step9.md` for the iter1 cross-doc review.
 
-4. **Each sub-agent overwrites its doc** via `write_run_artifact` and
-   returns `WROTE: <path>`. Step 11's overwrite is from-scratch, so the
-   prior `## Cross-doc review` section vanishes naturally.
-
-5. **Re-run Step 9** with `{{ITERATION_COUNT}}` incremented. Sub-agent
-   appends the iteration-suffixed heading. Step 4 is skipped on the
-   iteration yes-path — Step 9 provides coverage.
+**Audit invariant** (Spike IV §1.1): every iteration produces exactly
+4 rows in `dispatches.jsonl` for `step6.iter{N}.<DOC>` — one per doc,
+each with `status` set to `"dispatched"` or `"skipped"`. There must be
+no missing rows.
 
 UI_GUIDE.md is always re-run alongside PRD, ARCH, ADR — produced as a
 quadruple, must stay consistent.

@@ -26,10 +26,12 @@ other sections verbatim.
 
 ## Required behavior
 
-1. If `{{EMPHASIS}}` == `(no change)`: read `{{DOC_NAME}}` via
-   `read_run_artifact`, write it back unchanged via `write_run_artifact`.
-   Return `WROTE: <path>`. Do NOT touch other sections, do NOT re-read
-   other docs, do NOT inspect infrastructure code (rule 7).
+1. Note: orchestrator never dispatches this prompt with
+   `{{EMPHASIS}}` == `(no change)` (Spike IV §1.2 B1 — main records
+   `status="skipped"` and skips the dispatch). If you do receive
+   `(no change)` here, print `ERROR: dispatch contract violation —
+   (no change) should be skipped at orchestrator (Spike IV §1.2)`
+   and exit. Do NOT write or read anything.
 2. Else: locate `{{EMPHASIS_SECTION_TITLE}}` in the doc, replace its body
    with an emphasis-aware rewrite. ALL other sections (incl. headings,
    ordering, whitespace, tables) MUST be byte-identical to input.
