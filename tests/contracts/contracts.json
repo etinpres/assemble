@@ -56,6 +56,13 @@
       "spec_path": "bundled/plan-pack/SKILL.md",
       "section": "### Step dispatch contract",
       "tag": "B-5 Item B-7 — record_dispatch mandatory contract (replayable B5.7 evidence)"
+    },
+    {
+      "id": "iv-B2-iter1-audit-invariant",
+      "phrase": "every iteration produces exactly\n4 rows in `dispatches.jsonl` for `step6.iter{N}.<DOC>`",
+      "spec_path": "bundled/plan-pack/SKILL.md",
+      "section": "### Step 6",
+      "tag": "Spike IV §1.1 — iter1 4-row audit invariant (carryforward A; future doc-list expansion must update both workflow and invariant)"
     }
   ]
 }
