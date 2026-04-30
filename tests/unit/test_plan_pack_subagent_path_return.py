@@ -41,11 +41,11 @@ def test_all_prompts_emit_wrote_or_orchestrator_facing():
                        "arch_step8.md", "adr_step11.md", "ui_step13.md",
                        "cross_doc_step9.md"]
     for fname in sub_agent_files:
-        body = (PROMPTS_DIR / fname).read_text()
+        body = (PROMPTS_DIR / "subagent" / fname).read_text()
         assert "WROTE:" in body, f"{fname} sub-agent prompt missing WROTE: stdout convention"
         assert "ASSEMBLE_SUBAGENT_LIFECYCLE_WRITE" in body, \
             f"{fname} missing magic marker for hook v1 passthrough"
     # iter_emphasis is orchestrator-facing (no marker required)
-    iter_body = (PROMPTS_DIR / "iter_emphasis.md").read_text()
+    iter_body = (PROMPTS_DIR / "orchestrator" / "iter_emphasis.md").read_text()
     assert "ITERATION MODE" in iter_body or "emphasis" in iter_body.lower(), \
         "iter_emphasis must guide orchestrator on emphasis fan-out"

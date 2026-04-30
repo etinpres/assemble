@@ -254,7 +254,7 @@ def test_workflow_step_8_arch_single_dispatch():
     assert "ARCHITECTURE.md" in step8
     # Spike I §8.2 카테고리 1: orchestrator dispatches sub-agent prompt
     # file; sub-agent writes the artifact and returns `WROTE:` on stdout.
-    assert "prompts/arch_step8.md" in step8
+    assert "prompts/subagent/arch_step8.md" in step8
 
 
 def test_workflow_step_8_uses_subagent_wrote_convention():
@@ -448,7 +448,7 @@ def test_workflow_step_11_adr_single_dispatch():
     assert "ADR.md" in step11 or "ADR" in step11
     # Spike I §8.2 카테고리 1: orchestrator dispatches sub-agent prompt
     # file; sub-agent writes the artifact and returns `WROTE:` on stdout.
-    assert "prompts/adr_step11.md" in step11
+    assert "prompts/subagent/adr_step11.md" in step11
     # Decision count contract for gate B3.2 — survives in Step 10 interview
     # ("Three decisions = minimum") and Step 11 references "per decision".
     assert "decision" in step11.lower()
@@ -550,7 +550,7 @@ def test_workflow_step_13_ui_single_dispatch_inherits_plan_fix():
     assert "UI_GUIDE.md" in step13 or "UI_GUIDE" in step13
     # Spike I §8.2 카테고리 1: orchestrator dispatches sub-agent prompt
     # file; sub-agent writes the artifact and returns `WROTE:` on stdout.
-    assert "prompts/ui_step13.md" in step13
+    assert "prompts/subagent/ui_step13.md" in step13
     # B-3 Finding #3 fix carried into Step 13: role mapping table is the
     # source of truth post Spike I rewrite. Assert the Step 13 row carries
     # plan-implementation role, and the role mapping block notes
@@ -787,7 +787,7 @@ def test_prompts_have_magic_marker():
     a prompt fragment used by the orchestrator's iteration AskUserQuestion
     flow, not a sub-agent dispatch payload).
     """
-    plan_pack = Path.home() / ".claude/skills/assemble/bundled/plan-pack/prompts"
+    plan_pack = Path.home() / ".claude/skills/assemble/bundled/plan-pack/prompts/subagent"
     for fname in ["prd_step2.md", "prd_step3.md", "prd_step4.md",
                   "arch_step8.md", "adr_step11.md", "ui_step13.md",
                   "cross_doc_step9.md"]:
@@ -869,7 +869,7 @@ def test_skill_md_step12_u2_u3_exactly_3():
 
 def test_cross_doc_prompt_enforces_counts_schema():
     """Spike II F10: cross_doc_step9 prompt에 COUNTS schema verbatim."""
-    text = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/prompts/cross_doc_step9.md").read_text(encoding="utf-8")
+    text = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/prompts/subagent/cross_doc_step9.md").read_text(encoding="utf-8")
     assert "COUNTS: resolved=" in text
     assert "unresolved=" in text and "new=" in text
     # Wrong-keys 거부 사례
@@ -884,7 +884,7 @@ def test_skill_md_step9_includes_counts_regex():
 
 def test_iter_emphasis_uses_per_doc_substitution():
     """Spike II F14: iter_emphasis 가 single-doc placeholder 패턴."""
-    prompt = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/prompts/iter_emphasis.md").read_text(encoding="utf-8")
+    prompt = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/prompts/orchestrator/iter_emphasis.md").read_text(encoding="utf-8")
     assert "{{DOC_NAME}}" in prompt
     assert "{{EMPHASIS_SECTION_TITLE}}" in prompt or "{{EMPHASIS_SECTION_BODY}}" in prompt
     # Old multi-doc placeholders should NOT all be present (4-doc full substitution removed)

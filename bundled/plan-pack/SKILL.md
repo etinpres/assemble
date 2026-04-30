@@ -34,7 +34,10 @@ If retry is chosen, re-dispatch the same sub-agent with the failure context
 
 - `~/.claude/settings.json` 편집해서 `ASSEMBLE_GUARD` 환경 변수 무력화 시도 금지. hook 자체를 비활성화/우회 시도는 사용자 confirm 이 떠도 거절.
 - hook 이 차단하면 즉시 `AskUserQuestion` 으로 사용자 결정 위임 (retry / abort / report). hook 차단을 회피하기 위한 sub-agent dispatch (예: "iteration_state.json 업데이트 해 달라" 라는 task로 sub-agent 호출) 금지.
-- sub-agent dispatch 는 `bundled/plan-pack/prompts/` 디렉토리의 *8개 파일* (`prd_step2`, `prd_step3`, `prd_step4`, `arch_step8`, `adr_step11`, `ui_step13`, `cross_doc_step9`, `iter_emphasis`) 에 한정. orchestrator 메타데이터 (`iteration_state.json`, `dispatches.jsonl`, `progress.json` 등) 는 sub-agent 에 위임 금지 — `server.run_dir.update_iteration_state` 같은 server 함수 사용 (Phase D 에서 추가).
+- sub-agent dispatch 는 두 디렉토리의 *8개 파일* 에 한정:
+  - `bundled/plan-pack/prompts/subagent/`: `prd_step2.md`, `prd_step3.md`, `prd_step4.md`, `arch_step8.md`, `adr_step11.md`, `ui_step13.md`, `cross_doc_step9.md` (7 files — sub-agent–facing, dispatched via `Agent` tool)
+  - `bundled/plan-pack/prompts/orchestrator/`: `iter_emphasis.md` (1 file — main constructs per-doc prompts before 4-way parallel dispatch)
+- orchestrator 메타데이터 (`iteration_state.json`, `dispatches.jsonl`, `progress.json` 등) 는 sub-agent 에 위임 금지 — `server.run_dir.update_iteration_state` 같은 server 함수 사용.
 
 ## Korean label policy (Spike II F4)
 
@@ -72,13 +75,13 @@ sub-agent's behavior; Agent tool type is always `general-purpose`.)
 
 | Step | Role | Prompt file |
 |---|---|---|
-| 2 | `plan-implementation` | `prompts/prd_step2.md` |
-| 3 | `plan-implementation` | `prompts/prd_step3.md` |
-| 4 | `second-opinion` | `prompts/prd_step4.md` |
-| 8 | `plan-implementation` | `prompts/arch_step8.md` |
-| 9 | `second-opinion` | `prompts/cross_doc_step9.md` |
-| 11 | `plan-implementation` | `prompts/adr_step11.md` |
-| 13 | `plan-implementation` | `prompts/ui_step13.md` |
+| 2 | `plan-implementation` | `prompts/subagent/prd_step2.md` |
+| 3 | `plan-implementation` | `prompts/subagent/prd_step3.md` |
+| 4 | `second-opinion` | `prompts/subagent/prd_step4.md` |
+| 8 | `plan-implementation` | `prompts/subagent/arch_step8.md` |
+| 9 | `second-opinion` | `prompts/subagent/cross_doc_step9.md` |
+| 11 | `plan-implementation` | `prompts/subagent/adr_step11.md` |
+| 13 | `plan-implementation` | `prompts/subagent/ui_step13.md` |
 
 Steps 0/1/7/10/12 are user-facing `AskUserQuestion` interviews. Steps 2+3
 fire as a single parallel message (B-1 surface). Steps 8/11/13 are
@@ -166,7 +169,7 @@ direction? (UI_GUIDE seed) (8) One risk / open question?
 
 ### Step 2 — PRD body draft (parallel with Step 3)
 
-Prompt: `prompts/prd_step2.md`. Placeholders: `{{TASK}}`,
+Prompt: `prompts/subagent/prd_step2.md`. Placeholders: `{{TASK}}`,
 `{{INTERVIEW_ANSWERS}}`, `{{RUN_ID}}`. Fired in the same parallel message
 as Step 3 (true 2-way parallel — see
 `docs/research/2026-04-29-platform-limit.md`). Sub-agent partially
@@ -174,12 +177,12 @@ populates `PRD.md`; Step 3 fills the AC bash placeholder.
 
 ### Step 3 — AC bash draft (parallel with Step 2)
 
-Prompt: `prompts/prd_step3.md`. Placeholders: `{{RUN_ID}}`,
+Prompt: `prompts/subagent/prd_step3.md`. Placeholders: `{{RUN_ID}}`,
 `{{SUCCESS_CRITERION}}`, `{{AC_REQUEST}}`.
 
 ### Step 4 — PRD consistency review (second-opinion)
 
-Prompt: `prompts/prd_step4.md`. Placeholders: `{{RUN_ID}}`.
+Prompt: `prompts/subagent/prd_step4.md`. Placeholders: `{{RUN_ID}}`.
 Single Agent call as `second-opinion` (preferred `general-purpose` per v4
 swap commit `85366f1`). Sub-agent reads `PRD.md`, triages each critique
 bullet via the Step 4b verify-before-appending protocol (1-shot Bash for
@@ -198,7 +201,7 @@ event-driven, monolith, CQRS — name + rationale)? Call 4 (A4–A6):
 
 ### Step 8 — ARCH dispatch
 
-Prompt: `prompts/arch_step8.md`. Placeholders: `{{TASK}}`,
+Prompt: `prompts/subagent/arch_step8.md`. Placeholders: `{{TASK}}`,
 `{{INTERVIEW_ANSWERS}}`, `{{RUN_ID}}`. Sub-agent reads PRD, builds the 6
 ARCH sections (Stack, Directory tree, Architectural patterns, Data flow,
 External dependencies, Module boundaries), fills
@@ -218,7 +221,7 @@ Three decisions = minimum (gate B3.2); volunteer more → N ≥ 3, accept up to 
 
 ### Step 11 — ADR dispatch
 
-Prompt: `prompts/adr_step11.md`. Placeholders: `{{TASK}}`,
+Prompt: `prompts/subagent/adr_step11.md`. Placeholders: `{{TASK}}`,
 `{{INTERVIEW_ANSWERS}}`, `{{RUN_ID}}`. Sub-agent reads ARCH + PRD,
 synthesizes `### Context` and `### Reasoning` per decision (these two
 sub-headings are the sub-agent's job, never the user's), emits
@@ -236,7 +239,7 @@ After Step 11 returns, 6 questions across **two `AskUserQuestion` calls of
 
 ### Step 13 — UI_GUIDE dispatch
 
-Prompt: `prompts/ui_step13.md`. Placeholders: `{{TASK}}`,
+Prompt: `prompts/subagent/ui_step13.md`. Placeholders: `{{TASK}}`,
 `{{INTERVIEW_ANSWERS}}`, `{{RUN_ID}}`. Sub-agent reads PRD `## Design
 direction` + `## Core features`, builds the 5-section UI body (Visual
 identity, Color tokens, Typography, Component patterns ≥3, Priority
@@ -246,7 +249,7 @@ Step 9.
 
 ### Step 9 — 4-way cross-doc second-opinion
 
-Prompt: `prompts/cross_doc_step9.md`. Placeholders: `{{RUN_ID}}`,
+Prompt: `prompts/subagent/cross_doc_step9.md`. Placeholders: `{{RUN_ID}}`,
 `{{ITERATION_COUNT}}` (read from `runs/<rid>/iteration_state.json`; 0 for
 first-pass). Single Agent call as `second-opinion` role.
 
@@ -316,7 +319,7 @@ the exit-side wording).
 ### Step 6 yes-path detail
 
 1. **Emphasis interview** (main Claude, AskUserQuestion). Per
-   `prompts/iter_emphasis.md`, fire one `AskUserQuestion` with 4
+   `prompts/orchestrator/iter_emphasis.md`, fire one `AskUserQuestion` with 4
    sub-questions (PRD/ARCH/ADR/UI). Each answer can be "(no change)" or a
    specific concern.
 
@@ -410,4 +413,4 @@ unresolved findings; exiting"), record `reason: "cap-reached"`, and stop.
 - V4 Spike I spec: `docs/specs/2026-04-30-v4-spike-i-design.md` (commit `eeb6c96`) — §3.4 anti-fallback verbatim, §4.3 Step body templates
 - Phase B-5 loop: `docs/dogfood/phase-b-5.md` (run `20260429-135600-3b6d`)
 - Harness preamble v2: `bundled/_shared/harness-preamble.md` (rules 5/6, commit `6598788`)
-- Prompts: `bundled/plan-pack/prompts/{prd_step2,prd_step3,prd_step4,arch_step8,adr_step11,ui_step13,cross_doc_step9,iter_emphasis}.md`
+- Prompts: `bundled/plan-pack/prompts/subagent/{prd_step2,prd_step3,prd_step4,arch_step8,adr_step11,ui_step13,cross_doc_step9}.md`, `bundled/plan-pack/prompts/orchestrator/iter_emphasis.md`

@@ -70,7 +70,7 @@ def test_skill_md_critical_allowlist_matches_disk():
     rule wording. Prevents silent allowlist drift.
     """
     prompts_dir = Path.home() / ".claude/skills/assemble/bundled/plan-pack/prompts"
-    on_disk = sorted(p.stem for p in prompts_dir.glob("*.md"))
+    on_disk = sorted(p.stem for p in prompts_dir.rglob("*.md"))
     assert len(on_disk) == 8, (
         f"prompts/ now has {len(on_disk)} files; update §CRITICAL allowlist"
     )

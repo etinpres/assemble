@@ -7,8 +7,8 @@ from pathlib import Path
 
 ASSEMBLE = Path.home() / ".claude/skills/assemble"
 TEMPLATE = ASSEMBLE / "bundled/plan-pack/templates/PRD.md.template"
-STEP2 = ASSEMBLE / "bundled/plan-pack/prompts/prd_step2.md"
-STEP3 = ASSEMBLE / "bundled/plan-pack/prompts/prd_step3.md"
+STEP2 = ASSEMBLE / "bundled/plan-pack/prompts/subagent/prd_step2.md"
+STEP3 = ASSEMBLE / "bundled/plan-pack/prompts/subagent/prd_step3.md"
 
 PLACEHOLDER_RE = re.compile(r"\{\{[A-Z_]+\}\}")
 REPLACE_LITERAL_RE = re.compile(
