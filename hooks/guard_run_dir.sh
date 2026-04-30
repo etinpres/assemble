@@ -14,8 +14,11 @@
 #
 # Modes (env var ASSEMBLE_GUARD):
 #   block (default) — exit 2 + stderr message → tool call blocked
-#   warn            — stderr only, tool call proceeds (observation mode)
-#   off             — disabled
+#   warn            — exit 2 + stderr message (디버깅용 — production 차단 무력화 X)
+#
+# Spike II F13: `off` mode 제거. B-6 dogfood에서 sub-agent가
+# `ASSEMBLE_GUARD=warn python3 << EOF` 로 ENV 명시 + magic marker 동시 사용
+# (이중 우회) 시도. warn은 stderr만 추가될 뿐 차단은 유지.
 #
 # v0 limitation: does NOT distinguish main vs sub-agent. If sub-agent
 # dispatch is observed to be blocked during dogfood, v1 must add
@@ -24,7 +27,7 @@
 set -u
 
 mode="${ASSEMBLE_GUARD:-block}"
-[[ "$mode" == "off" ]] && exit 0
+# off mode removed in Spike II — see hook header.
 
 input="$(cat)"
 
@@ -61,13 +64,12 @@ case "$tool" in
 명령 일부: __CMD__
 이유: Spike I 후 plan-pack 본문은 sub-agent 가 자체 write 책임 — 메인은 dispatch + path 수령만.
 복구: sub-agent dispatch 로 재시도하세요. (canonical save block 에 magic marker 포함됨)
-참고: orchestrator 메타파일 (iteration_state.json, dispatches.jsonl) 은 main 직접 write 허용 (server 함수 사용 권장).'
+참고: orchestrator 메타파일 (iteration_state.json, dispatches.jsonl) 은 main 직접 write 허용 (server 함수 사용 권장).
+디버깅: ASSEMBLE_GUARD=warn 으로 stderr 추가 정보 확인 (차단은 유지). off 모드 없음.'
       cmd_excerpt="$(printf '%s' "$cmd" | head -c 200)"
       bash_msg="${bash_template//__CMD__/$cmd_excerpt}"
       printf '%s\n' "$bash_msg" >&2
-      if [[ "$mode" == "warn" ]]; then
-        exit 0
-      fi
+      # warn mode: stderr 메시지는 위에서 이미 출력. block 동등 exit 2.
       exit 2
     fi
     exit 0
@@ -89,14 +91,11 @@ plan-pack 산출물에 직접 쓰기 시도 감지. V4 결정 #9·#12 위반.
   1) server.harness.wrap_with_preamble(prompt) 로 4원칙 prepend
   2) general-purpose / Plan / Explore 등 sub-agent dispatch
   3) sub-agent 가 write_run_artifact 로 기록
-일시 우회: ASSEMBLE_GUARD=warn (경고만) 또는 ASSEMBLE_GUARD=off (비활성)'
+디버깅: ASSEMBLE_GUARD=warn 으로 stderr 추가 정보 확인 (차단은 유지). off 모드 없음.'
 msg="${template//__TOOL__/$tool}"
 msg="${msg//__FILE__/$file}"
 
 printf '%s\n' "$msg" >&2
 
-if [[ "$mode" == "warn" ]]; then
-  exit 0
-fi
-
+# warn/block 모두 exit 2 (Spike II F13).
 exit 2

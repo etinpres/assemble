@@ -8,23 +8,26 @@ whitelist (Spike II F8).
 """
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
 HOOK = Path.home() / ".claude/skills/assemble/hooks/guard_run_dir.sh"
 
 
-def run_hook(tool_name: str, command: str):
+def run_hook(tool_name: str, command: str, env: dict = None):
     payload = json.dumps({
         "tool_name": tool_name,
         "tool_input": {"command": command},
     })
+    full_env = {**os.environ, **(env or {})}
     proc = subprocess.run(
         ["bash", str(HOOK)],
         input=payload,
         capture_output=True,
         text=True,
         timeout=10,
+        env=full_env,
     )
     return proc
 
@@ -111,3 +114,22 @@ def test_all_whitelisted_artifacts_blocked_without_marker():
         )
         proc = run_hook("Bash", cmd)
         assert proc.returncode == 2, f"{fname} must be blocked"
+
+
+def test_assemble_guard_off_does_not_disable():
+    """Spike II F13: off mode removed. ENV 설정해도 차단 유지."""
+    cmd = (
+        'python3 -c \'open("/Users/u/.claude/channels/assemble/runs/r/PRD.md", "w").write("x")\''
+    )
+    proc = run_hook("Bash", cmd, env={"ASSEMBLE_GUARD": "off"})
+    assert proc.returncode == 2, "off mode should NOT disable hook anymore"
+
+
+def test_assemble_guard_warn_still_exit2():
+    """warn mode가 더 이상 production escape hatch가 아님 — stderr + exit 2."""
+    cmd = (
+        'python3 -c \'open("/Users/u/.claude/channels/assemble/runs/r/PRD.md", "w").write("x")\''
+    )
+    proc = run_hook("Bash", cmd, env={"ASSEMBLE_GUARD": "warn"})
+    assert proc.returncode == 2
+    assert "V4 GUARD" in proc.stderr or "plan-pack" in proc.stderr
