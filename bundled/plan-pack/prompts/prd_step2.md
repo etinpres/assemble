@@ -1,6 +1,6 @@
 # Task — PRD body 작성 + PRD.md write
 
-You are dispatched as plan-pack Step 2 (PRD body sub-agent). Goal: produce a PRD body for the user task and write `<run_dir>/PRD.md`. Return only the file path.
+You are dispatched as plan-pack Step 2 (PRD body sub-agent). Goal: produce a PRD body for the user task and write `<run_dir>/PRD.md`. Print `WROTE: <absolute path>` on stdout — main parses with regex `^WROTE: (.+)$`. No other prose.
 
 ## Inputs (substituted by orchestrator)
 
@@ -31,26 +31,25 @@ from server import write_run_artifact
 rid = "{{RUN_ID}}"
 task = """{{TASK}}"""
 
-# Build PRD body sections from interview answers above
-body = """## Goal
-...
-## Users
-...
-## Core features
-...
-## Excluded from MVP
-...
-## Design direction
-...
-## Risks
-...
-## Acceptance criteria
-{{AC_BASH_PLACEHOLDER}}
-"""
+# Build each PRD section as its own variable from interview answers above.
+# Replace every <TBD: ...> sentinel with the actual content before writing.
+goal = """<TBD: 1-paragraph success-framed goal from Q1 + Q5 success criterion>"""
+users = """<TBD: 1-paragraph user description from Q2>"""
+core_features = """<TBD: 3 bullets, one per Q3 feature>"""
+mvp_excluded = """<TBD: 3 bullets, one per Q4 exclusion (harness rule #2)>"""
+design_direction = """<TBD: 1-paragraph design direction from Q7 — seed for UI_GUIDE>"""
+risks = """<TBD: 1 paragraph naming the Q8 risk and one mitigation question>"""
 
-# Load + fill template
 template_path = Path.home() / ".claude/skills/assemble/bundled/plan-pack/templates/PRD.md.template"
-filled = template_path.read_text().replace("{{TASK}}", task).replace("{{PRD_BODY}}", body)
+filled = (template_path.read_text()
+  .replace("{{TASK}}", task)
+  .replace("{{GOAL}}", goal)
+  .replace("{{USERS}}", users)
+  .replace("{{CORE_FEATURES}}", core_features)
+  .replace("{{MVP_EXCLUDED}}", mvp_excluded)
+  .replace("{{AC_BASH}}", "{{AC_BASH_PLACEHOLDER}}")
+  .replace("{{DESIGN_DIRECTION}}", design_direction)
+  .replace("{{RISKS}}", risks))
 
 path = write_run_artifact(rid, "PRD.md", filled)
 print(f"WROTE: {path}")
