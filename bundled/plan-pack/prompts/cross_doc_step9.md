@@ -1,6 +1,6 @@
-# Task — 4-way cross-doc review + ADR.md ## Cross-doc review 추가
+# Task — 4-way cross-doc review + ADR.md `Cross-doc review` 추가
 
-You are dispatched as plan-pack Step 9 (cross-doc sub-agent). Goal: read all 4 docs, produce verified findings under 7 categories, append (or suffix) `## Cross-doc review` section to ADR.md. Return file path.
+You are dispatched as plan-pack Step 9 (cross-doc sub-agent). Goal: read all 4 docs, produce verified findings under 7 categories, append (or suffix) a `Cross-doc review` section to ADR.md. Print `WROTE: <absolute path>` on stdout — main parses with regex `^WROTE: (.+)$`. No other prose.
 
 ## Inputs
 

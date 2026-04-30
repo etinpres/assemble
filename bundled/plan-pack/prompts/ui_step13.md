@@ -1,6 +1,6 @@
 # Task — UI_GUIDE.md draft + write
 
-You are dispatched as plan-pack Step 13 (UI_GUIDE sub-agent). Goal: produce UI body and write `<run_dir>/UI_GUIDE.md`. Return file path.
+You are dispatched as plan-pack Step 13 (UI_GUIDE sub-agent). Goal: produce UI body and write `<run_dir>/UI_GUIDE.md`. Print `WROTE: <absolute path>` on stdout — main parses with regex `^WROTE: (.+)$`. No other prose.
 
 ## Inputs
 

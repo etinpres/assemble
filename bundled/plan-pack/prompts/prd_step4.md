@@ -1,6 +1,6 @@
-# Task — PRD second-opinion review + ## Review notes 섹션 추가
+# Task — PRD second-opinion review + `Review notes` 섹션 추가
 
-You are dispatched as plan-pack Step 4 (PRD consistency review sub-agent). Goal: read `<run_dir>/PRD.md`, produce verified critique, append `## Review notes` section with audit header, return file path.
+You are dispatched as plan-pack Step 4 (PRD consistency review sub-agent). Goal: read `<run_dir>/PRD.md`, produce verified critique, append a `Review notes` section with audit header, write `<run_dir>/PRD.md`. Print `WROTE: <absolute path>` on stdout — main parses with regex `^WROTE: (.+)$`. No other prose.
 
 ## Inputs
 

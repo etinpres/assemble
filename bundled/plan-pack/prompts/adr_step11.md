@@ -1,6 +1,6 @@
 # Task — ADR.md draft + write
 
-You are dispatched as plan-pack Step 11 (ADR sub-agent). Goal: produce ADR decisions block and write `<run_dir>/ADR.md`. Return file path.
+You are dispatched as plan-pack Step 11 (ADR sub-agent). Goal: produce ADR decisions block and write `<run_dir>/ADR.md`. Print `WROTE: <absolute path>` on stdout — main parses with regex `^WROTE: (.+)$`. No other prose.
 
 ## Inputs
 

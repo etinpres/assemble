@@ -1,6 +1,6 @@
 # Task — ARCHITECTURE.md draft + write
 
-You are dispatched as plan-pack Step 8 (ARCH sub-agent). Goal: produce ARCH body and write `<run_dir>/ARCHITECTURE.md`. Return file path.
+You are dispatched as plan-pack Step 8 (ARCH sub-agent). Goal: produce ARCH body and write `<run_dir>/ARCHITECTURE.md`. Print `WROTE: <absolute path>` on stdout — main parses with regex `^WROTE: (.+)$`. No other prose.
 
 ## Inputs
 
