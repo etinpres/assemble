@@ -50,18 +50,18 @@ case "$tool" in
     # Trigger: python3/python/sh -c/bash -c invocation
     #   AND (runs/<rid>/<f>.{md,json,txt} OR write_run_artifact OR runs_dir)
     if echo "$cmd" | grep -qE '(python3|python|sh -c|bash -c)' \
-       && echo "$cmd" | grep -qE '(runs/[^/]+/[^/]+\.(md|json|txt)|write_run_artifact|runs_dir)'; then
+       && echo "$cmd" | grep -qE '(runs/[^/]+/(PRD|ARCHITECTURE|ADR|UI_GUIDE)\.md|write_run_artifact|runs_dir)'; then
       # Passthrough: magic marker 존재 시 sub-agent canonical save로 인정
       if echo "$cmd" | grep -q 'ASSEMBLE_SUBAGENT_LIFECYCLE_WRITE'; then
         exit 0
       fi
       # Block
-      bash_template='[V4 GUARD — Item B-prime] Bash → runs/ 직접 write 차단
-메인 Claude의 python3/sh -c 우회로 plan-pack 산출물 쓰기 시도 감지.
+      bash_template='[V4 GUARD — Item B-prime] Bash → plan-pack artifact 직접 write 차단
+메인 Claude의 python3/sh -c 우회로 plan-pack artifact (PRD/ARCHITECTURE/ADR/UI_GUIDE.md) 쓰기 시도 감지.
 명령 일부: __CMD__
-이유: Spike I 후 plan-pack은 sub-agent 가 자체 write 책임 — 메인은 dispatch + path 수령만.
+이유: Spike I 후 plan-pack 본문은 sub-agent 가 자체 write 책임 — 메인은 dispatch + path 수령만.
 복구: sub-agent dispatch 로 재시도하세요. (canonical save block 에 magic marker 포함됨)
-일시 우회: ASSEMBLE_GUARD=warn (경고만) 또는 ASSEMBLE_GUARD=off (비활성)'
+참고: orchestrator 메타파일 (iteration_state.json, dispatches.jsonl) 은 main 직접 write 허용 (server 함수 사용 권장).'
       cmd_excerpt="$(printf '%s' "$cmd" | head -c 200)"
       bash_msg="${bash_template//__CMD__/$cmd_excerpt}"
       printf '%s\n' "$bash_msg" >&2
