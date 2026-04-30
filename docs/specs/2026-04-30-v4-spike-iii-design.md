@@ -47,6 +47,8 @@
 - (B2.1) `server.dispatch_prompt("prd_step2.md")` returns the wrapped prompt with the harness preamble prepended and all `{{KEY}}` tokens preserved verbatim (caller-side substitution).
 - (B2.2) Test that an unknown `prompt_file` raises `ValueError`.
 
+**Caller-side under-substitution gap (option B trade-off)**: Because `dispatch_prompt` no longer substitutes placeholders, an orchestrator could load a prompt and forget to `.replace("{{KEY}}", ...)` for one of the tokens declared in the file's Inputs section. The leaked `{{KEY}}` would reach the sub-agent at dispatch time. We accept this gap at the unit level — the integration-time catch is `(13)` (B-8 dogfood: rendered artifacts under `runs/<rid>/` have zero `{{...}}` literals). Adding a unit guard that scans each prompt's Inputs section against the SKILL.md Step dispatch example would re-introduce coupling between the safety net and Spike-I sub-agent contract, which violates the §"Identity protection" rule. Phase A1's `test_prd_template_placeholder_match.py` already covers prompt-file ↔ template alignment, which is the larger-blast-radius case.
+
 ### 1.3 F3 (Important) — Korean phrasing drift in sub-agent output
 
 **Decision**: **accept** (Spike III memory option C). 9 known terms ("도구파 경량", "리시완 DB", "미니멀 평수", etc.) are sub-agent inference artifacts, not template bugs. Adding more prompt examples (Spike II already tried) hits diminishing returns; a post-hoc Korean lint hook is high-cost low-ROI for a 1-person dogfood. Document the decision in `docs/dogfood/spike-iii-readiness.md` after Phase E.
@@ -178,7 +180,7 @@ Update `dispatch_prompt(prompt_file=...)` allowlist resolution to look in both d
 | 2 | `PRD.md` AC bash block has exactly one ` ``` ` fence pair (no nested) | A2 + B-8 |
 | 3 | Informal `record_dispatch(prompt_file="evil.md")` raises ValueError (strict mode) | B1.1 |
 | 4 | `dispatch_prompt` rejects unknown prompt file with ValueError | B2.2 |
-| 5 | `dispatch_prompt` for known file substitutes all placeholders and prepends harness preamble | B2.1 |
+| 5 | `dispatch_prompt` for known file returns wrapped prompt with all `{{KEY}}` tokens preserved verbatim (caller-side substitution) | B2.1 |
 | 6 | No bare `...` line in any prompt save-block template | C1.2 |
 | 7 | Every sub-agent prompt's first paragraph carries "Print `WROTE: <absolute path>`" | C2.2 |
 | 8 | SKILL.md `AskUserQuestion` Korean options contain no `4-doc` / `cross-doc` tokens | C3.2 |
