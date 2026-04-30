@@ -856,3 +856,12 @@ def test_skill_md_step10_min_selected_3():
     assert "maxSelected: 5" in text or "maxSelected=5" in text or "maxSelected`: 5" in text
     # main count validation
     assert "최소 3개" in text or "verify the user selected" in text
+
+
+def test_skill_md_step12_u2_u3_exactly_3():
+    """Spike II F7: U2/U3 minSelected:3, maxSelected:3 강제."""
+    text = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/SKILL.md").read_text(encoding="utf-8")
+    # U2/U3 specific schema
+    assert "minSelected: 3, maxSelected: 3" in text or "minSelected=3, maxSelected=3" in text
+    # Main verification logic
+    assert "4 answers" in text or "user supplied 4+" in text or "4개" in text

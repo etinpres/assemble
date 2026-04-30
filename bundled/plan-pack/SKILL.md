@@ -204,12 +204,11 @@ sub-headings are the sub-agent's job, never the user's), emits
 ### Step 12 — UI_GUIDE interview (main Claude, AskUserQuestion)
 
 After Step 11 returns, 6 questions across **two `AskUserQuestion` calls of
-3 questions each**. Call 7 (U1–U3): visual identity / aesthetic, 3
-priority flows, 3 required component patterns. Call 8 (U4–U6): ≤5 brand
-color tokens (hex/named with role; "no preference" valid), primary + 1
-supporting font family ("no preference" valid), project-specific
-antipattern emphasis beyond template baseline ("none" valid). Q6
-surfaces project-specific antipattern signal for gate B4.3.
+3 questions each**.
+
+**Call 7 (U1–U3):** (1) visual identity / aesthetic, (2) 3 priority flows, (3) 3 required component patterns. Sub-questions U2 and U3 are multi-select with `minSelected: 3, maxSelected: 3` — exactly 3 items each. Main MUST verify the count after response; if user supplied 4+ items via free text or the schema returned fewer than 3, re-prompt that single sub-question only (don't restart Call 7). Spike II F7: B-6 dogfood received 4 answers for U2/U3 — schema 강제 + main 검증으로 차단.
+
+**Call 8 (U4–U6):** (4) ≤5 brand color tokens (hex/named with role; "no preference" valid), (5) primary + 1 supporting font family ("no preference" valid), (6) project-specific antipattern emphasis beyond template baseline ("none" valid). Q6 surfaces project-specific antipattern signal for gate B4.3.
 
 ### Step 13 — UI_GUIDE dispatch
 
