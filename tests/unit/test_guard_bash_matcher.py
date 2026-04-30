@@ -1,8 +1,10 @@
-"""Spike I hook v1 — Bash matcher branch test cases.
+"""guard_run_dir.sh — Bash matcher branch test cases (Spike I + Spike II F8 whitelist).
 
 Tests guard_run_dir.sh exits 2 on main-write bypass and exits 0 on
-sub-agent legitimate dispatch (magic marker present) plus unrelated
-Bash commands.
+sub-agent legitimate dispatch (magic marker present), unrelated Bash
+commands, and orchestrator metafile writes (iteration_state.json,
+dispatches.jsonl) that are explicitly outside the plan-pack artifact
+whitelist (Spike II F8).
 """
 
 import json
@@ -78,6 +80,11 @@ def test_iteration_state_json_passes_hook():
 
 
 def test_dispatches_jsonl_passes_hook():
+    """Spike II F8: dispatches.jsonl direct-write must NOT be blocked.
+
+    Uses append mode (`"a"`) since dispatches.jsonl grows record-by-record;
+    write mode would also pass but mode-fidelity matches actual usage.
+    """
     cmd = (
         'python3 -c \'open("/Users/u/.claude/channels/assemble/runs/20260501/dispatches.jsonl", "a")'
         ".write(\"{}\")'"
@@ -95,9 +102,9 @@ def test_prd_md_still_blocked_without_marker():
     assert proc.returncode == 2  # main bypass still blocked
 
 
-def test_arch_adr_ui_md_blocked_without_marker():
-    """All four whitelisted artifacts blocked when no marker."""
-    for fname in ("ARCHITECTURE.md", "ADR.md", "UI_GUIDE.md"):
+def test_all_whitelisted_artifacts_blocked_without_marker():
+    """All four whitelisted artifacts blocked when no marker (defense-in-depth alongside test_prd_md_still_blocked_without_marker)."""
+    for fname in ("PRD.md", "ARCHITECTURE.md", "ADR.md", "UI_GUIDE.md"):
         cmd = (
             f'python3 -c \'open("/Users/u/.claude/channels/assemble/runs/r/{fname}", "w")'
             ".write(\"x\")'"
