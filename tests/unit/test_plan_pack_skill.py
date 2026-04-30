@@ -901,17 +901,41 @@ def test_skill_md_step6_yespath_uses_per_doc_emphasis():
 
 def test_step6_options_are_korean_only():
     """C3 — Step 6 entry/exit options must not contain '4-doc' or 'cross-doc'
-    English tokens. Code identifiers (DOC_NAME, prompt filenames) are exempt."""
-    from pathlib import Path
-    skill = (
-        Path.home() / ".claude/skills/assemble/bundled/plan-pack/SKILL.md"
-    ).read_text()
-    # Find AskUserQuestion option blocks (lines starting with '> options:')
-    option_lines = [
-        line for line in skill.splitlines()
-        if line.lstrip().startswith("> options:")
+    English tokens. Code identifiers (DOC_NAME, prompt filenames) are exempt.
+
+    C4 retune: the entry/exit `> options:` blockquote lines were folded into
+    the Step 6 prompt-selector table (markdown table cells, no `> options:`
+    prefix). The C3 guard now scans only the table rows in the
+    `### Step 6 prompt selector` subsection (lines starting with `|`),
+    keeping the contract semantics (no English option tokens in the
+    user-facing prompts/options) but tolerant of the new selector-table
+    prose form. Surrounding prose is allowed to use `cross-doc` /`4-doc`
+    as technical descriptions of the yes-path action (e.g. 'cross-doc
+    re-review') — those are not user-facing option text."""
+    body = _body()
+    selector = _section(body, "### Step 6 prompt selector")
+    # The selector table holds the user-facing prompt + option strings.
+    # Each row begins with '|'. Filter to those rows and scan them for the
+    # English option tokens C3 was guarding against.
+    table_rows = [
+        line for line in selector.splitlines()
+        if line.lstrip().startswith("|")
     ]
-    assert option_lines, "no AskUserQuestion option blocks found in SKILL.md"
-    for line in option_lines:
-        assert "4-doc" not in line, f"4-doc in: {line}"
-        assert "cross-doc" not in line, f"cross-doc in: {line}"
+    assert table_rows, (
+        "no markdown table rows found in Step 6 prompt-selector subsection"
+    )
+    table_text = "\n".join(table_rows)
+    assert "4-doc" not in table_text, (
+        f"'4-doc' English token in selector table: {table_text!r}"
+    )
+    assert "cross-doc" not in table_text, (
+        f"'cross-doc' English token in selector table: {table_text!r}"
+    )
+    # Sanity: the Korean option strings still anchor the table so a future
+    # deletion doesn't pass by collapsing to an empty block.
+    assert "강조점 인터뷰" in table_text, (
+        "Step 6 selector table missing Korean option string '강조점 인터뷰'"
+    )
+    assert "종료" in table_text, (
+        "Step 6 selector table missing Korean option string '종료'"
+    )

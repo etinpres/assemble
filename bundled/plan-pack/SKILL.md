@@ -289,16 +289,24 @@ missing `WROTE:`, follow §CRITICAL. After Step 9 returns, proceed to Step 6.
 
 ## Step 6 — iteration round-trip
 
-**After the FIRST Step 9 cross-doc review only** (`iteration_count == 0`),
-ask the user via `AskUserQuestion`:
+### Step 6 prompt selector
 
-> "네 문서 작성 완료 — PRD.md, ARCHITECTURE.md, ADR.md, UI_GUIDE.md.
-> 한 차례 반복 진행할까?"
-> options: ["yes — 강조점 인터뷰 + 네 문서 재작성 + 문서 간 재검증", "no — 종료"]
+The orchestrator picks one of two `AskUserQuestion` prompts based on
+`iteration_count` (read from `runs/<rid>/iteration_state.json`; 0 if file
+absent). The two prompts NEVER both fire on the same iteration boundary.
 
-For `iteration_count ≥ 1`, the entry prompt is replaced by §"User exit
-override" below (`"반복을 계속할까?"`). The two prompts never both fire on
-the same iteration boundary.
+| iteration_count | prompt | options (Korean) |
+|---|---|---|
+| 0 | "네 문서 작성 완료 — PRD.md, ARCHITECTURE.md, ADR.md, UI_GUIDE.md. 한 차례 반복 진행할까?" | yes — 강조점 인터뷰 + 네 문서 재작성 + 문서 간 재검증 / no — 종료 |
+| ≥ 1 | "반복을 계속할까?" | yes — 강조점 인터뷰 + 네 문서 재작성 + 문서 간 재검증 한 라운드 더 / no — 여기서 종료 |
+
+`no` from either prompt terminates the loop (V4 identity rule — user is
+never forced into another pass). `yes` from `iteration_count == 0`
+enters the §"Step 6 yes-path detail" flow; `yes` from `iteration_count ≥ 1`
+re-enters the same flow (the §"User exit override" block below documents
+the exit-side wording).
+
+**Entry (iteration 0)**: per the selector table above.
 
 - **no → done**: exits the workflow. The user is never forced into a
   second pass (V4 identity rule).
@@ -386,14 +394,9 @@ auto-assigned `index`.
 
 ### User exit override
 
-After every iteration (including iterations 1 and 2 before the stop
-condition can have fired), ask via `AskUserQuestion`:
-
-> "반복을 계속할까?"
-> options: ["yes — 강조점 인터뷰 + 네 문서 재작성 + 문서 간 재검증 한 라운드 더", "no — 여기서 종료"]
-
-"no" terminates the loop and records `reason: "user-requested-stop"`. The
-user is never forced through additional iterations (V4 identity rule).
+**Exit (iteration ≥ 1)**: per the selector table above. On `no`, record
+`reason: "user-requested-stop"`. The user is never forced through
+additional iterations (V4 identity rule).
 
 ### Iteration cap exceeded
 
