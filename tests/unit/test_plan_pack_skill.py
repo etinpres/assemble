@@ -865,3 +865,18 @@ def test_skill_md_step12_u2_u3_exactly_3():
     assert "minSelected: 3, maxSelected: 3" in text or "minSelected=3, maxSelected=3" in text
     # Main verification logic
     assert "4 answers" in text or "user supplied 4+" in text or "4개" in text
+
+
+def test_cross_doc_prompt_enforces_counts_schema():
+    """Spike II F10: cross_doc_step9 prompt에 COUNTS schema verbatim."""
+    text = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/prompts/cross_doc_step9.md").read_text(encoding="utf-8")
+    assert "COUNTS: resolved=" in text
+    assert "unresolved=" in text and "new=" in text
+    # Wrong-keys 거부 사례
+    assert "NEW=" in text or "no different keys" in text
+
+
+def test_skill_md_step9_includes_counts_regex():
+    """Spike II F10: SKILL.md Step 9 에 main parsing regex pin."""
+    text = (Path.home() / ".claude/skills/assemble/bundled/plan-pack/SKILL.md").read_text(encoding="utf-8")
+    assert r"COUNTS: resolved=\d+ unresolved=\d+ new=\d+" in text

@@ -21,6 +21,25 @@ You are dispatched as plan-pack Step 9 (cross-doc sub-agent). Goal: read all 4 d
 
 Apply Step 4b protocol — verify runtime claims with 1-shot Bash, drop speculation. Track `n_kept` / `n_dropped`. Compute `RESOLVED` / `UNRESOLVED` / `NEW` counts (used by orchestrator's iteration_state.json).
 
+## Output (stdout — exact form)
+
+Print exactly two lines, in this order:
+
+```
+WROTE: <absolute-path-to-ADR.md>
+COUNTS: resolved=<int> unresolved=<int> new=<int>
+```
+
+The COUNTS line schema is verbatim — **no extra keys, no different keys**:
+- ✗ `COUNTS: NEW=10 WARN=3 INFO=6 CRITICAL=0` (B-6 dogfood iteration 0 — wrong)
+- ✗ `COUNTS: resolved=8 unresolved=1` (missing `new`)
+- ✓ `COUNTS: resolved=8 unresolved=1 new=0`
+
+`resolved` = findings from prior Cross-doc review now closed by this iteration's edits.
+`unresolved` = findings from prior review still open.
+`new` = findings introduced this iteration (regression — should trend to 0).
+First-pass (`iteration_count == 0`): all findings are NEW, but report them as `new=<count>` with `resolved=0 unresolved=0`. Do NOT use other keys.
+
 ## Final step (canonical save block)
 
 ```python

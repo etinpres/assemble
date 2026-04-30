@@ -235,7 +235,11 @@ Step 4b triage, picks heading (`## Cross-doc review` for first-pass,
 assert `heading not in adr_text`, and rewrites `ADR.md`.
 
 Sub-agent prints **two** stdout lines — `WROTE: <path>` and
-`COUNTS: resolved=<N> unresolved=<N> new=<N>`. Parse both. To update
+`COUNTS: resolved=<N> unresolved=<N> new=<N>`. Main parses the second
+stdout line with regex `^COUNTS: resolved=\d+ unresolved=\d+ new=\d+$`
+(Spike II F10). 매칭 실패 시 (다른 키, 키 누락, 비정수, 추가 토큰)
+Step 9 dispatch failure 처리 — §CRITICAL 분기 (retry/abort/report).
+Parse both. To update
 `runs/<rid>/iteration_state.json` (drives the multi-iteration stop
 condition), call `server.update_iteration_state` directly — *do not*
 dispatch a sub-agent for this:
