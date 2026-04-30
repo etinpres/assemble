@@ -87,11 +87,16 @@ _TASK_DELIM = "\n[TASK]\n"
 
 
 # Spike I §8.3: pre-cutoff (2026-04-30) dogfood data was written under the
-# v1 preamble. Live data uses v2 (`canonical_preamble_sha256()`). The
-# verify_dispatches ALLOW_LIST accepts both so old runs still verify green.
-# See docs/research/2026-04-30-preamble-v2-cutoff.md for the cutoff memo.
+# v1 preamble. Spike II 이전 live data is v2.
+# Spike II §3.1 F12: post-cutoff (2026-05-01) live data is v3 (rule 7 추가
+# + rule 5 외래어 표기 사례). ALLOW_LIST 는 v1 + v2 + canonical(=v3) 3개를
+# 모두 인정해서 과거 dogfood 검증이 깨지지 않도록 한다.
+# See docs/research/2026-05-01-preamble-v3-cutoff.md.
 _PREAMBLE_V1_SHA256 = (
     "858e9ff1cdc05ca73bb4009aab3acfc841169b30873d2fb00f2dfd546b86e159"
+)
+_PREAMBLE_V2_SHA256 = (
+    "df27450513c019a9dd395d8f62c99b445e7a16b4fcdbb5cba52c352397993549"
 )
 
 
@@ -254,8 +259,8 @@ def verify_dispatches(run_id: str) -> dict:
         out["ok"] = False
         out["missing_file"] = True
         return out
-    # ALLOW_LIST: pre-cutoff v1 + live v2 (when canonical is loadable).
-    allow_list = {_PREAMBLE_V1_SHA256}
+    # ALLOW_LIST: pre-cutoff v1 + Spike-I-cutoff v2 + live v3 (canonical).
+    allow_list = {_PREAMBLE_V1_SHA256, _PREAMBLE_V2_SHA256}
     if canonical is not None:
         allow_list.add(canonical)
     with open(path, "r", encoding="utf-8") as f:

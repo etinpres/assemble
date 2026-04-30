@@ -198,15 +198,16 @@ def test_verify_dispatches_empty_file_is_ok(tmp_path, monkeypatch):
 # v1 sha256 (pre-Spike I): kept here as fallback for dogfood data written
 # before 2026-04-30. v2 is the live value. See
 # docs/research/2026-04-30-preamble-v2-cutoff.md for the cutoff memo.
-EXPECTED_PREAMBLE_V2_SHA = "df27450513c019a9dd395d8f62c99b445e7a16b4fcdbb5cba52c352397993549"
+EXPECTED_PREAMBLE_V3_SHA = "8d22a29c9712d2c0c05bc2145ca5ad56c7e19705087dde4dd625908f7ec089a9"
+EXPECTED_PREAMBLE_V2_SHA = "df27450513c019a9dd395d8f62c99b445e7a16b4fcdbb5cba52c352397993549"  # noqa: ALLOW_LIST
 EXPECTED_PREAMBLE_V1_SHA = "858e9ff1cdc05ca73bb4009aab3acfc841169b30873d2fb00f2dfd546b86e159"  # noqa: ALLOW_LIST
 
 
 def test_record_dispatch_full_byte_identity_with_real_canonical_preamble(monkeypatch):
-    """Smoke test against the actual repo preamble file (sha df274505... v2).
-    No stubbed home — uses the real bundled preamble. Records into a tmp
-    dispatches.jsonl under a tmp ASSEMBLE_HOME with the canonical preamble
-    file copied in, so we exercise the actual canonical sha.
+    """Smoke test against the actual repo preamble file (sha 8d22a29c... v3).
+
+    Live preamble is v3 after Spike II §3.1 F12 cutoff. v1/v2 stay in
+    ALLOW_LIST for backward compat with old dogfood data.
     """
     import os
     real_preamble = Path(os.path.expanduser(
@@ -215,12 +216,10 @@ def test_record_dispatch_full_byte_identity_with_real_canonical_preamble(monkeyp
     if not real_preamble.exists():
         pytest.skip("real preamble not present")
     expected_sha = hashlib.sha256(real_preamble.read_bytes()).hexdigest()
-    # Use the real ASSEMBLE_HOME (no monkeypatch) so canonical_preamble_sha256
-    # reads the actual file.
     import server.harness as h
     importlib.reload(h)
     assert h.canonical_preamble_sha256() == expected_sha
-    assert expected_sha == EXPECTED_PREAMBLE_V2_SHA
+    assert expected_sha == EXPECTED_PREAMBLE_V3_SHA
 
 
 def test_record_dispatch_wrote_path_optional(tmp_path, monkeypatch):
@@ -292,3 +291,31 @@ def test_verify_dispatches_accepts_v1_v2_sha(tmp_path, monkeypatch):
     )
     assert res["total"] == 1
     assert res["mismatches"] == []
+
+
+def test_v2_dogfood_data_still_verifies_under_v3_canonical(tmp_path, monkeypatch):
+    """Spike II §3.1 F12: v2 sha256 (Spike I dogfood era) must verify ok=True
+    under v3 canonical. ALLOW_LIST = v1 + v2 + canonical.
+    """
+    import json
+    from server.harness import verify_dispatches, _PREAMBLE_V2_SHA256
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    rid = "20260430-test"
+    rd = tmp_path / ".claude/channels/assemble/runs" / rid
+    rd.mkdir(parents=True)
+    rec = {
+        "ts": "2026-04-30T12:00:00Z",
+        "step": "step6.iter0.PRD",
+        "subagent_type": "general-purpose",
+        "description": "v2-era dispatch",
+        "preamble_sha256": _PREAMBLE_V2_SHA256,
+        "preamble_bytes": 1024,
+        "body_sha256": "deadbeef" * 8,
+        "body_bytes": 200,
+        "wrote_path": None,
+    }
+    (rd / "dispatches.jsonl").write_text(json.dumps(rec) + "\n")
+    result = verify_dispatches(rid)
+    assert result["ok"], f"v2 ALLOW_LIST regression: {result}"
+    assert result["total"] == 1
+    assert result["mismatches"] == []
