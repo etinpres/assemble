@@ -112,12 +112,12 @@ populates `PRD.md`; Step 3 fills the AC bash placeholder.
 
 ### Step 3 — AC bash draft (parallel with Step 2)
 
-Prompt: `prompts/prd_step3.md`. Placeholders: `{{TASK}}`,
-`{{Q5_SUCCESS}}`, `{{Q6_AC_REQUEST}}`, `{{RUN_ID}}`.
+Prompt: `prompts/prd_step3.md`. Placeholders: `{{RUN_ID}}`,
+`{{SUCCESS_CRITERION}}`, `{{AC_REQUEST}}`.
 
 ### Step 4 — PRD consistency review (second-opinion)
 
-Prompt: `prompts/prd_step4.md`. Placeholders: `{{RUN_ID}}`, `{{TASK}}`.
+Prompt: `prompts/prd_step4.md`. Placeholders: `{{RUN_ID}}`.
 Single Agent call as `second-opinion` (preferred `general-purpose` per v4
 swap commit `85366f1`). Sub-agent reads `PRD.md`, triages each critique
 bullet via the Step 4b verify-before-appending protocol (1-shot Bash for
