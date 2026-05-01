@@ -31,3 +31,15 @@ def test_impl_step4_no_test_run():
     """impl_step4.md must not run tests — Step 5 owns verification."""
     text = _read("impl_step4.md")
     assert "Step 5 owns verification" in text or "Do NOT run tests" in text
+
+
+def test_verify_step5_exit0_guard():
+    """verify_step5.md must ERROR when verifier exits non-zero."""
+    text = _read("verify_step5.md")
+    assert "ERROR: verifier failed" in text
+
+
+def test_verify_step5_behavioral_cue():
+    """verify_step5.md must prefer behavioral over static checks."""
+    text = _read("verify_step5.md")
+    assert "behavioral" in text

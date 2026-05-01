@@ -48,6 +48,7 @@ ALLOWED_PROMPT_FILES = (
     "scope_step2.md",
     "test_step3.md",
     "impl_step4.md",
+    "verify_step5.md",
 )
 
 
