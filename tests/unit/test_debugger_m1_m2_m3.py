@@ -15,3 +15,11 @@ def test_m1_dart_heredoc_anti_pattern():
     assert "dart run" in section or "dart - <<EOF" in section, (
         "No Dart heredoc warning in ## Anti-patterns — add 'dart run <file>' guidance"
     )
+
+
+def test_m2_behavioral_verifier_cue():
+    """A2: fix_step5 ## Constraints section prefers behavioral verifiers."""
+    text = FIX5.read_text()
+    assert "behavioral" in text, (
+        "fix_step5.md missing behavioral verifier preference cue in constraints"
+    )

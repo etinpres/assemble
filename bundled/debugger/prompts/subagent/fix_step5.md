@@ -31,6 +31,9 @@ Produce three artifacts:
   exits non-zero, write `ERROR: verifier failed after fix application`
   and exit. Do NOT write `## Fix & verification` in that case.
 - Do NOT format/reflow code outside the patch surface (rule 3).
+- Prefer behavioral verifiers (run the program, check exit/output) over
+  static checks (grep for absence of a string). Static checks are valid
+  only when no runnable entry point exists.
 
 ## Anti-patterns
 
