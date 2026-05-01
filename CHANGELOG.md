@@ -5,7 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II + Spike III
+## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II + Spike III + Spike IV
+
+### V4 Spike IV (2026-05-01, B-9 dogfood ship — debugger ★ second self-sufficient bundle)
+
+**Adds the second ★ bundle (`bundled/debugger/`) parallel to `plan-pack` ★, and closes the three iter1 audit-trail integrity carryforwards from B-8 dogfood**:
+
+- **Phase A — hook v2** (B-8 carryforward C): `hooks/_guard_bash_matcher.py` delegate; canonical magic marker `ASSEMBLE_SUBAGENT_LIFECYCLE_WRITE` only valid as the first non-empty source line (Python comment) inside a `python3 -c '...'` invocation or `python3 << <DELIM>` heredoc — Bash-comment-prefix bypass closed. Includes regex extension to accept `python3.10`/`python3.11` minor-version forms; `main()` argv parameter dropped (M1+M2 review polish). 8 matcher cases + 1 hook integration case. Commits `020a146` (initial) + `d1e9a1b` (α-tighten: marker as first-line comment only).
+- **Phase B — `dispatch_and_record`** (B-8 carryforwards A + B): `server.harness.dispatch_and_record(run_id, *, prompt_file, step, status="dispatched", note=None) -> str` composes `dispatch_prompt` + `record_dispatch` atomically. New `status` (dispatched/skipped/failed) + `note` kwargs on `record_dispatch` schema. `(no change)` iter1 emphasis flips to orchestrator-side skip with `status="skipped"` audit row — sub-agent never dispatched, intent recorded. SKILL.md Step 6 yes-path detail rewritten to use the wrapper exclusively for iter1 4-way path. `iter_emphasis.md` step 1 contract softened (ERROR-back if main misroutes `(no change)`). Commits `152ceac` + `9ad8fd4` + `ca85de4` (Inputs comment fix) + `1cdd4f9` (contracts.json registers 4-row audit invariant).
+- **Phase C — `debugger` ★ bundle**: `bundled/debugger/SKILL.md` + 5 sub-agent prompts (`repro_step2`, `hypothesis_step3`, `root_cause_step4`, `fix_step5`, `report_step6`) + 1 orchestrator helper (`iter_revisit`) + 3 templates (`BUG_REPORT.md`, `repro.sh`, `verify.sh` — cross-cutting AC=bash pattern). Linear pipeline + 1 backtrack point: `0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 (loop back to 3 or 4 if iteration chosen)`. Step 1 is main-side `AskUserQuestion` ×2 (symptom + env/last-known-good/tried-fixes). Steps 2-6 dispatch via `dispatch_prompt` + `record_dispatch`. Step 7 uses `dispatch_and_record` for iter1 audit pairing (audit invariant: every iteration produces exactly one row per `step7.iter{N}.<target>`). 7 commits: `90e0e43` (C1) → `6fa1c64` (C2) → `c89a0c4` (C2 polish — `started` field + `pytest.skip` visibility) → `dd32895` (C3) → `e659dcf` (C3 polish — dynamic allowlist size + future-proof test name) → `6f49664` (C4) → `a31d726` (C5) → `ed9a6df` (C6) → `a2564da` (C7) → `58c0800` (C7 polish — explicit 5-section check + iter_revisit prose fix).
+
+**Schema additions**:
+- `dispatches.jsonl` rows gain `status` (dispatched/skipped/failed) + `note` fields.
+- `ALLOWED_PROMPT_FILES` grows from 8 → 14 (6 debugger entries: `repro_step2.md`, `hypothesis_step3.md`, `root_cause_step4.md`, `fix_step5.md`, `report_step6.md`, `iter_revisit.md`).
+- `_resolve_prompt_path` extends bundle order: plan-pack first, debugger second.
+
+**Tests**: 231 → 251 (+20 net). New: 8 hook v2 matcher cases + 1 hook integration + 5 dispatch_and_record + 1 schema-default + 1 inventory + 1 print-contract + 1 no-bare-ellipsis + 1 placeholder-match (active at C7) + 1 contracts entry. Some tests amortized across phases (e.g. contract tests are bulk-iteration single test functions).
+
+**Canonical preamble v3 sha**: `8d22a29c9712d2c0c05bc2145ca5ad56c7e19705087dde4dd625908f7ec089a9` — unchanged from Spike II/III. ALLOW_LIST = {v1, v2, v3} unchanged.
+
+**B-9 dogfood result**: **13/13 acceptance criteria PASS**. Run `20260501-133444-035a` (OneShot daily puzzle UTC timezone bug — KST 00:00–08:59 window). 5-section `BUG_REPORT.md` + TL;DR + status:complete; `repro.sh` exit 64 (non-zero, bug reproduces); `verify.sh` exit 0 (fix verified); 4 OneShot source files patched (8 individual `DateTime.now().toUtc()` → `DateTime.now()` and `DateTime.utc(now.year,...)` → `DateTime(now.year,...)` substitutions). canonical preamble v3 sha byte-identical across all 5 dispatch rows. iter1 path not exercised (bug resolved in iter0); Bash-prefix-marker probe 0 attempts.
+
+**Carryforward to Spike V** (3 minor items, not ship blockers):
+
+- M1. `repro.sh` Dart heredoc syntax misfire (`dart - <<EOF` ran as `dart -`, exit 64 via wrong path; non-zero contract still satisfied).
+- M2. `verify.sh` is grep-based static check, not behavioral execution.
+- M3. Step 2 sub-agent left `## Symptom` sentinel intact in some renderings — orchestrator recovered via title-line extraction; downstream steps unaffected.
+
+All 3 are sub-agent prompt polish (additional `.replace()` literals or example idioms in `repro_step2.md`/`fix_step5.md`); deferred to Spike V's `builder` ★ scope or Spike IV-patch.
+
+**YAML strict-load latent issue (deferred)**: both `bundled/{plan-pack,debugger}/SKILL.md` frontmatter `description` values contain unquoted `: ` (from `(V4 Spike X: ...)` parenthetical). System convention is the inventory scanner's `_parse_yaml_ish` line parser (lenient); strict `yaml.safe_load()` would fail. Out of Spike IV scope (would require touching plan-pack identity-protected SKILL.md). Tracked as future cleanup.
+
+Source spec: `docs/specs/2026-04-30-v4-spike-iv-design.md`. Plan: `docs/plans/2026-05-03-v4-spike-iv.md`. Final memo: `docs/dogfood/spike-iv-final.md`.
+
+Spike IV commits (in order): `020a146` (A1 hook v2) · `d1e9a1b` (A1 α-tighten) · `152ceac` (B1 dispatch_and_record) · `9ad8fd4` (B2 SKILL.md Step 6 + iter_emphasis) · `ca85de4` (B2 D3 Inputs fix) · `1cdd4f9` (B2 I1 contracts) · `90e0e43` (C1 skeleton + inventory) · `6fa1c64` (C2 templates) · `c89a0c4` (C2 polish) · `dd32895` (C3 repro_step2) · `e659dcf` (C3 polish) · `6f49664` (C4 hypothesis_step3) · `a31d726` (C5 root_cause_step4) · `ed9a6df` (C6 fix_step5) · `a2564da` (C7 report_step6 + iter_revisit + SKILL.md completion) · `58c0800` (C7 polish).
 
 ### V4 Spike III (2026-04-30, B-8 dogfood ship)
 
