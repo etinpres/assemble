@@ -16,12 +16,15 @@ ASSEMBLE = Path.home() / ".claude/skills/assemble"
 
 
 def test_allowed_prompt_files_is_eight():
-    # 7 sub-agent + 1 orchestrator-facing iter_emphasis
-    assert len(server.ALLOWED_PROMPT_FILES) == 8
+    # plan-pack: 7 sub-agent + 1 orchestrator-facing iter_emphasis (8 files)
+    # debugger ★: 1 file (repro_step2.md, C3) — grows to 6 by C7
+    assert len(server.ALLOWED_PROMPT_FILES) == 9
     expected = {
         "prd_step2.md", "prd_step3.md", "prd_step4.md",
         "arch_step8.md", "adr_step11.md", "ui_step13.md",
         "cross_doc_step9.md", "iter_emphasis.md",
+        # debugger ★ (Spike IV, C3+)
+        "repro_step2.md",
     }
     assert set(server.ALLOWED_PROMPT_FILES) == expected
 

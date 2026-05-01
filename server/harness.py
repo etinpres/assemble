@@ -28,6 +28,7 @@ _PREAMBLE_REL = ".claude/skills/assemble/bundled/_shared/harness-preamble.md"
 
 
 ALLOWED_PROMPT_FILES = (
+    # plan-pack ★ (Spike I-III, 8 files)
     "prd_step2.md",
     "prd_step3.md",
     "prd_step4.md",
@@ -36,6 +37,8 @@ ALLOWED_PROMPT_FILES = (
     "ui_step13.md",
     "cross_doc_step9.md",
     "iter_emphasis.md",
+    # debugger ★ (Spike IV, 6 files — added incrementally C3-C7)
+    "repro_step2.md",
 )
 
 
@@ -101,15 +104,17 @@ def _resolve_prompt_path(prompt_file: str) -> Path:
 
     Honors ASSEMBLE_HOME (mirrors `_preamble_path`) so test fixtures can
     redirect the lookup root.
+
+    Bundle order: plan-pack first (most prompts), debugger second (Spike IV).
     """
     base = Path(os.environ.get("ASSEMBLE_HOME", str(Path.home()))) / (
-        ".claude/skills/assemble/bundled/plan-pack/prompts"
+        ".claude/skills/assemble/bundled"
     )
-    # Try subdirs first (post-C6 layout), fall back to flat (pre-C6).
-    for sub in ("subagent", "orchestrator", ""):
-        candidate = base / sub / prompt_file if sub else base / prompt_file
-        if candidate.exists():
-            return candidate
+    for bundle in ("plan-pack", "debugger"):
+        for sub in ("subagent", "orchestrator", ""):
+            candidate = base / bundle / "prompts" / sub / prompt_file if sub else base / bundle / "prompts" / prompt_file
+            if candidate.exists():
+                return candidate
     raise FileNotFoundError(
         f"prompt_file {prompt_file!r} not found under {base} (or subdirs)"
     )
