@@ -96,6 +96,7 @@ report = (
     .replace("{{RUN_ID}}", rid)
     .replace("{{STARTED_AT}}", started_at)
     .replace("{{SYMPTOM_SUMMARY}}", symptom)
+    .replace("## Symptom\n<TBD: filled by Step 2 sub-agent — 1-line symptom summary>", f"## Symptom\n{symptom}")
     .replace("<TBD: filled by Step 2 sub-agent — minimal `bash repro.sh` command + observed failure exit code>", reproducer_body)
 )
 report_path = write_run_artifact(rid, "BUG_REPORT.md", report)

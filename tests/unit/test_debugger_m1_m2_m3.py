@@ -23,3 +23,11 @@ def test_m2_behavioral_verifier_cue():
     assert "behavioral" in text, (
         "fix_step5.md missing behavioral verifier preference cue in constraints"
     )
+
+
+def test_m3_symptom_sentinel_substitution():
+    """A3: repro_step2 save block has explicit ## Symptom sentinel substitution."""
+    text = REPRO.read_text()
+    assert '.replace("## Symptom' in text, (
+        'repro_step2.md save block missing explicit .replace("## Symptom...") call'
+    )
