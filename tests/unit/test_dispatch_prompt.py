@@ -25,6 +25,7 @@ def test_allowed_prompt_files_size_matches_bundles():
         "cross_doc_step9.md", "iter_emphasis.md",
         # debugger ★ (Spike IV, C3+)
         "repro_step2.md",
+        "hypothesis_step3.md",
     }
     assert set(server.ALLOWED_PROMPT_FILES) == expected
     assert len(server.ALLOWED_PROMPT_FILES) == len(expected)

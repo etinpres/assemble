@@ -39,6 +39,7 @@ ALLOWED_PROMPT_FILES = (
     "iter_emphasis.md",
     # debugger ★ (Spike IV, 6 files — added incrementally C3-C7)
     "repro_step2.md",
+    "hypothesis_step3.md",
 )
 
 
