@@ -1,0 +1,27 @@
+---
+title: Bug report
+run_id: {{RUN_ID}}
+status: in-progress
+---
+
+# Bug report — {{SYMPTOM_SUMMARY}}
+
+## Symptom
+
+<TBD: filled by Step 1 (main AskUserQuestion captures this verbatim)>
+
+## Reproducer
+
+<TBD: filled by Step 2 sub-agent — minimal `bash repro.sh` command + observed failure exit code>
+
+## Hypotheses
+
+<TBD: filled by Step 3 sub-agent — 3-5 ranked hypotheses, each with bisect step + expected evidence>
+
+## Root cause
+
+<TBD: filled by Step 4 sub-agent — 1-sentence root cause + bisect evidence trail + second-opinion challenge response>
+
+## Fix & verification
+
+<TBD: filled by Step 5 sub-agent — patch summary (file:line + 1-2 sentence rationale), verify.sh contents, expected output>
