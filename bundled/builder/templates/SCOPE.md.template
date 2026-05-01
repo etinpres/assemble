@@ -1,0 +1,19 @@
+# SCOPE — {{TASK_SUMMARY}}
+
+## Allow list
+
+{{ALLOW_LIST}}
+
+## Deny list
+
+{{DENY_LIST}}
+
+## Completion criterion
+
+```bash
+{{COMPLETION_CRITERION}}
+```
+
+## Task breakdown
+
+{{TASK_BREAKDOWN}}

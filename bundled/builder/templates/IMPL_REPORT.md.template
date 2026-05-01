@@ -1,0 +1,35 @@
+---
+run_id: {{RUN_ID}}
+started: {{STARTED_AT}}
+status: in-progress
+---
+
+# Implementation report — {{TASK_SUMMARY}}
+
+## Task
+
+{{TASK_SUMMARY}}
+
+## Test (red)
+
+<TBD: filled by Step 3 sub-agent — test_first.sh exit code + command used>
+
+## Implementation
+
+<TBD: filled by Step 4/5 sub-agent — task breakdown execution + patch summary (file:line + 1-2 sentence rationale)>
+
+## Verify (green)
+
+<TBD: filled by Step 5 sub-agent — verify.sh exit code + output snippet>
+
+## Self-review
+
+<TBD: filled by Step 6 sub-agent — scope deviation count + recommendation>
+
+## Commit message
+
+<TBD: filled by Step 7 sub-agent — conventional commit format>
+
+## TL;DR
+
+<TBD: filled by Step 7 sub-agent — 2-line summary>
