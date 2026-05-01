@@ -42,6 +42,8 @@ ALLOWED_PROMPT_FILES = (
     "hypothesis_step3.md",
     "root_cause_step4.md",
     "fix_step5.md",
+    "report_step6.md",
+    "iter_revisit.md",
 )
 
 
