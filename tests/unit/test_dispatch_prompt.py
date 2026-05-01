@@ -18,6 +18,7 @@ ASSEMBLE = Path.home() / ".claude/skills/assemble"
 def test_allowed_prompt_files_size_matches_bundles():
     # plan-pack: 7 sub-agent + 1 orchestrator-facing iter_emphasis (8 files)
     # debugger ★: grows incrementally C3 → C7 (1 → 6 files)
+    # builder ★: grows incrementally B3 → B8 (1 → 7 files)
     expected = {
         # plan-pack ★ (Spike I-III, 8 files)
         "prd_step2.md", "prd_step3.md", "prd_step4.md",
@@ -30,6 +31,8 @@ def test_allowed_prompt_files_size_matches_bundles():
         "fix_step5.md",
         "report_step6.md",
         "iter_revisit.md",
+        # builder ★ (Spike V, B3+)
+        "scope_step2.md",
     }
     assert set(server.ALLOWED_PROMPT_FILES) == expected
     assert len(server.ALLOWED_PROMPT_FILES) == len(expected)

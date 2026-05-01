@@ -44,6 +44,8 @@ ALLOWED_PROMPT_FILES = (
     "fix_step5.md",
     "report_step6.md",
     "iter_revisit.md",
+    # builder ★ (Spike V, 7 files — added incrementally B3-B8)
+    "scope_step2.md",
 )
 
 
@@ -115,7 +117,7 @@ def _resolve_prompt_path(prompt_file: str) -> Path:
     base = Path(os.environ.get("ASSEMBLE_HOME", str(Path.home()))) / (
         ".claude/skills/assemble/bundled"
     )
-    for bundle in ("plan-pack", "debugger"):
+    for bundle in ("plan-pack", "debugger", "builder"):
         for sub in ("subagent", "orchestrator", ""):
             candidate = base / bundle / "prompts" / sub / prompt_file if sub else base / bundle / "prompts" / prompt_file
             if candidate.exists():
