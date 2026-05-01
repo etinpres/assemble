@@ -1,6 +1,7 @@
 ---
 title: Bug report
 run_id: {{RUN_ID}}
+started: {{STARTED_AT}}
 status: in-progress
 ---
 

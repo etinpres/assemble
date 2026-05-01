@@ -7,6 +7,8 @@ A1) but scans across all 3 debugger templates."""
 import re
 from pathlib import Path
 
+import pytest
+
 ASSEMBLE = Path.home() / ".claude/skills/assemble"
 TEMPLATES_DIR = ASSEMBLE / "bundled/debugger/templates"
 PROMPTS_DIR = ASSEMBLE / "bundled/debugger/prompts"
@@ -36,10 +38,14 @@ def test_debugger_templates_all_replaced():
     The assertion gains teeth as C3-C7 add prompt files with
     `.replace("{{KEY}}", ...)` literals."""
     if not list(PROMPTS_DIR.rglob("*.md")):
-        # Empty dir — no prompts exist yet (C2 baseline). Test
-        # vacuously passes; subsequent tasks will populate the
-        # `.replace(...)` literals and turn this into a hard guard.
-        return
+        # Empty dir — no prompts exist yet (C2 baseline). Skip with a
+        # visible reason so future contributors reading `pytest -rs`
+        # output see why the assertion isn't running. Gains teeth as
+        # C3-C7 add prompt files with `.replace(...)` literals.
+        pytest.skip(
+            "debugger prompts/ has no .md files yet — assertion "
+            "gains teeth as C3-C7 add prompt files"
+        )
     missing = _all_template_placeholders() - _all_prompt_replaces()
     assert not missing, (
         f"debugger template placeholders never replaced: {sorted(missing)}"
