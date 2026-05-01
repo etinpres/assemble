@@ -143,7 +143,8 @@ def dispatch_prompt(prompt_file: str) -> str:
         raise ValueError(
             f"prompt_file {prompt_file!r} not allowed. "
             f"See SKILL.md §CRITICAL anti-bypass + ALLOWED_PROMPT_FILES "
-            f"in server.harness for the 8-file allowlist."
+            f"in server.harness "
+            f"(current allowlist: {len(ALLOWED_PROMPT_FILES)} files)."
         )
     text = _resolve_prompt_path(prompt_file).read_text(encoding="utf-8")
     return wrap_with_preamble(text)

@@ -15,11 +15,11 @@ import server.harness as h
 ASSEMBLE = Path.home() / ".claude/skills/assemble"
 
 
-def test_allowed_prompt_files_is_eight():
+def test_allowed_prompt_files_size_matches_bundles():
     # plan-pack: 7 sub-agent + 1 orchestrator-facing iter_emphasis (8 files)
-    # debugger ★: 1 file (repro_step2.md, C3) — grows to 6 by C7
-    assert len(server.ALLOWED_PROMPT_FILES) == 9
+    # debugger ★: grows incrementally C3 → C7 (1 → 6 files)
     expected = {
+        # plan-pack ★ (Spike I-III, 8 files)
         "prd_step2.md", "prd_step3.md", "prd_step4.md",
         "arch_step8.md", "adr_step11.md", "ui_step13.md",
         "cross_doc_step9.md", "iter_emphasis.md",
@@ -27,6 +27,7 @@ def test_allowed_prompt_files_is_eight():
         "repro_step2.md",
     }
     assert set(server.ALLOWED_PROMPT_FILES) == expected
+    assert len(server.ALLOWED_PROMPT_FILES) == len(expected)
 
 
 def test_dispatch_prompt_unknown_file_raises():
