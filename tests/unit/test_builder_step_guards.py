@@ -43,3 +43,16 @@ def test_verify_step5_behavioral_cue():
     """verify_step5.md must prefer behavioral over static checks."""
     text = _read("verify_step5.md")
     assert "behavioral" in text
+
+
+def test_review_step6_scope_diff_mention():
+    """review_step6.md must reference SCOPE comparison (Allow list / Deny list)."""
+    text = _read("review_step6.md")
+    assert "Allow list" in text or "allow-list" in text.lower()
+    assert "Deny list" in text or "deny-list" in text.lower()
+
+
+def test_review_step6_no_auto_fix():
+    """review_step6.md must NOT auto-fix violations — report only."""
+    text = _read("review_step6.md")
+    assert "do NOT auto-fix" in text or "Report violations" in text or "not auto-fix" in text.lower()
