@@ -34,6 +34,7 @@ def test_allowed_prompt_files_size_matches_bundles():
         # builder ★ (Spike V, B3+)
         "scope_step2.md",
         "test_step3.md",
+        "impl_step4.md",
     }
     assert set(server.ALLOWED_PROMPT_FILES) == expected
     assert len(server.ALLOWED_PROMPT_FILES) == len(expected)

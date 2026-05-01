@@ -47,6 +47,7 @@ ALLOWED_PROMPT_FILES = (
     # builder ★ (Spike V, 7 files — added incrementally B3-B8)
     "scope_step2.md",
     "test_step3.md",
+    "impl_step4.md",
 )
 
 
