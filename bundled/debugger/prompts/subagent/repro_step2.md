@@ -40,6 +40,9 @@ a clean checkout. Then write:
 - Reproducer that depends on hidden state ("run after deleting cache").
   If a precondition is required, it goes inside `repro.sh` as the first
   line.
+- Non-bash runtimes (dart, python, node) with heredoc stdin syntax.
+  Use `dart run <file>` or write a temp script file instead of `dart - <<EOF`.
+  Heredoc stdin piping exits non-zero on many runtimes even on success.
 
 ## Final step (canonical save block — DO NOT MODIFY THE STRUCTURE)
 
