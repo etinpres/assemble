@@ -21,8 +21,8 @@ Main reads this file via `dispatch_prompt("iter_revisit.md")`, then:
    `{{EXISTING_REPORT}}` into the body below.
 2. Wraps the result as the prompt body of either Step 3 or Step 4
    (matching `revisit_target`). Specifically, the produced text is
-   prepended to the `repro_step{N}.md` prompt body (where N is 3 or 4)
-   as a `## Revisit context` section.
+   prepended to the `hypothesis_step3.md` or `root_cause_step4.md`
+   prompt body as a `## Revisit context` section.
 3. Records `dispatch_and_record(... step="step7.iter{N}.{TARGET}",
    note="revisit: {failure_summary}", description="iter revisit
    targeting {REVISIT_TARGET}")` before sending to the Agent tool.

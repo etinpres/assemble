@@ -48,6 +48,20 @@ from server import write_run_artifact, read_run_artifact
 rid = "{{RUN_ID}}"
 existing = read_run_artifact(rid, "BUG_REPORT.md")
 
+# Validate all 5 section headers exist (a deleted/renamed section
+# would slip past the gap-marker checks below — Spike IV C7 review).
+required_sections = [
+    "## Symptom",
+    "## Reproducer",
+    "## Hypotheses",
+    "## Root cause",
+    "## Fix & verification",
+]
+missing_sections = [s for s in required_sections if s not in existing]
+if missing_sections:
+    print(f"ERROR: BUG_REPORT.md missing required sections: {missing_sections}")
+    sys.exit(1)
+
 # Validate no TBD or bare ... remain
 gaps = re.findall(r"<TBD:[^>]*>", existing)
 bare_ellipses = re.findall(r"^\s*\.\.\.\s*$", existing, re.MULTILINE)
