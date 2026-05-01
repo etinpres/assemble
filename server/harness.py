@@ -51,6 +51,7 @@ ALLOWED_PROMPT_FILES = (
     "verify_step5.md",
     "review_step6.md",
     "builder_iter_revisit.md",
+    "report_step7.md",
 )
 
 

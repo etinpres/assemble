@@ -38,6 +38,7 @@ def test_allowed_prompt_files_size_matches_bundles():
         "verify_step5.md",
         "review_step6.md",
         "builder_iter_revisit.md",
+        "report_step7.md",
     }
     assert set(server.ALLOWED_PROMPT_FILES) == expected
     assert len(server.ALLOWED_PROMPT_FILES) == len(expected)

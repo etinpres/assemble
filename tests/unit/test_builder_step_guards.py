@@ -56,3 +56,15 @@ def test_review_step6_no_auto_fix():
     """review_step6.md must NOT auto-fix violations — report only."""
     text = _read("review_step6.md")
     assert "do NOT auto-fix" in text or "Report violations" in text or "not auto-fix" in text.lower()
+
+
+def test_report_step7_unfilled_section_check():
+    """report_step7.md must ERROR when any <TBD: remains in IMPL_REPORT."""
+    text = _read("report_step7.md")
+    assert "ERROR: IMPL_REPORT has unfilled sections" in text
+
+
+def test_report_step7_commit_message_section():
+    """report_step7.md must produce a ## Commit message section."""
+    text = _read("report_step7.md")
+    assert "## Commit message" in text or "Commit message" in text

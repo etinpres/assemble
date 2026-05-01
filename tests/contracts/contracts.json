@@ -63,6 +63,20 @@
       "spec_path": "bundled/plan-pack/SKILL.md",
       "section": "### Step 6",
       "tag": "Spike IV §1.1 — iter1 4-row audit invariant (carryforward A; future doc-list expansion must update both workflow and invariant)"
+    },
+    {
+      "id": "spike-v-builder-allowlist",
+      "phrase": "`scope_step2.md`, `test_step3.md`, `impl_step4.md`,\n  `verify_step5.md`, `review_step6.md`, `report_step7.md`",
+      "spec_path": "bundled/builder/SKILL.md",
+      "section": "## CRITICAL — orchestrator-only enforcement",
+      "tag": "Spike V — builder 6-file subagent allowlist contract"
+    },
+    {
+      "id": "spike-v-builder-iteration-audit",
+      "phrase": "step=\"step8.iter{N}.<target>\"",
+      "spec_path": "bundled/builder/SKILL.md",
+      "section": "## Iteration audit invariant",
+      "tag": "Spike V §1.1 — builder Step 8 iteration audit row invariant"
     }
   ]
 }
