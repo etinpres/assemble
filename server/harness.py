@@ -40,6 +40,7 @@ ALLOWED_PROMPT_FILES = (
     # debugger ★ (Spike IV, 6 files — added incrementally C3-C7)
     "repro_step2.md",
     "hypothesis_step3.md",
+    "root_cause_step4.md",
 )
 
 
