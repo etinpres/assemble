@@ -41,6 +41,7 @@ ALLOWED_PROMPT_FILES = (
     "repro_step2.md",
     "hypothesis_step3.md",
     "root_cause_step4.md",
+    "fix_step5.md",
 )
 
 

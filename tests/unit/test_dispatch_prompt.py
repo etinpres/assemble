@@ -27,6 +27,7 @@ def test_allowed_prompt_files_size_matches_bundles():
         "repro_step2.md",
         "hypothesis_step3.md",
         "root_cause_step4.md",
+        "fix_step5.md",
     }
     assert set(server.ALLOWED_PROMPT_FILES) == expected
     assert len(server.ALLOWED_PROMPT_FILES) == len(expected)
