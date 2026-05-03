@@ -342,9 +342,10 @@ def record_dispatch(
         raise ValueError(f"unsafe run_id: {run_id!r}")
     if run_id != Path(run_id).name:
         raise ValueError(f"unsafe run_id: not a plain basename: {run_id!r}")
-    if status not in ("dispatched", "skipped", "failed"):
+    if status not in ("dispatched", "skipped", "failed", "completed"):
         raise ValueError(
-            f"unknown status: {status!r} (allowed: dispatched/skipped/failed)"
+            f"unknown status: {status!r} "
+            f"(allowed: dispatched/skipped/failed/completed)"
         )
 
     if prompt_file is not None and prompt_file not in ALLOWED_PROMPT_FILES:
@@ -386,6 +387,91 @@ def record_dispatch(
     with open(out, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
     return out
+
+
+# Spike V.1 §4 — status lifecycle.
+#
+# `record_dispatch` writes a row at status='dispatched' time. The new helper
+# `update_dispatch_status` flips that same row to 'completed' (or 'failed')
+# in-place once the orchestrator has parsed the sub-agent's WROTE/ERROR.
+#
+# Why in-place rather than append-only: the audit invariant (B-10 AC #13 —
+# "6 rows for Steps 2-7") becomes opaque if every step grows to 2 rows. The
+# row count stays equal to the dispatch attempt count; status field carries
+# completion semantics.
+def update_dispatch_status(
+    run_id: str,
+    step: str,
+    new_status: str,
+    *,
+    wrote_path: Optional[str] = None,
+    note: Optional[str] = None,
+) -> Path:
+    """Update the most recent `dispatched` row for `step` to `new_status`.
+
+    Looks up `runs/<run_id>/dispatches.jsonl`, walks backwards to find the
+    last row whose `step` matches and `status == "dispatched"`, mutates it
+    in-place (status / wrote_path / note), then rewrites the file. Other
+    rows are preserved byte-for-byte (only the target row's fields change,
+    field order preserved by Python dict insertion order).
+
+    Idempotent: if no matching dispatched row exists (file missing, no
+    matching step, or status already advanced past 'dispatched'), returns
+    the path without raising. Caller can safely call this twice.
+
+    `new_status` must be one of `completed` (sub-agent returned WROTE),
+    `failed` (sub-agent returned ERROR or no WROTE). `dispatched` /
+    `skipped` are not legal transitions through this helper — use
+    `record_dispatch` directly to record those initial states.
+
+    Returns the absolute path of dispatches.jsonl.
+
+    Spike V.1 §4 (Spike V dogfood carryforward #4): closes the
+    status-lifecycle gap surfaced in B-10 dogfood — rows previously
+    sat at `dispatched` even after the sub-agent's WROTE was parsed.
+    """
+    if not run_id or not step:
+        raise ValueError("run_id and step are required")
+    if new_status not in ("completed", "failed"):
+        raise ValueError(
+            f"new_status {new_status!r} not allowed for transition "
+            f"(use 'completed' or 'failed'; for initial 'dispatched'/"
+            f"'skipped', call record_dispatch directly)"
+        )
+
+    path = _dispatches_path(run_id)
+    if not path.exists():
+        return path  # idempotent — nothing to update
+
+    rows = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.rstrip("\n")
+            if not line:
+                continue
+            rows.append(json.loads(line))
+
+    target_idx = None
+    for i in range(len(rows) - 1, -1, -1):
+        if rows[i].get("step") == step and rows[i].get("status") == "dispatched":
+            target_idx = i
+            break
+
+    if target_idx is None:
+        return path  # idempotent
+
+    rows[target_idx]["status"] = new_status
+    if wrote_path is not None:
+        rows[target_idx]["wrote_path"] = wrote_path
+    if note is not None:
+        rows[target_idx]["note"] = note
+
+    tmp = path.with_suffix(".jsonl.tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        for r in rows:
+            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    tmp.replace(path)
+    return path
 
 
 def dispatch_and_record(
