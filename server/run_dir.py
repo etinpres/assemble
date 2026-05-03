@@ -110,6 +110,19 @@ def strip_bash_fence(s: str) -> str:
     return "\n".join(lines).strip()
 
 
+def list_runs(run_dir: Path | None = None) -> list[str]:
+    """Return sorted list of run sub-directory names inside `run_dir`.
+
+    If `run_dir` is None, the default `_runs_dir()` path is used.
+    Files inside the directory are excluded — only sub-directory names
+    are returned. Returns an empty list if the directory does not exist.
+    """
+    base = run_dir if run_dir is not None else _runs_dir()
+    if not base.exists():
+        return []
+    return sorted(entry.name for entry in base.iterdir() if entry.is_dir())
+
+
 def update_iteration_state(run_id: str, counts: dict) -> Path:
     """Append one iteration record to `runs/<run_id>/iteration_state.json`.
 

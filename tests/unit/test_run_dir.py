@@ -8,6 +8,7 @@ from server.run_dir import (
     read_run_artifact,
     run_artifact_path,
     strip_bash_fence,
+    list_runs,
 )
 
 
@@ -177,3 +178,45 @@ def test_update_iteration_state_unsafe_run_id_rejected(tmp_path, monkeypatch):
     import pytest
     with pytest.raises(ValueError):
         update_iteration_state("../../etc", {"x": 1})
+
+
+# --- list_runs tests ---
+
+def test_list_runs_empty_directory(tmp_path):
+    """빈 디렉토리 → 빈 리스트 반환."""
+    result = list_runs(tmp_path)
+    assert result == []
+
+
+def test_list_runs_returns_sorted_subdirs(tmp_path):
+    """sub-dirs 있을 때 sorted 리스트 반환."""
+    (tmp_path / "20260503-z").mkdir()
+    (tmp_path / "20260501-a").mkdir()
+    (tmp_path / "20260502-m").mkdir()
+    result = list_runs(tmp_path)
+    assert result == ["20260501-a", "20260502-m", "20260503-z"]
+
+
+def test_list_runs_excludes_files(tmp_path):
+    """파일만 있고 디렉토리 없을 때 빈 리스트 반환."""
+    (tmp_path / "somefile.txt").write_text("content")
+    (tmp_path / "anotherfile.json").write_text("{}")
+    result = list_runs(tmp_path)
+    assert result == []
+
+
+def test_list_runs_custom_run_dir(tmp_path):
+    """run_dir 파라미터로 임의 경로 주입 시 해당 경로의 sub-dirs 반환."""
+    custom_dir = tmp_path / "custom_runs"
+    custom_dir.mkdir()
+    (custom_dir / "run-001").mkdir()
+    (custom_dir / "run-002").mkdir()
+    result = list_runs(custom_dir)
+    assert result == ["run-001", "run-002"]
+
+
+def test_list_runs_nonexistent_path(tmp_path):
+    """존재하지 않는 경로 → 빈 리스트 반환."""
+    nonexistent = tmp_path / "does_not_exist"
+    result = list_runs(nonexistent)
+    assert result == []
