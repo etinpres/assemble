@@ -15,33 +15,41 @@ import server.harness as h
 ASSEMBLE = Path.home() / ".claude/skills/assemble"
 
 
-def test_allowed_prompt_files_size_matches_bundles():
-    # plan-pack: 7 sub-agent + 1 orchestrator-facing iter_emphasis (8 files)
-    # debugger ★: grows incrementally C3 → C7 (1 → 6 files)
-    # builder ★: grows incrementally B3 → B8 (1 → 7 files)
-    expected = {
-        # plan-pack ★ (Spike I-III, 8 files)
-        "prd_step2.md", "prd_step3.md", "prd_step4.md",
-        "arch_step8.md", "adr_step11.md", "ui_step13.md",
-        "cross_doc_step9.md", "iter_emphasis.md",
-        # debugger ★ (Spike IV, C3+)
-        "repro_step2.md",
-        "hypothesis_step3.md",
-        "root_cause_step4.md",
-        "fix_step5.md",
-        "report_step6.md",
-        "iter_revisit.md",
-        # builder ★ (Spike V, B3+)
-        "scope_step2.md",
-        "test_step3.md",
-        "impl_step4.md",
-        "verify_step5.md",
-        "review_step6.md",
-        "builder_iter_revisit.md",
-        "report_step7.md",
-    }
-    assert set(server.ALLOWED_PROMPT_FILES) == expected
-    assert len(server.ALLOWED_PROMPT_FILES) == len(expected)
+def test_allowed_prompt_files_matches_bundle_inventory():
+    """ALLOWED_PROMPT_FILES tuple must equal the on-disk prompt inventory under
+    bundled/*/prompts/{subagent,orchestrator}/*.md.
+
+    This auto-derives the expected set from disk so adding a new bundle prompt
+    only requires updating ALLOWED_PROMPT_FILES — no parallel hardcoded list to
+    sync. Catches both directions of drift:
+      - file on disk but missing from tuple → unguarded sub-agent dispatch path
+      - tuple entry with no file → dead allowlist entry
+    """
+    bundle_root = ASSEMBLE / "bundled"
+    on_disk: set[str] = set()
+    for bundle_dir in bundle_root.iterdir():
+        if not bundle_dir.is_dir() or bundle_dir.name.startswith("_"):
+            continue  # skip _shared/, etc.
+        for subdir in ("subagent", "orchestrator"):
+            d = bundle_dir / "prompts" / subdir
+            if d.is_dir():
+                on_disk |= {
+                    p.name for p in d.glob("*.md") if p.name != ".gitkeep"
+                }
+
+    in_tuple = set(server.ALLOWED_PROMPT_FILES)
+
+    only_disk = on_disk - in_tuple
+    only_tuple = in_tuple - on_disk
+
+    assert not only_disk, (
+        f"prompt files on disk but missing from ALLOWED_PROMPT_FILES "
+        f"(unguarded dispatch path): {sorted(only_disk)}"
+    )
+    assert not only_tuple, (
+        f"ALLOWED_PROMPT_FILES entries with no on-disk file "
+        f"(dead allowlist entry): {sorted(only_tuple)}"
+    )
 
 
 def test_dispatch_prompt_unknown_file_raises():
