@@ -77,6 +77,13 @@
       "spec_path": "bundled/builder/SKILL.md",
       "section": "## Iteration audit invariant",
       "tag": "Spike V §1.1 — builder Step 8 iteration audit row invariant"
+    },
+    {
+      "id": "spike-v1-builder-artifact-invariant",
+      "phrase": "run_dir = `~/.claude/channels/assemble/runs/<rid>/`. Four artifacts:\n\n- `SCOPE.md` — allow-list + deny-list + completion criterion + task breakdown (Step 2).\n- `test_first.sh` — exits non-zero before implementation (red). Step 3.\n- `verify.sh` — exits 0 after implementation (green). Step 5.\n- `IMPL_REPORT.md` — 7 sections filled across Steps 2–7. `status: complete` when done.",
+      "spec_path": "bundled/builder/SKILL.md",
+      "section": "## Artifacts",
+      "tag": "Spike V.1 — builder 4-artifact existence invariant (SCOPE/test_first/verify/IMPL_REPORT)"
     }
   ]
 }
