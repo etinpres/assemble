@@ -49,6 +49,7 @@ from server.harness import (
     canonical_preamble_sha256,
     dispatch_prompt,
     dispatch_and_record,
+    substitute_inputs,
     ALLOWED_PROMPT_FILES,
 )
 
@@ -73,5 +74,6 @@ __all__ = [
     # harness
     "wrap_with_preamble", "record_dispatch", "verify_dispatches",
     "canonical_preamble_sha256",
-    "dispatch_prompt", "dispatch_and_record", "ALLOWED_PROMPT_FILES",
+    "dispatch_prompt", "dispatch_and_record", "substitute_inputs",
+    "ALLOWED_PROMPT_FILES",
 ]

@@ -19,6 +19,7 @@ import datetime
 import hashlib
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Optional
@@ -147,7 +148,9 @@ def dispatch_prompt(prompt_file: str) -> str:
     Inputs section vs. the sub-agent's own `.replace("{{KEY}}", var)`
     instructions inside the canonical save block. A naive global
     `.replace` would corrupt the latter. See spec §1.2 (B2 — option B)
-    for the rationale.
+    for the rationale. For safe substitution, use
+    `substitute_inputs(text, {...})` — it scopes the replace to the
+    `## Inputs` section only, leaving the save block intact.
 
     Returns: the wrapped prompt (preamble + [TASK] + body) ready for
     the caller's substitution pass + Agent dispatch.
@@ -161,6 +164,53 @@ def dispatch_prompt(prompt_file: str) -> str:
         )
     text = _resolve_prompt_path(prompt_file).read_text(encoding="utf-8")
     return wrap_with_preamble(text)
+
+
+# Spike V.1 §3 — token substitution helper.
+#
+# Section-scoped: matches from `## Inputs\n` (or `## Inputs (foo)\n`)
+# through the next `\n## ` header. The save block (typically under
+# `## Final step`) is intentionally NOT touched so `.replace("{{KEY}}", var)`
+# instructions inside embedded python blocks survive for sub-agent execution.
+_INPUTS_SECTION_RE = re.compile(
+    r"(\n## Inputs[^\n]*\n)(.*?)(\n## )", re.DOTALL
+)
+
+
+def substitute_inputs(prompt_text: str, inputs: dict) -> str:
+    """Substitute `{{KEY}}` placeholders within the `## Inputs` section only.
+
+    Replaces the orchestrator's input-section boilerplate (5+ chained
+    `.replace("{{KEY}}", val)` calls per dispatch) with one helper call,
+    while preserving spec §1.2 (B2 option B): the save block's own
+    `.replace("{{KEY}}", var)` instructions are untouched, because the
+    substitution is scoped to bytes between `## Inputs` and the next
+    `## ` header.
+
+    Behavior:
+      - Replaces every `{{KEY}}` literal in the Inputs section using
+        the `inputs` dict (keys without `{{}}` braces — `{"RUN_ID": "x"}`).
+      - Keys not present in the section are silently ignored (some
+        prompts list optional inputs).
+      - If `## Inputs` header is absent, returns `prompt_text` unchanged
+        (helper degrades gracefully — caller can still use the prompt).
+      - The dict values are coerced to `str()` for safety.
+
+    Returns the prompt text with substitutions applied.
+    """
+    if not inputs:
+        return prompt_text
+    match = _INPUTS_SECTION_RE.search(prompt_text)
+    if match is None:
+        return prompt_text
+    header, body, next_marker = match.group(1), match.group(2), match.group(3)
+    for k, v in inputs.items():
+        body = body.replace("{{" + k + "}}", str(v))
+    return (
+        prompt_text[: match.start()]
+        + header + body + next_marker
+        + prompt_text[match.end() :]
+    )
 
 
 # `wrap_with_preamble` emits `<pre>\n[TASK]\n<prompt>` where `pre` is
