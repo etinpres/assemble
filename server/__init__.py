@@ -55,6 +55,7 @@ from server.harness import (
     extract_wrote_paths,
     bundle_for_stage,
     ALLOWED_PROMPT_FILES,
+    ORCHESTRATOR_ONLY_PROMPTS,
 )
 from server.scope_parser import parse_scope_md
 
@@ -83,6 +84,7 @@ __all__ = [
     "substitute_inputs", "extract_wrote_paths",
     "bundle_for_stage",
     "ALLOWED_PROMPT_FILES",
+    "ORCHESTRATOR_ONLY_PROMPTS",
     # scope_parser
     "parse_scope_md",
 ]

@@ -10,6 +10,7 @@ from pathlib import Path
 
 import server
 import server.harness as h
+from server.harness import ORCHESTRATOR_ONLY_PROMPTS
 
 
 ASSEMBLE = Path.home() / ".claude/skills/assemble"
@@ -29,12 +30,6 @@ def test_allowed_prompt_files_matches_bundle_inventory():
       - verifier_iter_revisit.md: loaded by main Claude directly (not a subagent
         prompt); see bundled/verifier/SKILL.md §Sub-agent matrix.
     """
-    # Pure orchestrator helpers that are on disk but intentionally NOT in
-    # ALLOWED_PROMPT_FILES (main Claude reads them directly, never dispatched).
-    ORCHESTRATOR_ONLY_EXCLUSIONS: frozenset[str] = frozenset({
-        "verifier_iter_revisit.md",
-    })
-
     bundle_root = ASSEMBLE / "bundled"
     on_disk: set[str] = set()
     for bundle_dir in bundle_root.iterdir():
@@ -46,7 +41,7 @@ def test_allowed_prompt_files_matches_bundle_inventory():
                 on_disk |= {
                     p.name for p in d.glob("*.md")
                     if p.name != ".gitkeep"
-                    and p.name not in ORCHESTRATOR_ONLY_EXCLUSIONS
+                    and p.name not in ORCHESTRATOR_ONLY_PROMPTS
                 }
 
     in_tuple = set(server.ALLOWED_PROMPT_FILES)

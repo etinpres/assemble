@@ -30,6 +30,25 @@ from server.run_dir import run_dir_path
 _PREAMBLE_REL = ".claude/skills/assemble/bundled/_shared/harness-preamble.md"
 
 
+# Orchestrator-only prompts: NOT subagent-dispatched, loaded by main Claude
+# directly. Live under `bundled/<bundle>/prompts/orchestrator/`. Distinct from
+# ALLOWED_PROMPT_FILES (subagent allowlist) — these don't pass through
+# `dispatch_prompt` (no preamble wrap, no harness substitution by default,
+# no Bash grant inheritance from the dispatch surface).
+#
+# Add new orchestrator helpers here when introducing them. The
+# `test_allowed_prompt_files_matches_bundle_inventory` bi-directional
+# integrity test consumes this set to exempt these files from the subagent
+# allowlist roundtrip.
+#
+# Spike VIII A7 introduced the first entry: verifier_iter_revisit.md.
+# FIX-3 (Spike VIII pre-IX cleanup) promoted the set from test-local to
+# this module-level contract.
+ORCHESTRATOR_ONLY_PROMPTS: frozenset[str] = frozenset({
+    "verifier_iter_revisit.md",
+})
+
+
 ALLOWED_PROMPT_FILES = (
     # plan-pack ★ (Spike I-III, 8 files)
     "prd_step2.md",
