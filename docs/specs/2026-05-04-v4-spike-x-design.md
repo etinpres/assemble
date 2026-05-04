@@ -97,11 +97,18 @@ bounded LLM, appends to global learnings.jsonl with deterministic prune.
 | 1 | `keeper_audit_step1.md` | `general-purpose` | Read, Write, **Bash** (read-only `git diff --name-only HEAD~..HEAD` for SCOPE deviation, scoped to repo cwd) |
 | 2 | `keeper_extract_step2.md` | `general-purpose` | Read, Write, **Bash** (`python3 ~/.claude/skills/assemble/bundled/keeper/scripts/extract_rules.py <run_dir>` — single canned invocation) |
 | 3 | `keeper_summarize_step3.md` | `general-purpose` | Read, Write |
-| 4 | `keeper_ledger_step4.md` | `general-purpose` | Read, Write |
+| 4 | `keeper_ledger_step4.md` | `general-purpose` | Read, Write, **Bash** (single canned `python3 ~/.claude/skills/assemble/bundled/keeper/scripts/ledger_update.py <run_dir>` invocation) |
 | iter | `keeper_iter_revisit.md` | orchestrator helper (NOT in allowlist; ORCHESTRATOR_ONLY_PROMPTS) | — |
 
-Bash granted to 2 of 4 (vs verifier 1/4, shipper 3/4). Step 1 = read-only git
-probe; Step 2 = canned Python invocation. Step 3 + 4 = pure file IO.
+Bash granted to 3 of 4 (vs verifier 1/4, shipper 3/4). Step 1 = read-only git
+probe; Step 2 + 4 = canned Python invocations. Step 3 = pure file IO.
+
+> **B5 amendment (recorded post-implementation)**: original spec scoped Step 4 as
+> Read/Write only. During Phase B5 implementation the ledger I/O surface was
+> deemed too complex for inline `python3 -c` (~80 lines), so it was shipped as
+> `bundled/keeper/scripts/ledger_update.py` invoked via Bash — same canned-script
+> pattern as Step 2. This widens Step 4 to Bash. Documented inline above; plan
+> §B5 already pre-recorded the amendment rationale.
 
 ### Step responsibilities
 
