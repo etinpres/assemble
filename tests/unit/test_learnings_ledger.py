@@ -179,6 +179,26 @@ def test_write_ledger_preserves_korean_characters(monkeypatch, tmp_path):
     assert read_ledger()[0]["summary"] == e["summary"]
 
 
+def test_write_ledger_materializes_generator_input(monkeypatch, tmp_path):
+    """Regression anchor: write_ledger must accept a generator and write
+    every yielded entry to disk. This pins the `entries = list(entries)`
+    materialization line at function entry — without it, future refactors
+    that iterate `entries` more than once would silently lose data on
+    generator inputs.
+    """
+    _set_assemble_home(monkeypatch, tmp_path)
+    e1 = _entry("R1", "2026-05-04T10:00:00+00:00", evidence_hash="g1")
+    e2 = _entry("R2", "2026-05-04T11:00:00+00:00", evidence_hash="g2")
+
+    def _gen():
+        yield e1
+        yield e2
+
+    write_ledger(_gen())
+    result = read_ledger()
+    assert result == [e1, e2]
+
+
 # ---------------------------------------------------------------------------
 # 14-21: prune_ledger
 # ---------------------------------------------------------------------------

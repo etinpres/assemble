@@ -256,7 +256,15 @@ def write_ledger(entries: Iterable[dict], path: Optional[Path] = None) -> None:
     the second `os.replace` wins. The keeper today is invoked sequentially
     by `/assemble`, so this is acceptable for V4. Document inline rather
     than silently rely on it.
+
+    Notes / Limitations:
+        Generator inputs are materialized into a list at function entry —
+        this gives a stable snapshot for the duration of the call and
+        prevents weird half-iterated states if the caller's iterator has
+        side effects. Pass an exhausted generator and you'll write an
+        empty ledger; pass `[]` explicitly to express clear-intent.
     """
+    entries = list(entries)  # defensive: stable snapshot, tolerates generator inputs
     target = path if path is not None else learnings_path()
     target.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_str = tempfile.mkstemp(
