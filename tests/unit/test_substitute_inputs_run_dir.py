@@ -84,3 +84,63 @@ def test_unsafe_run_id_skipped_when_run_dir_explicit(monkeypatch, tmp_path):
     })
     assert "RUN_ID: `../escape`" in out
     assert "RUN_DIR: `/safe/manual`" in out
+
+
+# Spike VII follow-up: explicit regression for the `(?:^|\n)` regex extension
+# made in B1 (commit 3ffbf96). The original `\n## Inputs` form would miss
+# prompts whose first line is the Inputs header — now matched by the SOF
+# alternation. Production prompts have a title line above `## Inputs`, so
+# both shapes must work.
+
+def test_inputs_at_char_zero_matched(monkeypatch, tmp_path):
+    """Regex `(?:^|\\n)## Inputs` matches when prompt starts with the header."""
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    prompt = "## Inputs\n- RUN_ID: `{{RUN_ID}}`\n\n## End\n"
+    out = substitute_inputs(prompt, {"RUN_ID": "abc"})
+    assert "RUN_ID: `abc`" in out
+
+
+def test_inputs_after_preamble_still_matched(monkeypatch, tmp_path):
+    """Standard production-shape prompt (title + body before Inputs) preserved."""
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    prompt = (
+        "# reviewer Step X\n"
+        "Some preamble paragraph.\n\n"
+        "## Inputs\n"
+        "- RUN_ID: `{{RUN_ID}}`\n\n"
+        "## Body\n"
+    )
+    out = substitute_inputs(prompt, {"RUN_ID": "abc"})
+    assert "RUN_ID: `abc`" in out
+
+
+# Spike VII follow-up: the body-level placeholder contract. `substitute_inputs`
+# scopes substitution to the `## Inputs` section so save-block `.replace(...)`
+# patterns survive (test_save_block_replace_calls_unchanged above). This means
+# body references like `Read {{RUN_DIR}}/SCOPE.md` outside the Inputs section
+# are intentionally NOT substituted — sub-agents resolve them by reading the
+# Inputs section. Pin that intent so a future "fix the leftover placeholders"
+# refactor doesn't break the design.
+
+def test_body_run_dir_placeholder_left_for_subagent(monkeypatch, tmp_path):
+    """Body references to {{RUN_DIR}} outside ## Inputs are NOT substituted.
+
+    Sub-agents read the Inputs section and resolve body placeholders mentally.
+    This is the documented contract; substituting the body would corrupt
+    save-block `.replace("{{RUN_DIR}}", ...)` patterns.
+    """
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    prompt = (
+        "## Inputs\n"
+        "- RUN_DIR: `{{RUN_DIR}}`\n\n"
+        "## Goal\n"
+        "Read `{{RUN_DIR}}/SCOPE.md` and write `{{RUN_DIR}}/parsed.json`.\n"
+    )
+    out = substitute_inputs(prompt, {"RUN_ID": "abc"})
+    # Inputs: substituted to absolute path
+    assert "RUN_DIR: `" in out
+    assert "{{RUN_DIR}}`" not in out.split("## Goal")[0]
+    # Body: placeholder preserved (sub-agent resolves via Inputs)
+    body = out.split("## Goal")[1]
+    assert "{{RUN_DIR}}/SCOPE.md" in body
+    assert "{{RUN_DIR}}/parsed.json" in body

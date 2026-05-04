@@ -245,6 +245,17 @@ def substitute_inputs(prompt_text: str, inputs: dict) -> str:
     starting with `.` raises `ValueError`. Pass an explicit `RUN_DIR` to
     skip this validation.
 
+    Body-placeholder contract (intentional, do not "fix"): only the
+    Inputs section is substituted. Body references like
+    `Read \`{{RUN_DIR}}/SCOPE.md\`` outside the Inputs section are
+    preserved verbatim. Sub-agents resolve them by reading the Inputs
+    section. This is required so save-block patterns
+    (`text.replace("{{RUN_DIR}}", run_dir)` inside `## Final step`
+    python blocks) survive substitution intact. See
+    `tests/unit/test_substitute_inputs_run_dir.py
+    ::test_body_run_dir_placeholder_left_for_subagent` for the pinned
+    contract.
+
     Returns the prompt text with substitutions applied.
     """
     if not inputs:

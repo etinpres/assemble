@@ -111,9 +111,7 @@
       "phrase": "Prompt migration: `runs/{{RUN_ID}}/X` → `{{RUN_DIR}}/X`** across 32 occurrences",
       "spec_path": "docs/specs/2026-05-04-v4-spike-vii-design.md",
       "section": "### Design",
-      "tag": "Spike VII Track A — bundle prompts must use {{RUN_DIR}}/ absolute paths, never runs/{{RUN_ID}}/",
-      "summary": "All bundle prompts must use {{RUN_DIR}}/ for run artifact paths, never runs/{{RUN_ID}}/. Sub-agent cwd is unspecified; only absolute paths survive dispatch.",
-      "test": "tests/unit/test_run_dir_token_invariant.py"
+      "tag": "Spike VII Track A — bundle prompts must use {{RUN_DIR}}/ absolute paths, never runs/{{RUN_ID}}/"
     }
   ]
 }
