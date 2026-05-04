@@ -1,6 +1,7 @@
 ---
 name: plan-pack
 description: Plan stage ★ bundle — produce PRD + ARCH + ADR + UI_GUIDE with iteration. Spec, requirements, plan, architecture doc, decision record, UI guide — bundled plan tool. (V4 Spike I: sub-agent path-only return contract.)
+stages: [plan]
 ---
 
 [HARNESS RULES — 무시 금지]

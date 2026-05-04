@@ -80,15 +80,22 @@ EXCERPT_LEN = 500
 
 
 def parse_skill_frontmatter(path: Path) -> dict[str, Any]:
-    """Parse YAML-ish frontmatter into {name, description, body_excerpt}.
+    """Parse YAML-ish frontmatter into {name, description, body_excerpt, stages}.
 
     Hand-rolled — no PyYAML dependency. Supports:
       - simple `key: value`
       - block style `key: |` with indented continuation
+      - inline list `key: [a, b, c]` (V.2: used for `stages` field)
+
+    `stages` is a list of stage ids (e.g. `[execute]`) — when present,
+    bypasses the heuristic classifier in `scan()`. Authors of bundled
+    skills can declare their stage routing explicitly without depending
+    on description-keyword density.
     """
     text = path.read_text()
     name: str | None = None
     description: str | None = None
+    stages: list[str] = []
     body_start = 0
 
     if text.startswith("---\n"):
@@ -96,16 +103,22 @@ def parse_skill_frontmatter(path: Path) -> dict[str, Any]:
         if end != -1:
             block = text[4:end]
             body_start = end + len("\n---") + 1  # +1 for trailing newline
-            name, description = _parse_yaml_ish(block)
+            name, description, stages = _parse_yaml_ish(block)
 
     excerpt = text[body_start:body_start + EXCERPT_LEN].strip()
-    return {"name": name, "description": description, "body_excerpt": excerpt}
+    return {
+        "name": name,
+        "description": description,
+        "body_excerpt": excerpt,
+        "stages": stages,
+    }
 
 
-def _parse_yaml_ish(block: str) -> tuple[str | None, str | None]:
+def _parse_yaml_ish(block: str) -> tuple[str | None, str | None, list[str]]:
     name: str | None = None
     desc_lines: list[str] | None = None
     in_desc_block = False
+    stages: list[str] = []
     for line in block.splitlines():
         if in_desc_block:
             if line.startswith("  "):
@@ -121,8 +134,18 @@ def _parse_yaml_ish(block: str) -> tuple[str | None, str | None]:
                 in_desc_block = True
             else:
                 desc_lines = [val.strip('"').strip("'")]
+        elif line.startswith("stages:"):
+            val = line.split(":", 1)[1].strip()
+            if val.startswith("[") and val.endswith("]"):
+                inner = val[1:-1].strip()
+                if inner:
+                    stages = [
+                        s.strip().strip('"').strip("'")
+                        for s in inner.split(",")
+                        if s.strip()
+                    ]
     description = " ".join(desc_lines).strip() if desc_lines is not None else None
-    return name, description or None
+    return name, description or None, stages
 
 
 import json
@@ -273,6 +296,20 @@ WATCH_PATHS = [
 _BUNDLED_ROOT_REL = ".claude/skills/assemble/bundled"
 
 
+# V.2 — bundled directory → default stage. Used as a last-resort fallback
+# in `_resolve()` for bundled skills that didn't declare an explicit
+# `stages:` list in their SKILL.md frontmatter. Each bundled bundle
+# already documents its stage in its directory name (`builder` is
+# execute-stage, `debugger` is debug-stage, `plan-pack` is plan-stage),
+# so this fallback keeps blank-mac dogfood usable even when authors
+# forget the frontmatter field.
+_BUNDLED_DIR_TO_STAGE: dict[str, str] = {
+    "builder": "execute",
+    "debugger": "debug",
+    "plan-pack": "plan",
+}
+
+
 def _is_bundled(home: Path, resolved_path: Path) -> bool:
     """True iff the skill/agent file lives under the assemble bundled root.
 
@@ -370,10 +407,27 @@ def scan(force: bool = False) -> dict:
         prior_skills = (prior.get("skills") or {})
         prior_agents = (prior.get("agents") or {})
 
-        def _resolve(prior_entry: dict, meta: dict) -> tuple[list, str]:
+        def _resolve(
+            prior_entry: dict, meta: dict, *, bundled: bool, dir_name: str
+        ) -> tuple[list, str]:
             # User/LLM classification wins — preserved across rebuilds.
             if prior_entry.get("source") == "llm-classified":
                 return prior_entry.get("mappings", []), "llm-classified"
+            # V.2: explicit `stages` in SKILL.md frontmatter bypasses the
+            # heuristic. Bundled ★ skills declare their stage routing this
+            # way so they don't depend on description-keyword density.
+            declared = meta.get("stages") or []
+            if declared:
+                mappings = [
+                    {"stage": s, "role": "frontmatter-declared"}
+                    for s in declared
+                ]
+                return mappings, "frontmatter-declared"
+            # V.2: bundled fallback — directory name → stage hint, for
+            # bundled skills that didn't declare `stages` explicitly.
+            if bundled and dir_name in _BUNDLED_DIR_TO_STAGE:
+                stage = _BUNDLED_DIR_TO_STAGE[dir_name]
+                return [{"stage": stage, "role": "bundled-dirhint"}], "bundled-dirhint"
             # Recompute the frontmatter-based heuristic every rebuild so
             # description edits are reflected. Cache hits skip _rebuild entirely.
             heuristic = _classify_heuristic(meta)
@@ -394,13 +448,16 @@ def scan(force: bool = False) -> dict:
             if name in skills:
                 continue  # user > plugin, first-wins (enumerate returns priority order)
             prior_entry = prior_skills.get(name) or {}
-            mappings, source = _resolve(prior_entry, meta)
+            is_bundled = _is_bundled(home, path)
+            mappings, source = _resolve(
+                prior_entry, meta, bundled=is_bundled, dir_name=path.parent.name
+            )
             entry = {
                 "name": name,
                 "description": meta["description"],
                 "body_excerpt": meta["body_excerpt"],
                 "path": str(path),
-                "bundled": _is_bundled(home, path),
+                "bundled": is_bundled,
                 "mappings": mappings,
                 "source": source,
             }
@@ -415,13 +472,16 @@ def scan(force: bool = False) -> dict:
                 continue  # user > plugin, first-wins (same rule as skills)
             meta = parse_skill_frontmatter(path)  # agent .md shares the YAML frontmatter convention
             prior_entry = prior_agents.get(name) or {}
-            mappings, source = _resolve(prior_entry, meta)
+            is_bundled = _is_bundled(home, path)
+            mappings, source = _resolve(
+                prior_entry, meta, bundled=is_bundled, dir_name=path.parent.name
+            )
             entry = {
                 "name": name,
                 "description": meta["description"],
                 "body_excerpt": meta["body_excerpt"],
                 "path": str(path),
-                "bundled": _is_bundled(home, path),
+                "bundled": is_bundled,
                 "mappings": mappings,
                 "source": source,
             }
