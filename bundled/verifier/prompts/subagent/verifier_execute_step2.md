@@ -23,7 +23,8 @@ extracted = json.loads(extracted_path.read_text(encoding="utf-8"))
 if extracted["errors"]:
     result = {
         "skipped": True,
-        "skip_reason": extracted["errors"][0],
+        "skip_reasons": extracted["errors"],
+        "skip_reason": extracted["errors"][0],  # convenience: first label
         "exit_code": None,
         "stdout": "",
         "stderr": "",
@@ -43,7 +44,7 @@ else:
         stderr = proc.stderr
     except subprocess.TimeoutExpired as exc:
         timed_out = True
-        exit_code = 124
+        exit_code = 124  # GNU coreutils `timeout(1)` standard: 124 = command timed out
         stdout = (exc.stdout if isinstance(exc.stdout, str) else (exc.stdout.decode("utf-8", errors="replace") if exc.stdout else "")) or ""
         stderr = (exc.stderr if isinstance(exc.stderr, str) else (exc.stderr.decode("utf-8", errors="replace") if exc.stderr else "")) or ""
     duration_ms = int((time.monotonic() - t0) * 1000)
@@ -58,6 +59,7 @@ else:
 
     result = {
         "skipped": False,
+        "skip_reasons": [],
         "skip_reason": "",
         "exit_code": exit_code,
         "stdout": stdout,
@@ -77,8 +79,8 @@ print(f"WROTE: {out}")
 This is the only verifier step that runs the SCOPE-author-provided bash command. Mitigations enforced HERE:
 
 1. **Timeout 30s** — `subprocess.run(timeout=30)`. On timeout, exit_code=124 (POSIX standard for timeout), `timed_out: true` recorded.
-2. **Output cap 100KB** — both stdout and stderr individually capped at 100_000 bytes. `truncated: true` recorded if either trips. Full output discarded beyond the cap (memory/disk safety).
-3. **Skip-if-errors** — if Step 1 (A2) reported errors (`completion-empty`, `completion-too-long`, `completion-multiline`, `parsed-scope-missing`, `parsed-scope-malformed`, `completion-non-string`), execution is SKIPPED entirely. The first error label becomes `skip_reason`.
+2. **Output cap 100KB** — both stdout and stderr individually capped. `truncated: true` recorded if either trips. Caps the on-disk JSON size and downstream readers' memory; NOT a streaming guard against in-memory buffering during subprocess capture (see SECURITY.md A4 for the streaming-vs-buffered distinction).
+3. **Skip-if-errors** — if Step 1 (A2) reported errors (`completion-empty`, `completion-too-long`, `completion-multiline`, `parsed-scope-missing`, `parsed-scope-malformed`, `completion-non-string`), execution is SKIPPED entirely. All error labels are preserved in `skip_reasons` (full array); `skip_reason` (first element) is provided for convenience.
 4. **Bash scoped to Step 2 ONLY** — Steps 1, 3, 4 do NOT receive Bash tool access (per ALLOWED_PROMPT_FILES allowlist + harness preamble v3 contract). Main Claude does NOT call Bash directly during the dispatch chain.
 5. **Length cap (500)** — enforced upstream by Step 1; A3 trusts the bound.
 6. **No shell metacharacter denylist** — explicit non-goal. Cap + timeout + author-trust model matches `make`/`npm test` runners. SCOPE author is the same human trusted with the rest of the run dir.
@@ -90,6 +92,7 @@ Full threat model in `bundled/verifier/SECURITY.md` (lands A4).
 ```json
 {
   "skipped": false,
+  "skip_reasons": [],
   "skip_reason": "",
   "exit_code": 0,
   "stdout": "OK\n",
@@ -100,12 +103,13 @@ Full threat model in `bundled/verifier/SECURITY.md` (lands A4).
 }
 ```
 
-Or skipped:
+Or skipped (example with multiple errors from A2):
 
 ```json
 {
   "skipped": true,
-  "skip_reason": "completion-empty",
+  "skip_reasons": ["completion-too-long", "completion-multiline"],
+  "skip_reason": "completion-too-long",
   "exit_code": null,
   "stdout": "",
   "stderr": "",
@@ -118,7 +122,7 @@ Or skipped:
 ## Constraints
 
 - Bash tool **only** for the completion subprocess invocation (via the python `subprocess.run` call). Do NOT explore the run_dir with ad-hoc shell commands. Do NOT use Bash for `cat` / `ls` / etc.
-- Do NOT modify run_dir contents beyond writing `execution_result.json`.
+- Do NOT modify run_dir from the wrapper python beyond writing `execution_result.json`. The bash command itself MAY touch the filesystem (including run_dir) per SCOPE author's discretion — the security model trusts the SCOPE author for side-effects within the bash one-liner.
 - Do NOT redact, sanitize, or transform stdout/stderr — preserve verbatim (capped only).
 - Do NOT echo stdout content into your final WROTE message — orchestrator parses ONLY the WROTE: regex.
 - ensure_ascii=False — Korean characters in stdout/stderr (e.g. test output, error messages in Korean) must round-trip.

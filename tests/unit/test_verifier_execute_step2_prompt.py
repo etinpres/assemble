@@ -91,7 +91,16 @@ def test_prompt_has_security_section(prompt_text):
 
 
 def test_prompt_pins_security_mitigation_count(prompt_text):
-    """All three numeric caps/limits must appear: 100_000 (cap), 30 (timeout), 500 (length cap from A2)."""
-    assert "100_000" in prompt_text, "missing 100_000 output cap reference"
-    assert "30" in prompt_text, "missing 30s timeout reference"
-    assert "500" in prompt_text, "missing 500 length cap reference (from A2)"
+    """All three numeric caps/limits must appear in canonical forms."""
+    # Tightened from raw "30"/"500" to canonical forms — substring "30" matches noise.
+    assert "100_000" in prompt_text, "missing 100KB output cap literal"
+    assert "timeout=30" in prompt_text, "missing subprocess.run timeout=30 literal"
+    assert "≤500" in prompt_text or "<= 500" in prompt_text or "len <= 500" in prompt_text or "(500)" in prompt_text, (
+        "missing length cap reference (expected ≤500 / <= 500 / len <= 500 / (500))"
+    )
+
+
+def test_prompt_includes_skip_reasons_array(prompt_text):
+    """I2 fix: skip_reasons array and skip_reason convenience scalar must both be present."""
+    assert "skip_reasons" in prompt_text, "missing skip_reasons array (I2 fix from A3 review)"
+    assert "skip_reason" in prompt_text, "missing skip_reason convenience scalar"
