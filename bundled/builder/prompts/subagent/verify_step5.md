@@ -8,7 +8,7 @@ You are dispatched as builder Step 5 sub-agent. Print `WROTE: <absolute path>` o
 
 ## Goal
 
-1. Write `runs/{{RUN_ID}}/verify.sh` — exits 0 after implementation, non-zero before.
+1. Write `{{RUN_DIR}}/verify.sh` — exits 0 after implementation, non-zero before.
 2. Run `bash verify.sh` — confirm exit 0.
 3. Fill `## Verify (green)` in IMPL_REPORT.md.
 

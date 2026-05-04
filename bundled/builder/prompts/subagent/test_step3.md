@@ -8,11 +8,11 @@ You are dispatched as builder Step 3 sub-agent. Print `WROTE: <absolute path>` o
 
 ## Goal
 
-Write `runs/{{RUN_ID}}/test_first.sh` that **exits non-zero** before the feature is implemented.
+Write `{{RUN_DIR}}/test_first.sh` that **exits non-zero** before the feature is implemented.
 
 1. Read `## Completion criterion` from `{{SCOPE_CONTENT}}` to understand what "done" looks like.
 2. Write the inverse as `test_first.sh` — a command that fails when the feature is absent.
-3. Run `bash runs/{{RUN_ID}}/test_first.sh` — confirm non-zero exit.
+3. Run `bash {{RUN_DIR}}/test_first.sh` — confirm non-zero exit.
 4. Fill `## Test (red)` in IMPL_REPORT.md with exit code + stderr head.
 
 ## Constraints (harness rule 4)

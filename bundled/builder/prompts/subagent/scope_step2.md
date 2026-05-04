@@ -12,7 +12,7 @@ on stdout when done. No other prose. Main parses with regex `^WROTE: (.+)$`.
 
 ## Goal
 
-Write two artifacts under `runs/{{RUN_ID}}/`:
+Write two artifacts under `{{RUN_DIR}}/`:
 
 1. `SCOPE.md` — scope contract for this implementation task.
 2. `IMPL_REPORT.md` — skeleton from template with front-matter filled; body sections as `<TBD: filled by Step N>`.
