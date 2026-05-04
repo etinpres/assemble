@@ -55,6 +55,7 @@ from server.harness import (
     extract_wrote_paths,
     ALLOWED_PROMPT_FILES,
 )
+from server.scope_parser import parse_scope_md
 
 __all__ = [
     # inventory
@@ -80,4 +81,6 @@ __all__ = [
     "dispatch_prompt", "dispatch_and_record", "update_dispatch_status",
     "substitute_inputs", "extract_wrote_paths",
     "ALLOWED_PROMPT_FILES",
+    # scope_parser
+    "parse_scope_md",
 ]
