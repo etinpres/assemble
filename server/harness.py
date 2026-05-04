@@ -56,6 +56,7 @@ ALLOWED_PROMPT_FILES = (
     # reviewer ★ (Spike VI, files added incrementally B3-B…)
     "parse_scope_step1.md",
     "diff_collect_step2.md",
+    "classify_files_step3.md",
 )
 
 
