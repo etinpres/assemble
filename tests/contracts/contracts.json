@@ -112,6 +112,27 @@
       "spec_path": "docs/specs/2026-05-04-v4-spike-vii-design.md",
       "section": "### Design",
       "tag": "Spike VII Track A — bundle prompts must use {{RUN_DIR}}/ absolute paths, never runs/{{RUN_ID}}/"
+    },
+    {
+      "id": "spike-viii-verifier-allowlist",
+      "phrase": "`verifier_extract_step1.md` — parsed_scope.json → extracted_completion.json\n- `verifier_execute_step2.md` — bash execution + capture (Bash tool GRANTED for this step ONLY)\n- `verifier_classify_step3.md` — execution_result.json → verify_result.json (deterministic verdict)\n- `verifier_report_step4.md` — VERIFY_REPORT.md render from 3 prior JSONs + template",
+      "spec_path": "bundled/verifier/SKILL.md",
+      "section": "## CRITICAL — orchestrator-only enforcement",
+      "tag": "Spike VIII — verifier 4-file subagent allowlist contract (Bash tool granted to step2 only)"
+    },
+    {
+      "id": "spike-viii-verifier-verdict-invariant",
+      "phrase": "verdict = \"pass\" if (\n    execution_result.exit_code == 0\n    AND not execution_result.skipped\n    AND not execution_result.timed_out\n) else \"fail\"",
+      "spec_path": "bundled/verifier/SKILL.md",
+      "section": "## Verdict logic (deterministic)",
+      "tag": "Spike VIII — verifier deterministic verdict rule (exit_code == 0, not skipped, not timed_out)"
+    },
+    {
+      "id": "spike-viii-verifier-artifact-invariant",
+      "phrase": "`VERIFY_REPORT.md` — 7 canonical sections (Summary, Completion command, Execution result, Stdout sample, Stderr sample, Verdict reasoning, Recommendations) with verdict line in Section 1.",
+      "spec_path": "bundled/verifier/SKILL.md",
+      "section": "## Artifacts",
+      "tag": "Spike VIII — verifier VERIFY_REPORT.md 7-section schema lock for downstream consumers"
     }
   ]
 }
