@@ -57,6 +57,7 @@ ALLOWED_PROMPT_FILES = (
     "parse_scope_step1.md",
     "diff_collect_step2.md",
     "classify_files_step3.md",
+    "rule3_check_step4.md",
 )
 
 
