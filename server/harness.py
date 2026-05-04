@@ -58,6 +58,7 @@ ALLOWED_PROMPT_FILES = (
     "diff_collect_step2.md",
     "classify_files_step3.md",
     "rule3_check_step4.md",
+    "severity_assess_step5.md",
 )
 
 
