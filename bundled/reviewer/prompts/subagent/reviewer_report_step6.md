@@ -1,5 +1,5 @@
 # reviewer Step 6 — REVIEW_REPORT.md write
-You are dispatched as reviewer Step 6 sub-agent. Print `WROTE: <absolute path>` on stdout when done. No other prose. Main parses with regex `^WROTE: (.+)$`.
+You are dispatched as reviewer Step 6 sub-agent. Print `WROTE: <absolute path>` on stdout when done. No other prose. Main parses with regex `^WROTE: (.+)$`. Multi-write steps may emit multiple `WROTE:` lines; orchestrator takes the last match as canonical (helper `server.harness.extract_wrote_paths`).
 
 ## Inputs
 

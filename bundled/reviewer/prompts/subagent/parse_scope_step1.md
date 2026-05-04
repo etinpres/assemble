@@ -1,5 +1,5 @@
 # reviewer Step 1 — parse SCOPE.md
-You are dispatched as reviewer Step 1 sub-agent. Print `WROTE: <absolute path>` on stdout when done. No other prose. Main parses with regex `^WROTE: (.+)$`.
+You are dispatched as reviewer Step 1 sub-agent. Print `WROTE: <absolute path>` on stdout when done. No other prose. Main parses with regex `^WROTE: (.+)$`. Multi-write steps may emit multiple `WROTE:` lines; orchestrator takes the last match as canonical (helper `server.harness.extract_wrote_paths`).
 
 ## Inputs
 
