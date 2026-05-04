@@ -41,14 +41,19 @@ MAX_SUMMARY_CHARS = 200
 # that stage. Earlier categories rank higher. Entries whose category is *not*
 # in the list still rank below all listed categories (effectively "infinity"
 # priority index). Spec §"Stage→category priority map".
-STAGE_CATEGORY_PRIORITY: dict[str, list[str]] = {
-    "plan":    ["scope-deviation", "ac-failure", "todo-leakage", "rule-violation", "dispatch-failure"],
-    "execute": ["scope-deviation", "todo-leakage", "rule-violation", "ac-failure", "dispatch-failure"],
-    "debug":   ["ac-failure", "rule-violation", "scope-deviation", "todo-leakage", "dispatch-failure"],
-    "review":  ["scope-deviation", "todo-leakage", "rule-violation", "ac-failure", "dispatch-failure"],
-    "verify":  ["ac-failure", "rule-violation", "scope-deviation", "todo-leakage", "dispatch-failure"],
-    "ship":    ["scope-deviation", "ac-failure", "rule-violation", "todo-leakage", "dispatch-failure"],
-    "meta":    ["scope-deviation", "ac-failure", "todo-leakage", "rule-violation", "dispatch-failure"],
+#
+# Spike X cleanup F-X2: inner priority lists changed from ``list[str]`` to
+# ``tuple[str, ...]`` for mutability hardening — prevents accidental global
+# state pollution by a misbehaving caller (e.g. ``cats.append(...)`` on the
+# returned reference). ``priority.index(category)`` is unchanged on tuples.
+STAGE_CATEGORY_PRIORITY: dict[str, tuple[str, ...]] = {
+    "plan":    ("scope-deviation", "ac-failure", "todo-leakage", "rule-violation", "dispatch-failure"),
+    "execute": ("scope-deviation", "todo-leakage", "rule-violation", "ac-failure", "dispatch-failure"),
+    "debug":   ("ac-failure", "rule-violation", "scope-deviation", "todo-leakage", "dispatch-failure"),
+    "review":  ("scope-deviation", "todo-leakage", "rule-violation", "ac-failure", "dispatch-failure"),
+    "verify":  ("ac-failure", "rule-violation", "scope-deviation", "todo-leakage", "dispatch-failure"),
+    "ship":    ("scope-deviation", "ac-failure", "rule-violation", "todo-leakage", "dispatch-failure"),
+    "meta":    ("scope-deviation", "ac-failure", "todo-leakage", "rule-violation", "dispatch-failure"),
 }
 
 
@@ -79,7 +84,7 @@ def select_relevant(
     if k <= 0:
         return []
 
-    priority = STAGE_CATEGORY_PRIORITY.get(stage, [])
+    priority = STAGE_CATEGORY_PRIORITY.get(stage, ())
     # Categories not in the priority list (or every category when stage is
     # unknown) share a sentinel rank larger than any valid index. This keeps
     # listed-category entries strictly above unlisted ones without forking

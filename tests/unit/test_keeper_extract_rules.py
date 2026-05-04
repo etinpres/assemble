@@ -592,3 +592,200 @@ def test_candidates_sorted_by_rule_then_hash(extract_rules, tmp_path):
     # comparing to the candidates list.
     keys = [(c["rule_id"], c["evidence_hash"]) for c in cands]
     assert keys == sorted(keys)
+
+
+# ---------------------------------------------------------------------------
+# F-X1 — R4 net-delta semantics (Spike X cleanup)
+#
+# A refactor that *moves* a pre-existing TODO line (delete from line N,
+# add at line M) used to emit 1 spurious R4 candidate per addition even
+# though the net marker count was unchanged. Fix: track adds and deletes
+# per (marker, line excerpt) key and emit only net-positive candidates.
+# ---------------------------------------------------------------------------
+
+def _git_init(repo: Path) -> None:
+    """Initialize a git repo with deterministic identity (no GPG signing)."""
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "config", "commit.gpgsign", "false"], cwd=repo, check=True
+    )
+
+
+def _git_commit_all(repo: Path, msg: str) -> None:
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", msg], cwd=repo, check=True)
+
+
+def test_R4_moved_TODO_line_no_candidate(extract_rules, tmp_path):
+    """A pre-existing TODO line moved within the file (delete + add of
+    the *identical text*) is a net zero — R4 must not emit a candidate.
+    """
+    _write_audit_inventory(tmp_path)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git_init(repo)
+    # Initial commit: TODO at line 2 of a 5-line file.
+    (repo / "f.py").write_text(
+        "def a():\n"
+        "    # TODO: clean this up\n"
+        "    return 1\n"
+        "def b():\n"
+        "    return 2\n",
+        encoding="utf-8",
+    )
+    _git_commit_all(repo, "initial")
+    # Second commit: same TODO text moved to a different line. Net zero.
+    (repo / "f.py").write_text(
+        "def a():\n"
+        "    return 1\n"
+        "def b():\n"
+        "    # TODO: clean this up\n"
+        "    return 2\n",
+        encoding="utf-8",
+    )
+    _git_commit_all(repo, "move TODO")
+
+    result = extract_rules.extract_candidates(tmp_path, cwd=repo)
+    r4s = [c for c in result["candidates"] if c["rule_id"] == "R4"]
+    assert r4s == [], (
+        f"moved TODO with identical text must not emit R4; got {r4s!r}"
+    )
+
+
+def test_R4_modified_TODO_text_emits_one(extract_rules, tmp_path):
+    """A TODO whose *text* changes is a net addition on the new excerpt
+    (and net zero on the old excerpt). Exactly one R4 candidate, with
+    the new text in evidence.
+    """
+    _write_audit_inventory(tmp_path)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git_init(repo)
+    (repo / "f.py").write_text(
+        "def a():\n"
+        "    # TODO: old text\n"
+        "    return 1\n",
+        encoding="utf-8",
+    )
+    _git_commit_all(repo, "initial")
+    (repo / "f.py").write_text(
+        "def a():\n"
+        "    # TODO: new text\n"
+        "    return 1\n",
+        encoding="utf-8",
+    )
+    _git_commit_all(repo, "rephrase TODO")
+
+    result = extract_rules.extract_candidates(tmp_path, cwd=repo)
+    r4s = [c for c in result["candidates"] if c["rule_id"] == "R4"]
+    assert len(r4s) == 1, f"expected exactly 1 R4 candidate, got {len(r4s)}: {r4s!r}"
+    assert "new text" in r4s[0]["evidence"]["line_excerpt"]
+    assert "old text" not in r4s[0]["evidence"]["line_excerpt"]
+
+
+def test_R4_added_two_removed_one_emits_one(extract_rules, tmp_path):
+    """Net delta arithmetic: 2 added of identical text - 1 deleted of
+    same text = 1 net candidate. Mixed-delta canary.
+    """
+    _write_audit_inventory(tmp_path)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git_init(repo)
+    # Initial: one TODO.
+    (repo / "f.py").write_text(
+        "def a():\n"
+        "    # TODO: same text\n"
+        "    return 1\n",
+        encoding="utf-8",
+    )
+    _git_commit_all(repo, "initial")
+    # Second commit: delete that TODO line and add two identical-text TODOs
+    # elsewhere. Net = +2 - 1 = +1.
+    (repo / "f.py").write_text(
+        "def a():\n"
+        "    return 1\n"
+        "def b():\n"
+        "    # TODO: same text\n"
+        "    pass\n"
+        "def c():\n"
+        "    # TODO: same text\n"
+        "    pass\n",
+        encoding="utf-8",
+    )
+    _git_commit_all(repo, "shuffle TODOs")
+
+    result = extract_rules.extract_candidates(tmp_path, cwd=repo)
+    r4s = [c for c in result["candidates"] if c["rule_id"] == "R4"]
+    assert len(r4s) == 1, (
+        f"expected 1 net R4 (added=2, deleted=1), got {len(r4s)}: {r4s!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Lesson — Codex F1 carryforward: feed R2 the *production parser output*
+#
+# Spike X E2 surfaced that R2 tests used hand-authored ``deny: list[str]``
+# fixtures even though the production parser ``server.scope_parser.parse_scope_md``
+# emits ``deny: list[{"path": str, "note": str}]``. The fixture/schema
+# drift was undetected for the entire B-D execution. This canary feeds
+# R2 the actual parser output so any future schema change forces a
+# lockstep update of ``extract_rules._load_deny_patterns``.
+# ---------------------------------------------------------------------------
+
+def test_R2_uses_production_parser_output_as_fixture(extract_rules, tmp_path):
+    """End-to-end production-fixture test: real parse_scope_md output
+    flows into extract_rules and produces R2 candidates."""
+    from server.scope_parser import parse_scope_md
+
+    scope_md = (
+        "# SCOPE — production-fixture canary\n"
+        "\n"
+        "## Allow list\n"
+        "\n"
+        "- `src/feature.py` — main module\n"
+        "\n"
+        "## Deny list\n"
+        "\n"
+        "- `src/auth.py` — auth code untouched\n"
+        "- `tests/integration/foo.py` — integration tests off-limits\n"
+        "\n"
+        "## Completion criterion\n"
+        "\n"
+        "```bash\n"
+        "pytest -q\n"
+        "```\n"
+    )
+    parsed = parse_scope_md(scope_md)
+
+    # --- Production schema invariants (canary against drift) ---
+    assert "deny" in parsed, "parser must emit a 'deny' key"
+    assert len(parsed["deny"]) >= 2
+    first_deny = parsed["deny"][0]
+    assert isinstance(first_deny, dict), (
+        "scope_parser.parse_scope_md must emit deny as list of dicts "
+        "(production schema). If this changes, update "
+        "extract_rules._load_deny_patterns."
+    )
+    assert "path" in first_deny and isinstance(first_deny["path"], str)
+
+    # --- End-to-end: write parser output as parsed_scope.json, seed
+    # audit_inventory with a matching diff file, run extract_rules,
+    # assert R2 fires.
+    (tmp_path / "parsed_scope.json").write_text(
+        json.dumps(parsed), encoding="utf-8"
+    )
+    _write_audit_inventory(
+        tmp_path,
+        git_diff_files=["src/auth.py", "README.md"],
+    )
+    non_git = tmp_path / "ng"; non_git.mkdir()
+    result = extract_rules.extract_candidates(tmp_path, cwd=non_git)
+    r2s = [c for c in result["candidates"] if c["rule_id"] == "R2"]
+    assert len(r2s) == 1, (
+        f"R2 must fire on production-parser deny entries; got {r2s!r}"
+    )
+    assert r2s[0]["evidence"] == {
+        "file": "src/auth.py", "deny_pattern": "src/auth.py"
+    }

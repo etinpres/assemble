@@ -118,7 +118,10 @@ def test_stage_priority_map_covers_seven_stages():
 
 def test_each_priority_list_is_non_empty():
     for stage, cats in STAGE_CATEGORY_PRIORITY.items():
-        assert isinstance(cats, list)
+        # F-X2: inner priority lists are tuples (immutable). Accept both
+        # tuple and list for forward/back-compat — only the empty-check
+        # invariant is load-bearing here.
+        assert isinstance(cats, (tuple, list))
         assert len(cats) > 0, f"{stage} has empty priority list"
 
 
@@ -153,3 +156,15 @@ def test_result_does_not_mutate_input_ledger():
     select_relevant("plan", k=2, ledger=ledger)
     # Original list reference unchanged
     assert ledger == [e1, e2]
+
+
+def test_stage_category_priority_inner_values_are_tuples():
+    """F-X2 hardening: inner priority lists are tuples (immutable) to
+    prevent accidental global-state pollution by misbehaving callers
+    (e.g. ``cats.append(...)`` on the returned reference).
+    """
+    for stage, priority in STAGE_CATEGORY_PRIORITY.items():
+        assert isinstance(priority, tuple), (
+            f"STAGE_CATEGORY_PRIORITY['{stage}'] must be a tuple "
+            f"(got {type(priority).__name__})"
+        )

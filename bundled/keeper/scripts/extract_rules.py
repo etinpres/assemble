@@ -194,11 +194,20 @@ def rule_r3_ac_failure(verify_result: dict | None) -> list[dict]:
 
 
 def rule_r4_todo_leakage(cwd: Path) -> list[dict]:
-    """R4 — one candidate per added line containing TODO/FIXME/XXX.
+    """R4 — one candidate per *net-added* line containing TODO/FIXME/XXX.
 
     Runs ``git diff --unified=0 HEAD~..HEAD`` via argv-list subprocess
     (no shell). On non-zero exit (no commits, not a repo, etc.) returns
     an empty list — keeper is observational, never raises.
+
+    Spike X cleanup F-X1: a refactor that *moves* a pre-existing TODO
+    (delete from line N, add at line M) used to emit a spurious
+    candidate — net count of markers is unchanged but the script counted
+    only the addition. Fix: track both adds and deletes per
+    ``(marker, line excerpt)`` key and emit only ``net_added > 0``
+    candidates. If the user *modifies* the TODO text during the move
+    (different excerpt), the new text is a net addition (correct) and
+    the old text is a net zero (correctly suppressed).
     """
     try:
         proc = subprocess.run(
@@ -213,23 +222,47 @@ def rule_r4_todo_leakage(cwd: Path) -> list[dict]:
     if proc.returncode != 0:
         return []
 
-    candidates: list[dict] = []
+    # (marker, excerpt) → counter. Key collapses identical lines so a
+    # moved TODO with the same text matches.
+    added: dict[tuple[str, str], int] = {}
+    deleted: dict[tuple[str, str], int] = {}
+
     for raw_line in proc.stdout.splitlines():
-        # Skip diff headers (+++ lines start with three '+').
-        if raw_line.startswith("+++"):
+        # Skip diff headers (``+++ b/path`` and ``--- a/path``).
+        if raw_line.startswith("+++") or raw_line.startswith("---"):
             continue
-        # Only added lines ('+' prefix, not '++' or '+++').
-        if not raw_line.startswith("+"):
+        if raw_line.startswith("+"):
+            content = raw_line[1:]
+            m = _TODO_MARKER_RE.search(content)
+            if not m:
+                continue
+            marker = m.group(1)
+            excerpt = content[:_LINE_EXCERPT_CAP]
+            key = (marker, excerpt)
+            added[key] = added.get(key, 0) + 1
+        elif raw_line.startswith("-"):
+            content = raw_line[1:]
+            m = _TODO_MARKER_RE.search(content)
+            if not m:
+                continue
+            marker = m.group(1)
+            excerpt = content[:_LINE_EXCERPT_CAP]
+            key = (marker, excerpt)
+            deleted[key] = deleted.get(key, 0) + 1
+
+    candidates: list[dict] = []
+    for key, n_added in added.items():
+        marker, excerpt = key
+        net_added = n_added - deleted.get(key, 0)
+        if net_added <= 0:
             continue
-        # Strip the leading '+' to get the actual added content.
-        added = raw_line[1:]
-        m = _TODO_MARKER_RE.search(added)
-        if not m:
-            continue
-        marker = m.group(1)
-        excerpt = added[:_LINE_EXCERPT_CAP]
         evidence = {"marker": marker, "line_excerpt": excerpt}
-        candidates.append(_make_candidate("R4", "todo-leakage", evidence))
+        # Preserve the original 1-per-line semantics for net additions:
+        # if the user adds the same TODO text 3× and deletes 1×, emit
+        # 2 candidates (each identical → identical evidence_hash; sort
+        # de-duplication is the keeper-aggregator's responsibility).
+        for _ in range(net_added):
+            candidates.append(_make_candidate("R4", "todo-leakage", evidence))
     return candidates
 
 
