@@ -5,7 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II + Spike III + Spike IV + Spike V + Spike VI + Spike VII
+## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II + Spike III + Spike IV + Spike V + Spike VI + Spike VII + Spike VIII
+
+## [Unreleased] — V4 Spike VIII
+
+### Added
+
+- **verifier ★ bundle** — first ★ bundle to execute completion bash and emit deterministic exit-code verdict. 4 sub-agent steps (extract / execute / classify / report) + iteration helper. Bash tool granted to Step 2 only with 500-char length cap + 30s timeout + 100KB output cap. cross-cutting B (AC=bash 실행) self-mechanized.
+- `server/scope_parser.py` — strict-grammar SCOPE.md parser, closes F1 Korean+backtick deny mangle (Spike VI carryforward).
+- `bundled/verifier/SECURITY.md` — threat model + 6 mitigations + 2 known limitations + Codex retro gate.
+- `bundled/verifier/prompts/orchestrator/verifier_iter_revisit.md` — orchestrator helper for re-verification iteration round-trip.
+- `bundled/verifier/templates/VERIFY_REPORT.md.template` — 7-section report shell with 14 placeholders.
+
+### Changed
+
+- `parse_scope_step1.md` (reviewer ★) — calls `server.scope_parser.parse_scope_md` instead of inline parser logic. SCOPE.md grammar guidance documented.
+- `server/harness.py` — `_BUNDLES` tuple gains `"verifier"`; new `_BUNDLED_DIR_TO_STAGE` dict (mirrors `inventory.py`'s); `ALLOWED_PROMPT_FILES` gains 4 verifier prompts.
+- Step 2 (verifier_execute_step2.md) hardened post-Codex retro: `subprocess.run` → `subprocess.Popen(start_new_session=True)` + `os.killpg(SIGKILL)` on TimeoutExpired (closes `bash -c 'cmd &'` → exit 0 → false-positive verdict=PASS path).
+- Step 4 (verifier_report_step4.md): triple-backtick escape in stdout/stderr samples (prevents fenced-block break-out injection); `&` background operator detection in Recommendations.
+
+### Contracts
+
+- `spike-viii-verifier-allowlist` (4 prompts)
+- `spike-viii-verifier-verdict-invariant` (deterministic exit→verdict)
+- `spike-viii-verifier-artifact-invariant` (7-section VERIFY_REPORT.md)
+
+### Codex retro
+
+6 amendments applied (F1 trust scope, F2 process-group kill, F3 background warning, F4 triple-backtick escape, F8 allowlist gate doc, F9 T6 enumeration). 3 confirmed non-findings (F5 json.dumps escape, F6 isinstance reject, F7 timed_out disambiguates exit 124).
+
+### Dogfood
+
+- B-13: 4-dispatch verifier ★ run + intentional-fail companion. **Pending** — gates the [Unreleased] → release flip.
 
 ### V4 Spike VII (2026-05-04, B-12 dogfood ship — RUN_DIR token + dispatch hardening)
 

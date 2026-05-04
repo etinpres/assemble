@@ -77,10 +77,12 @@ ALLOWED_PROMPT_FILES = (
 # verifier (additions appended in chronological Spike order).
 _BUNDLES = ("plan-pack", "debugger", "builder", "reviewer", "verifier")
 
-# Bundled directory name → stage id. Mirrors inventory._BUNDLED_DIR_TO_STAGE
-# but lives here so harness-level dispatch routing and contract tests can
-# introspect the mapping without importing inventory (which owns scan logic).
-# Spike VIII A1: verifier→verify added.
+# Mirrors `server.inventory._BUNDLED_DIR_TO_STAGE`. The two copies serve
+# different purposes: this one is for harness-level dispatch routing /
+# contract introspection; inventory.py's copy is the scan-time fallback
+# for bundles that omit `stages:` in their frontmatter. The two MUST stay
+# in sync for any bundle whose frontmatter might one day drop `stages:`.
+# A1 carryforward (Spike VIII): see also `server.inventory._BUNDLED_DIR_TO_STAGE`.
 _BUNDLED_DIR_TO_STAGE: dict[str, str] = {
     "plan-pack": "plan",
     "debugger":  "debug",

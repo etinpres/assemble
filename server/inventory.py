@@ -303,6 +303,15 @@ _BUNDLED_ROOT_REL = ".claude/skills/assemble/bundled"
 # execute-stage, `debugger` is debug-stage, `plan-pack` is plan-stage),
 # so this fallback keeps blank-mac dogfood usable even when authors
 # forget the frontmatter field.
+# This map is the scan-time fallback for bundles that omit `stages:` in
+# their SKILL.md frontmatter. Mirrored by `server.harness._BUNDLED_DIR_TO_STAGE`
+# (which is for harness-level dispatch routing). The two MUST stay in sync
+# for any bundle whose frontmatter might drop `stages:`.
+# A1 carryforward (Spike VIII): see also `server.harness._BUNDLED_DIR_TO_STAGE`.
+# Currently missing: "verifier" (Spike VIII) — verifier declares stages:
+# explicitly in its SKILL.md, so this fallback is unreachable for it. If
+# verifier ever drops stages: from frontmatter, ADD `"verifier": "verify"`
+# here to prevent it falling to "unclassified".
 _BUNDLED_DIR_TO_STAGE: dict[str, str] = {
     "builder": "execute",
     "debugger": "debug",
