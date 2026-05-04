@@ -84,6 +84,27 @@
       "spec_path": "bundled/builder/SKILL.md",
       "section": "## Artifacts",
       "tag": "Spike V.1 — builder 4-artifact existence invariant (SCOPE/test_first/verify/IMPL_REPORT)"
+    },
+    {
+      "id": "spike-vi-reviewer-allowlist",
+      "phrase": "`parse_scope_step1.md`, `diff_collect_step2.md`,\n  `classify_files_step3.md`, `rule3_check_step4.md`,\n  `severity_assess_step5.md`, `report_step6.md`",
+      "spec_path": "bundled/reviewer/SKILL.md",
+      "section": "## CRITICAL — orchestrator-only enforcement",
+      "tag": "Spike VI — reviewer 6-file subagent allowlist contract"
+    },
+    {
+      "id": "spike-vi-reviewer-artifact-invariant",
+      "phrase": "run_dir = `~/.claude/channels/assemble/runs/<rid>/`. One primary artifact:\n\n- `REVIEW_REPORT.md` — 7 canonical sections (Summary, Scope baseline, Diff inventory, Allow/Deny classification, Surgical Changes audit, Severity assessment, Recommendations) with verdict line in Section 1.",
+      "spec_path": "bundled/reviewer/SKILL.md",
+      "section": "## Artifacts",
+      "tag": "Spike VI — reviewer REVIEW_REPORT.md 7-section invariant"
+    },
+    {
+      "id": "spike-vi-reviewer-verdict-invariant",
+      "phrase": "verdict = \"merge-ready\" if (\n    classification.summary.deny_violation == 0\n    AND classification.summary.allow_miss == 0\n    AND rule3_audit.summary.critical == 0\n) else \"needs-fix\"",
+      "spec_path": "bundled/reviewer/SKILL.md",
+      "section": "## Verdict logic",
+      "tag": "Spike VI — reviewer deterministic verdict rule"
     }
   ]
 }
