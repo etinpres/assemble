@@ -1,14 +1,21 @@
-"""Learnings ledger — selection + fence rendering (pure functions).
+"""Learnings ledger — selection, fence rendering, and ledger I/O.
 
 Spike X Track B injects top-K relevant prior-run learnings into every
 dispatched sub-agent prompt as a body-prefix fence so future iterations
-inherit the audit trail of past violations. This module owns the *selection*
-and *render* halves of that pipeline; ledger I/O (read/write/prune of
-`learnings.jsonl`) lands in Spike X Task A3 and extends this module.
+inherit the audit trail of past violations.
 
-Pure-function contract: no globals are mutated, no disk I/O happens here.
-The ledger is passed in via `ledger=[...]` parameter so unit tests don't
-need filesystem fixtures.
+This module owns three halves of that pipeline:
+
+  * Pure selection (`select_relevant`) — A1.
+  * Pure fence rendering (`render_learnings_fence`) — A1.
+  * Ledger I/O + deterministic prune (`learnings_path`,
+    `learnings_skip_path`, `read_ledger`, `read_skiplist`,
+    `write_ledger`, `prune_ledger`) — A3.
+
+Selection + rendering remain pure (no disk I/O). The I/O helpers below
+use atomic temp-file-then-rename writes to keep concurrent in-process
+crashes from leaving torn ledger files; cross-process locking is V5
+scope and documented as a known limitation on `write_ledger`.
 
 Each ledger entry is a dict matching the Spike X spec schema::
 
@@ -17,7 +24,13 @@ Each ledger entry is a dict matching the Spike X spec schema::
      "evidence_hash": "<sha256>", "evidence": {...}}
 """
 
-from typing import Optional
+import json
+import os
+import sys
+import tempfile
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Iterable, Optional, Union
 
 
 MAX_K_DEFAULT = 5
@@ -141,3 +154,256 @@ def _flatten_summary(summary: str) -> str:
         # and the ellipsis makes truncation explicit to readers.
         return flat[: MAX_SUMMARY_CHARS - 3] + "…"
     return flat
+
+
+# ---------------------------------------------------------------------------
+# A3 — ledger I/O + deterministic prune
+# ---------------------------------------------------------------------------
+
+# Default prune knobs. Centralized here (rather than buried in the function
+# signature) so the keeper bundle and any future tooling reference the same
+# constants. `prune_ledger` accepts overrides for tests + future tuning.
+TTL_DAYS_DEFAULT = 30
+CAP_DEFAULT = 100
+
+
+def learnings_path() -> Path:
+    """Absolute path to the keeper ledger jsonl.
+
+    Honors `ASSEMBLE_HOME` env var the same way `server/run_dir.py` does so
+    test fixtures (and Conductor workspaces) can redirect the ledger without
+    monkey-patching `Path.home`.
+    """
+    base = Path(os.environ.get("ASSEMBLE_HOME", str(Path.home())))
+    return base / ".claude/channels/assemble/learnings.jsonl"
+
+
+def learnings_skip_path() -> Path:
+    """Absolute path to the user-managed evidence-hash skiplist.
+
+    One sha256 per line, `#` comments + blank lines ignored. Same env var
+    handling as `learnings_path`; the keeper bundle reads this file when
+    pruning so a user can permanently veto a recurring "lesson" by appending
+    its `evidence_hash` to the file.
+    """
+    base = Path(os.environ.get("ASSEMBLE_HOME", str(Path.home())))
+    return base / ".claude/channels/assemble/learnings.skip"
+
+
+def read_ledger(path: Optional[Path] = None) -> list[dict]:
+    """Load and return ledger entries as a list of dicts.
+
+    `path=None` falls back to `learnings_path()`. If the file is missing
+    (first run on a clean machine), returns `[]`. Malformed JSON lines are
+    skipped with a one-line stderr warning rather than raising — a single
+    corrupt write must not bring down every future dispatch. Schema is NOT
+    validated here; keeper Step 4 owns that responsibility (spec §A3).
+    """
+    target = path if path is not None else learnings_path()
+    try:
+        raw = target.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return []
+    entries: list[dict] = []
+    for line_no, line in enumerate(raw.splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            entries.append(json.loads(line))
+        except json.JSONDecodeError:
+            print(
+                f"[learnings] skipped malformed line {line_no}: "
+                f"{repr(line[:80])}",
+                file=sys.stderr,
+            )
+    return entries
+
+
+def read_skiplist(path: Optional[Path] = None) -> set[str]:
+    """Return the set of evidence_hash values the user has skiplisted.
+
+    Format: one hash per line. `#` comments and blank lines are ignored
+    (whitespace-only lines count as blank). Missing file returns an empty
+    set so callers can pass the result straight into `prune_ledger`.
+    """
+    target = path if path is not None else learnings_skip_path()
+    try:
+        raw = target.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return set()
+    hashes: set[str] = set()
+    for line in raw.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("#"):
+            continue
+        hashes.add(stripped)
+    return hashes
+
+
+def write_ledger(entries: Iterable[dict], path: Optional[Path] = None) -> None:
+    """Atomically overwrite the ledger with `entries`, one JSON dict per line.
+
+    Writes go to a sibling `<path>.<n>.tmp` file in the same directory, then
+    `os.replace` swaps it into place — readers always see either the old
+    file or the new file, never a torn one. Parent directory is created if
+    missing. Uses `ensure_ascii=False` so Korean (and other non-ASCII)
+    summaries survive the round-trip.
+
+    Known limitation (V5 scope): no cross-process locking. Two concurrent
+    keeper invocations on the same host can clobber each other's writes —
+    the second `os.replace` wins. The keeper today is invoked sequentially
+    by `/assemble`, so this is acceptable for V4. Document inline rather
+    than silently rely on it.
+    """
+    target = path if path is not None else learnings_path()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_str = tempfile.mkstemp(
+        prefix=target.name + ".",
+        suffix=".tmp",
+        dir=str(target.parent),
+    )
+    tmp = Path(tmp_str)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            for entry in entries:
+                f.write(json.dumps(entry, ensure_ascii=False))
+                f.write("\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, target)
+    except Exception:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
+def _coerce_now(now: Union[datetime, str, None]) -> datetime:
+    """Normalize the `now` parameter accepted by `prune_ledger`.
+
+    The keeper passes a real `datetime`; tests prefer ISO strings for
+    readability. `None` -> `datetime.now(timezone.utc)`. Naive datetimes
+    are assumed UTC (we never compare against a local-tz fence here).
+    """
+    if now is None:
+        return datetime.now(timezone.utc)
+    if isinstance(now, datetime):
+        return now if now.tzinfo else now.replace(tzinfo=timezone.utc)
+    parsed = datetime.fromisoformat(now)
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def _parse_ts(ts_value: object) -> Optional[datetime]:
+    """Parse an entry `ts` into an aware datetime, or None on failure.
+
+    Accepts ISO-8601 strings (with or without offset, with or without `Z`).
+    Treats naive timestamps as UTC. Anything that fails to parse — bad
+    string, missing key, wrong type — returns `None`; callers then decide
+    whether the entry is kept (TTL) or stable-deduped (dedup keeps newest).
+    """
+    if not isinstance(ts_value, str) or not ts_value:
+        return None
+    candidate = ts_value
+    # `datetime.fromisoformat` only accepted "Z" suffixes from 3.11+. Be
+    # defensive on older interpreters too — strip a trailing Z and treat
+    # the rest as UTC.
+    if candidate.endswith("Z"):
+        candidate = candidate[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(candidate)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def prune_ledger(
+    entries: list[dict],
+    *,
+    now: Union[datetime, str, None] = None,
+    ttl_days: int = TTL_DAYS_DEFAULT,
+    cap: int = CAP_DEFAULT,
+    skiplist: Optional[set[str]] = None,
+) -> list[dict]:
+    """Apply the keeper's deterministic prune rules.
+
+    Order matters and is documented in spec §D3:
+
+      1. **TTL**: drop entries whose `ts` is older than `now - ttl_days`.
+         Entries with malformed/missing `ts` are KEPT (don't silently drop
+         on parse error — surface the bug instead).
+      2. **Skiplist**: drop entries whose `evidence_hash` is in `skiplist`.
+      3. **Dedup**: collapse entries with the same `evidence_hash` to the
+         single most-recent one (by `ts`). Ties on identical `ts` keep the
+         first occurrence (stable).
+      4. **FIFO cap**: if the survivor count > `cap`, drop the oldest by
+         `ts` ascending until `len == cap`.
+
+    Pure function — input list is not mutated, a new list is returned.
+    `now` accepts a `datetime` or ISO string for ergonomics.
+    """
+    if skiplist is None:
+        skiplist = set()
+    fence = _coerce_now(now) - timedelta(days=ttl_days)
+
+    # Step 1: TTL.
+    after_ttl: list[dict] = []
+    for entry in entries:
+        parsed = _parse_ts(entry.get("ts"))
+        if parsed is None:
+            after_ttl.append(entry)  # malformed ts → keep (loud > silent)
+            continue
+        if parsed >= fence:
+            after_ttl.append(entry)
+
+    # Step 2: skiplist.
+    after_skip = [
+        entry for entry in after_ttl
+        if entry.get("evidence_hash") not in skiplist
+    ]
+
+    # Step 3: dedup by evidence_hash, keeping the most recent ts. Stable on
+    # tie: the first entry to claim the hash wins. Entries without a hash
+    # bypass dedup (every such entry is its own bucket).
+    deduped: list[dict] = []
+    seen: dict[str, int] = {}  # evidence_hash -> index in deduped
+    for entry in after_skip:
+        evidence_hash = entry.get("evidence_hash")
+        if not evidence_hash:
+            deduped.append(entry)
+            continue
+        if evidence_hash not in seen:
+            seen[evidence_hash] = len(deduped)
+            deduped.append(entry)
+            continue
+        existing_idx = seen[evidence_hash]
+        existing = deduped[existing_idx]
+        existing_ts = _parse_ts(existing.get("ts"))
+        candidate_ts = _parse_ts(entry.get("ts"))
+        # Keep the entry with the later ts; ties + parse-failures fall back
+        # to "keep the first one we saw" (stable).
+        if candidate_ts is not None and (
+            existing_ts is None or candidate_ts > existing_ts
+        ):
+            deduped[existing_idx] = entry
+
+    # Step 4: FIFO cap. Drop oldest first (by ts ASC) until len == cap.
+    if len(deduped) <= cap:
+        return list(deduped)
+
+    indexed = list(enumerate(deduped))
+    # Sort by ts ASC; entries with unparseable ts sort *first* (they're
+    # the most expendable from a recency standpoint, but keep their
+    # relative order). After picking survivors we restore original order.
+    def _age_key(item: tuple[int, dict]) -> tuple[int, datetime, int]:
+        idx, entry = item
+        parsed = _parse_ts(entry.get("ts"))
+        if parsed is None:
+            return (0, datetime.min.replace(tzinfo=timezone.utc), idx)
+        return (1, parsed, idx)
+
+    indexed.sort(key=_age_key)
+    survivors = indexed[-cap:]
+    survivors.sort(key=lambda item: item[0])  # restore insertion order
+    return [entry for _, entry in survivors]
