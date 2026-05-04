@@ -110,9 +110,9 @@ def test_unknown_stage_falls_back_to_recency_only():
     assert result[1]["rule_id"] == "R1"
 
 
-def test_stage_priority_map_covers_seven_stages():
-    """Spec acceptance: plan/execute/debug/review/verify/ship/meta."""
-    expected = {"plan", "execute", "debug", "review", "verify", "ship", "meta"}
+def test_stage_priority_map_covers_ten_stages():
+    """Spec acceptance: plan/execute/debug/review/verify/ship/meta + discover/design/safety."""
+    expected = {"plan", "execute", "debug", "review", "verify", "ship", "meta", "discover", "design", "safety"}
     assert set(STAGE_CATEGORY_PRIORITY.keys()) == expected
 
 

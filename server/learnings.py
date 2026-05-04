@@ -54,6 +54,27 @@ STAGE_CATEGORY_PRIORITY: dict[str, tuple[str, ...]] = {
     "verify":  ("ac-failure", "rule-violation", "scope-deviation", "todo-leakage", "dispatch-failure"),
     "ship":    ("scope-deviation", "ac-failure", "rule-violation", "todo-leakage", "dispatch-failure"),
     "meta":    ("scope-deviation", "ac-failure", "todo-leakage", "rule-violation", "dispatch-failure"),
+    "discover": (
+        "scope-deviation",
+        "todo-leakage",
+        "rule-violation",
+        "ac-failure",
+        "dispatch-failure",
+    ),
+    "design": (
+        "scope-deviation",
+        "rule-violation",
+        "todo-leakage",
+        "ac-failure",
+        "dispatch-failure",
+    ),
+    "safety": (
+        "rule-violation",
+        "scope-deviation",
+        "ac-failure",
+        "todo-leakage",
+        "dispatch-failure",
+    ),
 }
 
 

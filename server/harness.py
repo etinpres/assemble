@@ -329,11 +329,10 @@ _PROMPT_TO_STAGE: dict[str, str] = {
     "keeper_extract_step2.md": "meta",
     "keeper_summarize_step3.md": "meta",
     "keeper_ledger_step4.md": "meta",
-    # idea-shaper → plan (discover-stage bundle; learnings spliced from plan
-    # since STAGE_CATEGORY_PRIORITY has no `discover` entry — adding it would
-    # require updating test_stage_priority_map_covers_seven_stages, out of
-    # scope for A2 fix-up. Revisit in Phase D / Spike XII.)
-    "idea_shape_step1.md": "plan",
+    # idea-shaper → discover (Spike XI A2-fix2 wired the discover stage into
+    # STAGE_CATEGORY_PRIORITY so learnings recall now uses discover-tuned
+    # category ranking instead of falling back to plan).
+    "idea_shape_step1.md": "discover",
 }
 
 
