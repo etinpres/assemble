@@ -1,0 +1,22 @@
+# GUARDIAN — 안전 가이드 ({{TIMESTAMP}})
+
+## Frozen directories (이 세션 *수정 금지*)
+{{FROZEN_DIRS}}
+
+## Deny commands (이 세션 *실행 금지*)
+{{DENY_COMMANDS}}
+
+## Planned destructive operations (사전 알림)
+{{PLANNED_DESTRUCTIVE}}
+
+## 사용자 체크리스트 (destructive 작업 직전 매번)
+
+- [ ] 백업 (git commit / DB dump / file copy) 완료
+- [ ] dry-run 실행 (`--dry-run` / `-n` 플래그)
+- [ ] 영향 범위 확인 (touched files / affected rows count)
+- [ ] 롤백 절차 1줄로 적을 수 있는가
+- [ ] 사용자 (형) 본인 명시적 승인
+
+## 다른 번들에 알림
+
+builder / shipper / debugger 번들이 destructive 작업 직전 이 파일을 read하면 콘솔에 1줄 경고 표시 (V5에서 자동 차단 hook 추가 후보).
