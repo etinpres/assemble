@@ -29,9 +29,9 @@ The `Bash tool access GRANTED` substring marker (Spike VIII convention) appears 
 
 1. **Length cap 500** — Step 1 enforces on `parsed_scope.build` field. Schema cap is `_BUILD_MAX_LEN = 500` in `server/scope_parser.py:58`; oversize inputs surface as `build-too-long` error label and Step 3 skips execution.
 2. **Timeout 300s** — Step 3 wraps build in `subprocess.Popen(start_new_session=True)` + streaming `select.select` loop with `TIMEOUT_S=300` (`bundled/shipper/prompts/subagent/shipper_build_step3.md:43`). On timeout, full process group killed via `os.killpg(os.getpgid(proc.pid), signal.SIGKILL)`. exit_code=124, `timed_out: true` recorded. Verifier FIX-1 inheritance with 10× timeout.
-3. **Output cap 500KB streaming** — Step 3 per-stream byte counter (`CAP_BYTES = 500_000`, line 42) inside the `select.select` loop. Child killed (process-group SIGKILL) immediately when either stream hits cap. Wrapper RAM bound = 1MB regardless of build output size (a 10GB build log cannot OOM the sub-agent). FIX-1 inheritance with 5× verifier cap.
+3. **Output cap 500KB streaming** — Step 3 per-stream byte counter (`CAP_BYTES = 500_000`, line 42) inside the `select.select` loop. Child killed (process-group SIGKILL) immediately when **either** stream hits cap (Spike IX Codex retro F2 fix — kill latency bounded to one select-loop tick ≤500ms regardless of which stream floods). Wrapper RAM bound = 1MB regardless of build output size (a 10GB build log cannot OOM the sub-agent). FIX-1 inheritance with 5× verifier cap.
 4. **argv-list git invocation** — `server/git_helpers.py` ALL functions use `subprocess.run(["git", *args], shell=False)`. NO string command construction, NO `os.system`. Grep-gate test asserts NO `shell=True` / `os.system(` substring in module source.
-5. **`git tag -a` only, NEVER `-f`** — Step 4 prompt body explicitly forbids `-f` / `--force` flags. `server.git_helpers.git_create_tag` validates `tag_name` BEFORE invoking git (rejects empty / whitespace / leading-dash / `..` substring with `ValueError`), then runs `git tag -a <name> -m <message>` only. Even though argv-list invocation already neutralizes shell metacharacters, leading-dash rejection blocks `--force` from being smuggled through `tag_name`.
+5. **`git tag -a` only, NEVER `-f`** — Step 4 prompt body explicitly forbids `-f` / `--force` flags. `server.git_helpers.git_create_tag` validates `tag_name` BEFORE invoking git (Spike IX Codex retro F3 — extended ruleset rejects empty / whitespace / leading-dash / `..` substring / git check-ref-format forbidden chars `~^:?*[\\` / control chars / `.lock` suffix / leading-or-trailing slash / double-slash / `@`/`@{` refspec syntax with `ValueError`), then runs `git tag -a <name> -m <message>` only. Even though argv-list invocation already neutralizes shell metacharacters, the extended ruleset gives callers a deterministic exception path (instead of git's non-zero rc) for the full forbidden character class.
 6. **NEVER `git push`** — Step 4 prompt body forbids ANY remote operation (`push`, `fetch`, `pull`). SHIP_REPORT §Hand-off documents push as a user-owned next-step command; the shipper bundle never auto-invokes it.
 7. **Bash scoped to Steps 1, 3, 4** — Step 2 sub-agent does NOT receive Bash tool access (Edit/Write only). The `ALLOWED_PROMPT_FILES` allowlist in `server/harness.py` enumerates exactly 4 shipper subagent prompts; non-allowlisted dispatch raises `ValueError` (Spike VIII allowlist mechanism).
 8. **Orchestrator-only main** — main Claude does NOT call Bash directly during the dispatch chain. Main only dispatches sub-agents. (V4 #9 invariant + Spike VIII enforcement; verified via `dispatches.jsonl` introspection in B-14 dogfood AC10.)
@@ -47,11 +47,24 @@ The `Bash tool access GRANTED` substring marker (Spike VIII convention) appears 
 
 `shipper_iter_revisit.md` is intentionally outside `ALLOWED_PROMPT_FILES` because it is an orchestrator helper loaded by main (not a sub-agent dispatched prompt). Its placement under `prompts/orchestrator/` (not `prompts/subagent/`) further documents this distinction. It is registered in `ORCHESTRATOR_ONLY_PROMPTS` (Spike VIII Pre-IX FIX-3 contract).
 
+## Build-command trust model (Spike IX Codex retro F1 — explicit clarification)
+
+Step 3 executes `parsed_scope["build"]` (or its convention-detected fallback) verbatim via `subprocess.Popen(["bash", "-c", build_cmd], ...)`. **The bundle does NOT inspect, parse, or restrict the contents of the build command.** This matches the trust model of `make`, `npm test`, CI runners, and other build tools: the SCOPE author authors the build command, and the SCOPE author owns its consequences.
+
+Concretely, this means:
+- A SCOPE author MAY include `git push`, `npm publish`, `cargo publish`, `kubectl apply`, or any other side-effecting command in `parsed_scope["build"]`. Step 3 will execute it.
+- A SCOPE author MAY include destructive shell (`rm -rf $HOME`, `:(){:|:&};:`, etc.). Step 3 will execute it.
+- Length cap (≤500 chars) + 300s timeout + 500KB stream cap + process-group SIGKILL bound the *blast radius* but do NOT restrict *intent*.
+
+Shipper's "local-only" identity refers to the **bundle's own automated behavior** — Step 1 (read-only git probes), Step 2 (Edit-only version/CHANGELOG), and Step 4 (`git tag -a`, NEVER `-f`, NEVER `push`) — not to whatever the SCOPE author chose to put in their build command. The SHIP_REPORT §Hand-off section enumerates explicit user-owned next steps for clarity, but it does NOT promise that no remote interaction occurred during Step 3.
+
+If your threat model requires sandboxing the build command (untrusted SCOPE authors, supply-chain risk on shared CI), use OS-level isolation (chroot / firejail / cgroups / containers) outside the bundle. V4 explicitly does NOT provide this.
+
 ## Explicit non-goals
 
-- **No publish / push automation.** SHIP_REPORT §Hand-off documents `git push origin <branch> && git push origin <tag>`, `npm publish`, `python -m twine upload`, App Store / Play Console upload, gstack `/land-and-deploy` chain — all as user-owned next steps. NEVER `git push`, NEVER `npm publish`, NEVER cloud deploy commands inside the shipper bundle.
+- **No publish / push automation in shipper's pipeline steps 1, 2, 4.** SHIP_REPORT §Hand-off documents `git push origin <branch> && git push origin <tag>`, `npm publish`, `python -m twine upload`, App Store / Play Console upload, gstack `/land-and-deploy` chain — all as user-owned next steps. Steps 1, 2, 4 NEVER invoke push, publish, or deploy. (Step 3 is the build command — see § Build-command trust model above.)
 - **No multi-language version bumping** — only the 3 most common formats (VERSION / package.json / pyproject.toml) are detected by `server.version_helpers`. Cargo / Gem / Composer / etc. fall back to manual user edit before invoking shipper.
-- **No remote interaction at all** — Step 4 specifically forbids `git push`, `git fetch`, `git pull`. The annotated tag is local-only. Pushing it is the user's deliberate decision.
+- **No remote interaction in Steps 1, 2, 4.** Step 1 git probes are read-only; Step 4 specifically forbids `git push`, `git fetch`, `git pull`. The annotated tag is local-only. Pushing it is the user's deliberate decision.
 - **No `git tag -f` overwrite path** — duplicate tag → abort with `verdict: blocked (tag)`. User manually deletes the stale tag (`git tag -d`) or bumps the version before retrying.
 - **No sandboxing (chroot/firejail/cgroups/namespaces)** — out of V4 scope. Steps 1, 3, 4 run with the same OS-level privileges as the rest of the dispatch chain.
 - **No secret scrubbing** — SCOPE author's responsibility to keep secrets out of `## Build` commands and CHANGELOG entries (same convention as commit messages).

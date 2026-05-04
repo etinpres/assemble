@@ -144,6 +144,20 @@ def git_create_tag(cwd: Path, tag_name: str, message: str) -> dict:
         raise ValueError(f"tag_name must not start with '-': {tag_name!r}")
     if ".." in tag_name:
         raise ValueError(f"tag_name must not contain '..': {tag_name!r}")
+    # git check-ref-format forbidden character class — fail-fast preempt
+    # (Spike IX Codex retro F3): without this, `~^:?*[\\` reach git itself,
+    # leaving the SECURITY.md "validates BEFORE git" claim partially overstated.
+    forbidden = frozenset("~^:?*[\\")
+    if any(ch in forbidden for ch in tag_name):
+        raise ValueError(f"tag_name contains forbidden character: {tag_name!r}")
+    if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in tag_name):
+        raise ValueError(f"tag_name contains control character: {tag_name!r}")
+    if tag_name.endswith(".lock"):
+        raise ValueError(f"tag_name must not end with '.lock': {tag_name!r}")
+    if tag_name.startswith("/") or tag_name.endswith("/") or "//" in tag_name:
+        raise ValueError(f"tag_name has invalid slash placement: {tag_name!r}")
+    if tag_name == "@" or "@{" in tag_name:
+        raise ValueError(f"tag_name uses reserved git refspec syntax: {tag_name!r}")
     return _run_git(["tag", "-a", tag_name, "-m", message], cwd)
 
 

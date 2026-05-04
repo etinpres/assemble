@@ -165,6 +165,39 @@ def test_git_create_tag_rejects_double_dot(repo):
         git_create_tag(repo, "v1..0", "msg")
 
 
+# Spike IX Codex retro F3 — extended fail-fast validation against full git
+# check-ref-format forbidden character class.
+@pytest.mark.parametrize("bad_char", ["~", "^", ":", "?", "*", "[", "\\"])
+def test_git_create_tag_rejects_forbidden_chars(repo, bad_char):
+    with pytest.raises(ValueError, match="forbidden character"):
+        git_create_tag(repo, f"v1.0.0{bad_char}rc1", "msg")
+
+
+def test_git_create_tag_rejects_control_character(repo):
+    with pytest.raises(ValueError, match="control character"):
+        git_create_tag(repo, "v1.0\x01.0", "msg")
+
+
+def test_git_create_tag_rejects_lock_suffix(repo):
+    with pytest.raises(ValueError, match=r"\.lock"):
+        git_create_tag(repo, "v1.0.0.lock", "msg")
+
+
+def test_git_create_tag_rejects_leading_slash(repo):
+    with pytest.raises(ValueError, match="slash"):
+        git_create_tag(repo, "/v1.0.0", "msg")
+
+
+def test_git_create_tag_rejects_double_slash(repo):
+    with pytest.raises(ValueError, match="slash"):
+        git_create_tag(repo, "release//v1.0.0", "msg")
+
+
+def test_git_create_tag_rejects_at_brace_refspec(repo):
+    with pytest.raises(ValueError, match="refspec"):
+        git_create_tag(repo, "v1.0.0@{0}", "msg")
+
+
 # ---------------------------------------------------------------------------
 # git_tag_sha
 # ---------------------------------------------------------------------------
