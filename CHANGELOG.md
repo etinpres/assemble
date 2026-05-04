@@ -5,7 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II + Spike III + Spike IV
+## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II + Spike III + Spike IV + Spike V + Spike VI + Spike VII
+
+### V4 Spike VII (2026-05-04, B-12 dogfood ship — RUN_DIR token + dispatch hardening)
+
+**Closes Spike VI B-11 carryforwards F6 (path ambiguity), F7 (stdout discipline), F8 (AC budget)**:
+
+- **Track A — `{{RUN_DIR}}` absolute-path token (CRITICAL)**:
+  - `server.run_dir.run_dir_path(run_id) -> Path` — new sibling of `run_artifact_path`; returns absolute run dir without creating it. Shares `_validate_basename` helper (extracted from `_validate_components`) so the safety contract stays identical even if validation rules evolve.
+  - `server.harness.substitute_inputs` auto-derives `RUN_DIR` from `RUN_ID` when caller omits it — zero orchestrator call-site changes. Caller may pass `RUN_DIR` explicitly to override (dogfood / tests).
+  - 32 prompt occurrences across 4 ★ bundles migrated `runs/{{RUN_ID}}/X` → `{{RUN_DIR}}/X`: reviewer (23 in 6 files), builder (5 in 3 files), debugger (5 in 2 files), plan-pack (already clean — uses `write_run_artifact` directly).
+  - Reviewer SKILL.md doc fix: line 59 `run_artifact_path(run_id, ".")` (which would have raised `ValueError`) → `run_dir_path(run_id)`.
+  - Regression test `tests/unit/test_run_dir_token_invariant.py` forbids `runs/{{RUN_ID}}/` in any prompt; contracts.json entry `spike-vii-rundir-invariant` pins it. Commits `28d10cc` (A1) + `65a06dd` (A1 refactor) + `3ffbf96` + `b5e2b55` (B1 + import hoist + RUN_ID validation contract test) + `4af2687` (C1 reviewer) + `bf2a984` (C2 builder) + `22874f5` (C3 debugger) + `3dcb15e` (D1) + `a68904c` (F1).
+
+- **Track B — F7 stdout discipline**: `server.harness.extract_wrote_paths(stdout) -> list[str]` — `^WROTE: (.+)$` MULTILINE parser; caller takes `paths[-1]` for canonical artifact. Anchors at column 0 so prose-embedded "WROTE:" literals never collide. 6 reviewer prompt headers updated to mention the last-match semantic. Commits `bc2c4e0` (E1) + `4e7c2fb` (E2 — scoped down from wholesale section addition; one-line per file in reviewer only).
+
+- **Track C — AC10 wall-time budget split**: dogfood docs use `AC10a` (self-execute ≤ 300s) + `AC10b` (real-dispatch ≤ 600s). No production code change.
+
+**Schema additions**: `server.__all__` grows `run_dir_path` + `extract_wrote_paths`. `_validate_basename` private helper added.
+
+**Tests**: 323 → 348 (+25 net): A1 (10) + B1 (6) + D1 (2 + 1 contracts meta parametrized) + E1 (6) = 25.
+
+**Canonical preamble v3 sha**: unchanged. ALLOW_LIST = {v1, v2, v3} unchanged.
+
+**B-12 dogfood result**: **12/12 acceptance criteria PASS**. Run `20260504-spikevii-b12`, diff range `832dfdd^..832dfdd` (Spike V `list_runs` change — same input as Spike VI B-11 real-dispatch). Symlink stop-gap removed before run; sub-agents resolved SCOPE.md to canonical channels path via `{{RUN_DIR}}` substitution. Wall time ~230s (well under AC10b 600s budget; B-11 was 334s). Verdict `merge-ready` matches Spike VI. All 6 dispatches verified via `verify_dispatches` ok=True. Commit `84c3a07`.
+
+**Carryforward to Spike VIII** (none from B-12 itself; carries from Spike VI):
+- F4 perf collapse (Step 1/2/3/5/6 → deterministic shell, Step 4 LLM)
+- F1 한글 backtick mangling in `parse_scope_step1`
+- naming convention `<bundle>_<step>.md` prefix migration
+- verifier ★ bundle (orthogonal AC=bash execution)
+- shipper ★ bundle
 
 ### V4 Spike IV (2026-05-01, B-9 dogfood ship — debugger ★ second self-sufficient bundle)
 
