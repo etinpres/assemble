@@ -8,6 +8,8 @@ You are dispatched as reviewer Step 1 sub-agent. Print `WROTE: <absolute path>` 
 
 ## Goal
 
+Run with `python3 -c "..."` (or write to a temp file then `python3 <file>`) from the assemble repo root — the harness sets that as CWD. `server.scope_parser` is a project-local module loaded via the existing `sys.path` setup, NOT pip-installed.
+
 ```python
 import json
 from pathlib import Path

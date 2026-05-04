@@ -88,6 +88,15 @@ def test_prompt_no_constraints_section():
     )
 
 
+def test_prompt_invokes_helper():
+    body = PROMPT_PATH.read_text(encoding="utf-8")
+    # B2 M3 fix: import alone is insufficient — verify the helper is invoked.
+    assert "parse_scope_md(" in body, (
+        "prompt body imports parse_scope_md but does not invoke it; "
+        "regression risk — sub-agent could re-emit inline parser logic"
+    )
+
+
 def test_prompt_file_count_unchanged():
     """Exactly 6 prompt files must exist in subagent dir (rename guard)."""
     files = [p for p in SUBAGENT_DIR.glob("*.md") if p.name != ".gitkeep"]
