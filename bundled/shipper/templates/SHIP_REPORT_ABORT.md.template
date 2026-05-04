@@ -2,11 +2,12 @@
 PLACEHOLDERS (substituted via str.replace by shipper_tag_step4.md, abort path):
   {{RUN_ID}}, {{VERDICT}}, {{TIMESTAMP}}, {{CLEAN_TREE}},
   {{BRANCH}}, {{HEAD_SHA}}, {{VERIFY_VERDICT}}, {{VERDICT_REASON}},
-  {{HANDOFF_COMMANDS}}
+  {{HANDOFF_COMMANDS}}, {{ABORT_DETAIL}}, {{ABORT_PHASE_NOTE}}
 
-ABORT VARIANT: rendered when Step 1 pre-flight verdict=fail.
-Sections 3 (Version bump), 4 (Build artifact), 5 (Tag) are omitted —
-no version bump, no build, no tag was created. See admonition below §Pre-flight.
+ABORT VARIANT: rendered when ANY of Steps 1-3 fails or skips. Sections 3 (Version
+bump), 4 (Build artifact), 5 (Tag) are omitted; the {{ABORT_DETAIL}} line summarises
+which steps actually completed (post-Spike-IX CF-1 fix — was previously hardcoded
+"No version bump applied" which is wrong on build-fail path where version IS bumped).
 -->
 
 # SHIP REPORT (ABORT) — {{RUN_ID}}
@@ -16,8 +17,8 @@ no version bump, no build, no tag was created. See admonition below §Pre-flight
 
 ## Summary
 
-Run `{{RUN_ID}}` aborted at pre-flight (verdict **{{VERDICT}}**) at {{TIMESTAMP}}.
-No version bump applied. No build executed. No tag created.
+Run `{{RUN_ID}}` aborted (verdict **{{VERDICT}}**) at {{TIMESTAMP}}.
+{{ABORT_DETAIL}}
 See §Verdict reasoning for the concrete signal that triggered abort, and §Hand-off
 for the recommended fix-then-re-run path.
 
@@ -32,7 +33,7 @@ for the recommended fix-then-re-run path.
 
 (captured from `preflight.json`)
 
-> ⚠️ Sections 3–5 (Version bump / Build artifact / Tag) skipped — pre-flight failed.
+> ⚠️ {{ABORT_PHASE_NOTE}}
 
 ## Verdict reasoning
 

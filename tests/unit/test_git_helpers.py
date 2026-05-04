@@ -226,3 +226,38 @@ def test_module_has_no_shell_true_or_os_system():
         "git_helpers.py must use argv-list invocation only (no shell=True)"
     assert "os.system(" not in src, \
         "git_helpers.py must not use os.system()"
+
+
+# ---------------------------------------------------------------------------
+# Spike IX cleanup F4 — Popen + killpg pattern audit (process-group SIGKILL)
+# ---------------------------------------------------------------------------
+
+def test_git_helpers_run_git_popen_pattern():
+    """Source-level audit: `_run_git` uses Popen + start_new_session + killpg.
+
+    Codex F4 carryforward: the previous `subprocess.run(timeout=...)` path
+    left forked git children (gpg, fsmonitor) alive after timeout. Migrating
+    to Popen with `start_new_session=True` plus `os.killpg(..., SIGKILL)`
+    ensures the entire process group dies on timeout. This grep gate locks
+    the pattern in source so a future refactor can't silently regress.
+    """
+    src_path = Path(__file__).resolve().parents[2] / "server" / "git_helpers.py"
+    src = src_path.read_text(encoding="utf-8")
+    # Must NOT use the timeout= keyword on subprocess.run (the old pattern).
+    # subprocess.run is still allowed elsewhere, but _run_git itself must use Popen.
+    assert "subprocess.Popen(" in src, (
+        "_run_git must use subprocess.Popen for process-group control"
+    )
+    assert "start_new_session=True" in src, (
+        "_run_git must spawn git in a fresh session (process group)"
+    )
+    assert "os.killpg" in src, (
+        "_run_git must SIGKILL the entire process group on timeout"
+    )
+    assert "signal.SIGKILL" in src, (
+        "_run_git must use SIGKILL (not SIGTERM) for hung git children"
+    )
+    # And the timeout still flows through .communicate(), not .run().
+    assert "proc.communicate(timeout=" in src, (
+        "_run_git must apply the timeout to communicate(), not run()"
+    )

@@ -205,7 +205,32 @@ Build the shared (abort + happy) placeholder map first, then extend with happy-o
 files_changed = version_bump.get("files_changed") or []
 verify_field = str(preflight.get("verify_verdict") or preflight.get("verify_check") or "missing")
 
-# 8 shared placeholders (used by both happy and abort templates)
+# Spike IX cleanup CF-1 — abort detail computed per verdict_category so the
+# Summary line accurately reflects which steps actually completed. Previously
+# hardcoded "No version bump applied" (template) was wrong on build-fail path
+# (version IS bumped; only tag is skipped).
+if abort_path:
+    if verdict_category == "preflight":
+        abort_detail = "No version bump applied. No build executed. No tag created."
+        abort_phase_note = "Sections 3–5 (Version bump / Build artifact / Tag) skipped — pre-flight failed."
+    elif verdict_category == "version":
+        abort_detail = "Version bump skipped (see §Verdict reasoning). No build executed. No tag created."
+        abort_phase_note = "Sections 3–5 skipped — version bump did not complete."
+    elif verdict_category == "build":
+        abort_detail = "Version bumped (see `version_bump.json`). Build failed (see `build_result.json`). No tag created."
+        abort_phase_note = "Section 5 (Tag) skipped — build failed; Sections 3 (Version bump) + 4 (Build artifact) ARE in audit JSONs."
+    elif verdict_category == "tag":
+        abort_detail = "Version bumped + build passed. Tag step blocked (see §Verdict reasoning). No tag created."
+        abort_phase_note = "Tag step blocked — Sections 3 + 4 ARE in audit JSONs; Section 5 (Tag) was attempted but failed."
+    else:
+        abort_detail = "Pipeline aborted. See §Verdict reasoning + audit JSONs for partial completion details."
+        abort_phase_note = "Sections 3–5 may be partially populated — check audit JSONs."
+else:
+    # Happy template doesn't reference these but keep map shape stable.
+    abort_detail = ""
+    abort_phase_note = ""
+
+# 10 shared placeholders (used by both happy and abort templates; 2 abort-only)
 subst = {
     "{{VERDICT}}":          verdict,
     "{{TIMESTAMP}}":        TIMESTAMP,
@@ -215,6 +240,8 @@ subst = {
     "{{VERIFY_VERDICT}}":   verify_field,
     "{{VERDICT_REASON}}":   verdict_reason,
     "{{HANDOFF_COMMANDS}}": handoff_commands,
+    "{{ABORT_DETAIL}}":     abort_detail,
+    "{{ABORT_PHASE_NOTE}}": abort_phase_note,
 }
 
 # 15 happy-only placeholders (skipped on abort path — abort template has only the 8 above + {{RUN_ID}})

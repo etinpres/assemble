@@ -312,15 +312,19 @@ _BUNDLED_ROOT_REL = ".claude/skills/assemble/bundled"
 # defensive entry here as a scan-time fallback, regardless of whether its
 # SKILL.md declares `stages:` inline. The map is cheap and prevents silent
 # "unclassified" drift if a future SKILL.md edit drops the frontmatter field.
-# Historical note: "verifier" (Spike VIII) was deliberately omitted because
-# its SKILL.md declares `stages: ["verify"]` explicitly; if verifier ever
-# drops `stages:`, ADD `"verifier": "verify"` here to prevent unclassified.
+# Spike IX cleanup — verifier added for universal-defense convention parity
+# with all other ★ bundles. Was previously omitted because its SKILL.md
+# declares `stages: ["verify"]` explicitly (so the fallback was unreachable),
+# but the asymmetry confused readers post-Spike-IX shipper add. Including
+# verifier here is a no-op for the production scan path (frontmatter wins),
+# but keeps this map symmetric with `server.harness._BUNDLED_DIR_TO_STAGE`.
 _BUNDLED_DIR_TO_STAGE: dict[str, str] = {
     "builder": "execute",
     "debugger": "debug",
     "plan-pack": "plan",
     "reviewer": "review",
     "shipper": "ship",
+    "verifier": "verify",
 }
 
 

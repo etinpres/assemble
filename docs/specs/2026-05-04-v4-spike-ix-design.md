@@ -107,8 +107,12 @@ Pre-flight verdict (deterministic):
   "missing"` AND user override flag in run_dir).
 - `fail` otherwise.
 
-`fail` aborts dispatch chain — Step 2/3/4 not dispatched. Final SHIP_REPORT still rendered
-in Step 4-fail-path (reduced template — see § Artifact contract).
+`fail` aborts the build/version chain — Step 2 + Step 3 NOT dispatched. Step 4 IS still
+dispatched (orchestrator skips 2/3 but routes directly to Step 4) to render the abort-path
+template — no tag is created, but SHIP_REPORT_ABORT.md is written so the orchestrator can
+advance and the user gets a structured report. **B-14 empirical row count: 4/2/4 (happy /
+preflight-abort / build-fail) — Spike IX cleanup amended Plan AC8 from original 4/4/3.**
+See § Artifact contract.
 
 #### Step 2 — version bump + CHANGELOG flip
 

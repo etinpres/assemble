@@ -26,6 +26,8 @@ yes/no answer rather than the porcelain check itself.
 
 from __future__ import annotations
 
+import os
+import signal
 import subprocess
 from pathlib import Path
 
@@ -43,29 +45,50 @@ def _run_git(args: list[str], cwd: Path) -> dict:
     element becomes a separate argv slot, so shell metacharacters embedded
     in any element cannot escape into a new command.
 
-    On `subprocess.TimeoutExpired` the helper synthesizes a non-zero result
-    rather than letting the exception bubble up, so callers always observe
-    the same dict shape.
+    Uses ``Popen`` + ``start_new_session=True`` so git and any helper
+    children it forks (gpg, fsmonitor, credential-helper) live in a fresh
+    process group. On ``TimeoutExpired`` the helper sends ``SIGKILL`` to
+    the entire group via ``os.killpg`` — closes the F4 residual risk where
+    children outlive a plain ``subprocess.run`` timeout. After killing,
+    ``communicate()`` is called again to drain the pipes and reap the
+    zombie.
+
+    Returns a uniform dict shape regardless of timeout / non-zero rc, so
+    callers never see ``TimeoutExpired`` bubble up.
     """
+    proc = subprocess.Popen(
+        ["git", *args],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        cwd=str(cwd),
+        start_new_session=True,
+    )
     try:
-        proc = subprocess.run(
-            ["git", *args],
-            cwd=str(cwd),
-            capture_output=True,
-            text=True,
-            timeout=_GIT_TIMEOUT_S,
-        )
-    except subprocess.TimeoutExpired as exc:
+        stdout, stderr = proc.communicate(timeout=_GIT_TIMEOUT_S)
+    except subprocess.TimeoutExpired:
+        # Kill the entire process group — git itself plus any forked
+        # helpers (gpg, fsmonitor, etc.) — then drain the pipes so the
+        # zombie is reaped.
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            # Process already died or pgid unavailable — fall through to drain.
+            pass
+        try:
+            stdout, stderr = proc.communicate()
+        except Exception:
+            stdout, stderr = "", ""
         return {
             "ok": False,
-            "stdout": exc.stdout or "",
-            "stderr": (exc.stderr or "") + f"\n[git_helpers] timeout after {_GIT_TIMEOUT_S}s",
-            "rc": -1,
+            "stdout": stdout or "",
+            "stderr": (stderr or "") + f"\n[git_helpers] timeout after {_GIT_TIMEOUT_S}s",
+            "rc": 124,
         }
     return {
         "ok": proc.returncode == 0,
-        "stdout": proc.stdout,
-        "stderr": proc.stderr,
+        "stdout": stdout,
+        "stderr": stderr,
         "rc": proc.returncode,
     }
 

@@ -56,6 +56,36 @@ def _read_jsonl(path: Path) -> list[dict]:
         return [json.loads(line) for line in f if line.strip()]
 
 
+@pytest.fixture
+def reset_preamble_cache():
+    """Save / clear / restore `harness._CACHED_PREAMBLE` around a test.
+
+    Spike IX cleanup F1: tests that flip ASSEMBLE_HOME need the preamble
+    cache cleared so the redirect takes effect, but leaving the cache empty
+    after the test pollutes downstream tests in the same session. This
+    fixture saves the current cache snapshot at entry, clears it for the
+    test body, and on teardown clears again then re-warms via a real
+    dispatch so subsequent tests observe the canonical cached preamble.
+    """
+    saved = dict(h._CACHED_PREAMBLE)
+    h._CACHED_PREAMBLE.clear()
+    try:
+        yield
+    finally:
+        h._CACHED_PREAMBLE.clear()
+        if saved:
+            # Restore the snapshot byte-for-byte if we had one.
+            h._CACHED_PREAMBLE.update(saved)
+        else:
+            # No prior cache — re-warm via a real dispatch so the next test
+            # starts from the canonical preamble state, not an empty dict.
+            try:
+                server.dispatch_prompt("shipper_preflight_step1.md")
+            except Exception:
+                # Best-effort re-warm; never fail teardown over it.
+                pass
+
+
 def test_shipper_step_prompts_dispatchable():
     """All 4 shipper subagent prompts dispatch successfully.
 
@@ -179,12 +209,16 @@ def test_shipper_dispatch_chain_preamble_sha():
         )
 
 
-def test_shipper_record_dispatch_writes_row(tmp_path, monkeypatch):
+def test_shipper_record_dispatch_writes_row(tmp_path, monkeypatch, reset_preamble_cache):
     """One dispatch → one row in dispatches.jsonl with expected fields.
 
     Uses ASSEMBLE_HOME redirection to isolate the test's run-dir from real
     user data. The preamble must be staged under the temp HOME so dispatch +
     record share byte-for-byte preamble identity.
+
+    Spike IX cleanup F1: `reset_preamble_cache` fixture clears + restores the
+    `_CACHED_PREAMBLE` snapshot around the test (replaces the bare
+    `h._CACHED_PREAMBLE.clear()` call from Spike IX).
     """
     real_home = Path.home()
     real_preamble = (
@@ -198,8 +232,6 @@ def test_shipper_record_dispatch_writes_row(tmp_path, monkeypatch):
     bundled_link.symlink_to(real_home / ".claude/skills/assemble")
 
     monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
-    # Reset preamble cache so the redirect takes effect in this test.
-    h._CACHED_PREAMBLE.clear()
 
     prompt = server.dispatch_prompt("shipper_preflight_step1.md")
     out = h.record_dispatch(
@@ -222,11 +254,15 @@ def test_shipper_record_dispatch_writes_row(tmp_path, monkeypatch):
     assert rec["preamble_sha256"] == _CANONICAL_PREAMBLE_SHA
 
 
-def test_shipper_record_dispatch_4_rows_per_iter(tmp_path, monkeypatch):
+def test_shipper_record_dispatch_4_rows_per_iter(tmp_path, monkeypatch, reset_preamble_cache):
     """Four dispatches (Step 1-4) → 4 rows w/ expected step names per spec § AC8.
 
     Spec § Iteration audit invariant: every iteration produces exactly 4 rows
     in dispatches.jsonl with step names step{N}.iter1.<atom>.
+
+    Spike IX cleanup F1: `reset_preamble_cache` fixture clears + restores the
+    `_CACHED_PREAMBLE` snapshot around the test (replaces the bare
+    `h._CACHED_PREAMBLE.clear()` call from Spike IX).
     """
     real_home = Path.home()
     bundled_link = tmp_path / ".claude/skills/assemble"
@@ -234,7 +270,6 @@ def test_shipper_record_dispatch_4_rows_per_iter(tmp_path, monkeypatch):
     bundled_link.symlink_to(real_home / ".claude/skills/assemble")
 
     monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
-    h._CACHED_PREAMBLE.clear()
 
     expected_steps = [
         ("shipper_preflight_step1.md", "step1.iter1.preflight"),

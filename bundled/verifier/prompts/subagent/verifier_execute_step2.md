@@ -126,10 +126,12 @@ else:
                 if len(buf) >= CAP_BYTES:
                     truncated = True
                     eof[stream] = True
-                    # If both streams are capped, kill child to unblock the
-                    # producer (no point continuing the loop).
-                    if eof[proc.stdout] and eof[proc.stderr]:
-                        _kill_group()
+                    # Cross-bundle Spike IX Codex retro F2 sync — kill IMMEDIATELY
+                    # when EITHER stream caps, not when both. A completion command
+                    # flooding stdout only would otherwise stall until TIMEOUT_S
+                    # even though further output is being discarded; kill-on-either
+                    # bounds the kill latency to one select-loop tick (≤500ms).
+                    _kill_group()
 
             # If process exited and both streams drained, we're done.
             if proc.poll() is not None and all(eof.values()):
