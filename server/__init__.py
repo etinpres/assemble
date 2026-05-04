@@ -53,6 +53,7 @@ from server.harness import (
     update_dispatch_status,
     substitute_inputs,
     extract_wrote_paths,
+    bundle_for_stage,
     ALLOWED_PROMPT_FILES,
 )
 from server.scope_parser import parse_scope_md
@@ -80,6 +81,7 @@ __all__ = [
     "canonical_preamble_sha256",
     "dispatch_prompt", "dispatch_and_record", "update_dispatch_status",
     "substitute_inputs", "extract_wrote_paths",
+    "bundle_for_stage",
     "ALLOWED_PROMPT_FILES",
     # scope_parser
     "parse_scope_md",

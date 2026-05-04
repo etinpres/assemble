@@ -79,10 +79,12 @@ _BUNDLES = ("plan-pack", "debugger", "builder", "reviewer", "verifier")
 
 # Mirrors `server.inventory._BUNDLED_DIR_TO_STAGE`. The two copies serve
 # different purposes: this one is for harness-level dispatch routing /
-# contract introspection; inventory.py's copy is the scan-time fallback
-# for bundles that omit `stages:` in their frontmatter. The two MUST stay
-# in sync for any bundle whose frontmatter might one day drop `stages:`.
-# A1 carryforward (Spike VIII): see also `server.inventory._BUNDLED_DIR_TO_STAGE`.
+# contract introspection (consumed by `bundle_for_stage` below); inventory.py's
+# copy is the scan-time fallback for bundles that omit `stages:` in their
+# frontmatter. The two MUST stay in sync for any bundle whose frontmatter
+# might one day drop `stages:`.
+# A1 carryforward (Spike VIII) closure (FIX-2): see also
+# `server.inventory._BUNDLED_DIR_TO_STAGE`.
 _BUNDLED_DIR_TO_STAGE: dict[str, str] = {
     "plan-pack": "plan",
     "debugger":  "debug",
@@ -90,6 +92,41 @@ _BUNDLED_DIR_TO_STAGE: dict[str, str] = {
     "reviewer":  "review",
     "verifier":  "verify",
 }
+
+
+def bundle_for_stage(stage: str) -> str | None:
+    """Return the bundle name whose `stages:` frontmatter declaration covers
+    the given pipeline stage, or None if no bundle handles it.
+
+    The lookup uses `_BUNDLED_DIR_TO_STAGE` as the source of truth. Bundles
+    that override their stage via SKILL.md frontmatter take precedence at
+    inventory scan time (`server.inventory.scan_*`); this helper is a
+    purely-static reverse map intended for orchestrators that want to
+    recommend a bundle without first running an inventory scan.
+
+    Examples:
+        bundle_for_stage("plan")    -> "plan-pack"
+        bundle_for_stage("verify")  -> "verifier"
+        bundle_for_stage("ship")    -> None  (no shipper ★ yet — Spike IX)
+
+    Args:
+        stage: pipeline stage label (e.g. "plan", "execute", "review",
+            "verify", "debug").
+
+    Returns:
+        The bundle directory name (e.g. "plan-pack", "verifier") whose
+        canonical stage matches, OR None if the stage is unknown.
+
+    Notes:
+        - Lookup is exact-match, case-sensitive. No fuzzy matching.
+        - If multiple bundles ever map to the same stage (currently 1:1),
+          the FIRST match in the dict's insertion order wins. The map's
+          1:1 invariant is asserted in the regression test.
+    """
+    for bundle, mapped_stage in _BUNDLED_DIR_TO_STAGE.items():
+        if mapped_stage == stage:
+            return bundle
+    return None
 
 
 def _preamble_path() -> Path:
