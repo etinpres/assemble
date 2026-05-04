@@ -1,0 +1,45 @@
+# REVIEW_REPORT — run {{RUN_ID}}
+
+## Summary
+
+**Verdict**: {{VERDICT}}
+
+{{VERDICT_REASON}}
+
+## Scope baseline
+
+### Allow list
+
+{{SCOPE_ALLOW}}
+
+### Deny list
+
+{{SCOPE_DENY}}
+
+### Completion criterion
+
+```bash
+{{COMPLETION_CRITERION}}
+```
+
+## Diff inventory
+
+{{DIFF_FILES}}
+
+## Allow/Deny classification
+
+{{CLASSIFICATION_BODY}}
+
+## Surgical Changes audit
+
+Per-file Rule 3 verdict: `scope-related` (no concern), `cosmetic-drift` (formatting/comments without scope tie-in), `out-of-scope-refactor` (Critical).
+
+{{RULE3_BODY}}
+
+## Severity assessment
+
+{{SEVERITY_BODY}}
+
+## Recommendations
+
+{{RECOMMENDATIONS}}
