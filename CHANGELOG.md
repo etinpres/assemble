@@ -5,7 +5,91 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II + Spike III + Spike IV + Spike V + Spike VI + Spike VII + Spike VIII + Spike IX + Spike X
+## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II + Spike III + Spike IV + Spike V + Spike VI + Spike VII + Spike VIII + Spike IX + Spike X + Spike XI
+
+### V4 Spike XI (2026-05-04, B-16 dogfood ship — 3 standard bundles, V4 결정 #1 라인업 10/10 완성)
+
+**3 standard-grade bundles closing V4 결정 #1 lineup gap. Standard 등급 = 1-step single-dispatch (또는 메인 직접 IO per V4 #9 exception for guardian), Bash 권한 0, Codex retro 선택. 7 ★ bundle prompts UNCHANGED — only ALLOWED_PROMPT_FILES +2, _BUNDLES +3, _BUNDLED_DIR_TO_STAGE +3 (BOTH harness + inventory).**
+
+### Added (Spike XI)
+
+- `bundled/idea-shaper/` standard bundle (discover stage): SKILL.md (≤120 lines, frontmatter `stages: ["discover"]`, `grade: "standard"`) + 1 sub-agent prompt (idea_shape_step1.md, WROTE: contract on line 1) + 1 template (IDEA.md.template, 5 placeholders {{USER}}/{{PROBLEM}}/{{WEDGE}}/{{NON_GOALS}}/{{TASK_SUMMARY}})
+- `bundled/design-pack/` standard bundle (design stage): SKILL.md + 1 sub-agent prompt (design_draft_step1.md, multi-write WROTE: contract) + 2 templates (DESIGN.md.template 5 placeholders + ANTI_PATTERNS.md.template content-fixed 8 anti-pattern entries verbatim with {{TONE}} header)
+- `bundled/guardian/` standard bundle (safety stage, V4 #9 exception — main-direct IO, NO dispatch, NO prompts/subagent/): SKILL.md (≤100 lines) + 1 template (GUARDIAN.md.template 4 placeholders + 5-checkbox checklist)
+- ALLOWED_PROMPT_FILES +2 (idea_shape_step1.md + design_draft_step1.md, basenames; guardian absent — V4 #9 exception)
+- _PROMPT_TO_STAGE +2 (idea_shape_step1.md→discover + design_draft_step1.md→design)
+- STAGE_CATEGORY_PRIORITY +3 stages (discover/design/safety) extending 7→10 stages, each with 5-tuple priority order (added in A2-fix2 atomically)
+- _BUNDLES +3 (idea-shaper + design-pack + guardian)
+- _BUNDLED_DIR_TO_STAGE +3 entries in BOTH server/harness.py + server/inventory.py (universal-defense convention sync; alphabetical insertion in inventory)
+- `tests/contracts/contracts.json` +6 entries (2 per bundle: stage declaration + artifact invariant; guardian uses V4 #9 exception phrase instead of stage declaration)
+- `tests/unit/test_idea_shaper_template.py` — 5 anchor tests (set-equality placeholders, 5-section, exhaustive round-trip, Korean headers, repo-relative path)
+- `tests/unit/test_design_pack_template.py` — 8 anchor tests (5 placeholders + 8 anti-pattern verbatim + numbered 1-through-8 + round-trip + no-slop self-check)
+- `tests/unit/test_guardian_template.py` — 6 anchor tests (4 placeholders + 5 checklist keywords + 5 checkbox lines + round-trip + 5 section headers)
+- `docs/dogfood/spike-xi-b16.md` — B-16 self-execute dogfood 12/12 PASS, 0.422s wall-time (≤30s budget)
+- `docs/specs/2026-05-04-v4-spike-xi-design.md` + `docs/plans/2026-05-04-v4-spike-xi.md` — spec + plan (single commit `d01733a`)
+
+### Plan corrections discovered during execution (filed as Spike XI carryforwards for plan reconciliation)
+
+- Plan said "wiring atomic at Phase D" but `test_dispatch_prompt::test_allowed_prompt_files_matches_bundle_inventory` enforces disk ↔ ALLOWED_PROMPT_FILES sync — per-bundle wiring must be atomic with file creation. Fixed in A2-fix + B2 (per-bundle commits).
+- Plan literal `_PROMPT_TO_STAGE` used full paths but actual codebase convention is BASENAMES.
+- STAGE_CATEGORY_PRIORITY originally had 7 stages — Spike XI required extending to 10 (added in A2-fix2).
+- Frontmatter convention `name: "..."` (double-quoted) + `stages: ["..."]` (JSON array) enforced by `test_yaml_strict_load.py` (project pre-existing test).
+- WROTE: stdout contract mandatory on line 1 of every dispatchable prompt — added in A2-fix3.
+- IDEA.md.template has 5 H2 sections (not 4 as plan stated; H1 + 5×H2).
+- B-16 dogfood: actual baseline was 764 (not 759), final 789 (not 783); +25 delta (5+8+6+6) not +30 (no STAGE_CATEGORY_PRIORITY-specific tests added; existing learnings tests covered the extension).
+
+### Test count
+
+- Spike X cleanup baseline (`b55369a`): 759 passed
+- Pre-Spike XI (`d01733a` spec+plan): 764 passed (post Spike X cleanup, includes +5 R2 regression tests)
+- Spike XI final (`534d87b`): **789 passed, 0 failed** (+25 new tests across 15 commits)
+
+### Critical invariants preserved
+
+- canonical preamble v3 sha unchanged: `8d22a29c9712d2c0c05bc2145ca5ad56c7e19705087dde4dd625908f7ec089a9`
+- ALLOW_LIST = {v1, v2, v3} unchanged
+- 7 ★ bundle prompts unchanged (plan-pack/debugger/builder/reviewer/verifier/shipper/keeper)
+- V3 concierge menu layer unchanged
+- orchestrator-only V4 #9 — main never executes Bash; guardian's main-direct Write is the documented exception ("단순 IO·AskUserQuestion만 예외")
+- universal-defense convention: _BUNDLED_DIR_TO_STAGE BOTH maps sync
+- bidirectional integrity: set(_PROMPT_TO_STAGE) == set(ALLOWED_PROMPT_FILES) (42 == 42)
+
+### V4 결정 #1 라인업 (10/10 완성)
+
+| stage | 번들 | 등급 | spike |
+|---|---|---|---|
+| discover | idea-shaper | 표준 | XI |
+| plan | plan-pack | ★ | B-1~5 + I~III |
+| design | design-pack | 표준 | XI |
+| execute | builder | ★ | V |
+| debug | debugger | ★ | IV |
+| review | reviewer | ★ | VI |
+| verify | verifier | ★ | VIII |
+| ship | shipper | ★ | IX |
+| safety | guardian | 표준 | XI |
+| meta | keeper | ★ | X |
+
+### Spike XII candidates (deferred)
+
+- B1 review I-1: idea-shaper SKILL.md decorative ✅/❌ glyph normalization vs design-pack convention
+- C1 review M-1: SKILL.md V5 future-pointer wording polish
+- B2 review M-3: reviewer ★ ANTI_PATTERNS auto-validation (V5)
+- A3 review M-3 (deferred from Phase A): Korean intentional substring match comment
+- Plan literal reconciliation (full path → basename, 5→6 sections in template note, baseline 759 → 764)
+- /assemble eject 명령 (Spike XII main scope)
+- Phase G 빈손 컴 dogfood (Spike XIII — V4 release gate)
+- F4 perf collapse (reviewer ★ deterministic shell)
+- roles.json file persistence (memory-defined, not yet on disk)
+- Shared `_template_helpers.py` extraction (3rd template-test file pattern duplication; defer until 4th)
+
+### V5 candidates (out of V4 scope)
+
+- ledger schema versioning (Spike X Codex retro F2)
+- Multi-run concurrency safety
+- automatic blocking hook for guardian (PreToolUse / Stop)
+- Stitch / Figma MCP integration for design-pack
+- web search / market research for idea-shaper
+- false-positive feedback loop (user-driven learning suppression)
 
 ### V4 Spike X (2026-05-04, B-15 dogfood ship — keeper ★ bundle + Track B cross-bundle learning recall)
 
