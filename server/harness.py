@@ -63,14 +63,31 @@ ALLOWED_PROMPT_FILES = (
     "severity_assess_step5.md",
     "reviewer_report_step6.md",
     "reviewer_iter_revisit.md",
+    # verifier ★ (Spike VIII, 4 files — actual prompts land A2/A3/A5/A6)
+    "verifier_extract_step1.md",
+    "verifier_execute_step2.md",
+    "verifier_classify_step3.md",
+    "verifier_report_step4.md",
 )
 
 
 # Bundle search order for `_resolve_prompt_path`. Lifted to module scope at
 # Spike VI B1 so contract tests can introspect the registered bundles.
-# Order: plan-pack first (most prompts), then debugger, builder, reviewer
-# (additions appended in chronological Spike order).
-_BUNDLES = ("plan-pack", "debugger", "builder", "reviewer")
+# Order: plan-pack first (most prompts), then debugger, builder, reviewer,
+# verifier (additions appended in chronological Spike order).
+_BUNDLES = ("plan-pack", "debugger", "builder", "reviewer", "verifier")
+
+# Bundled directory name → stage id. Mirrors inventory._BUNDLED_DIR_TO_STAGE
+# but lives here so harness-level dispatch routing and contract tests can
+# introspect the mapping without importing inventory (which owns scan logic).
+# Spike VIII A1: verifier→verify added.
+_BUNDLED_DIR_TO_STAGE: dict[str, str] = {
+    "plan-pack": "plan",
+    "debugger":  "debug",
+    "builder":   "execute",
+    "reviewer":  "review",
+    "verifier":  "verify",
+}
 
 
 def _preamble_path() -> Path:
