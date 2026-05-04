@@ -133,6 +133,27 @@
       "spec_path": "bundled/verifier/SKILL.md",
       "section": "## Artifacts",
       "tag": "Spike VIII — verifier VERIFY_REPORT.md 7-section schema lock for downstream consumers"
+    },
+    {
+      "id": "spike-ix-shipper-allowlist",
+      "phrase": "`shipper_preflight_step1.md` — preflight.json (Bash GRANTED for read-only git probes via `server.git_helpers`)\n- `shipper_version_step2.md` — version_bump.json (Edit-only — NO Bash)\n- `shipper_build_step3.md` — build_result.json (Bash GRANTED for single build invocation, 300s timeout)\n- `shipper_tag_step4.md` — tag_result.json + SHIP_REPORT.md (Bash GRANTED, narrowly scoped to `git tag` + `git rev-parse <tag>`)",
+      "spec_path": "bundled/shipper/SKILL.md",
+      "section": "## CRITICAL — orchestrator-only enforcement",
+      "tag": "Spike IX — shipper 4-file subagent allowlist contract (Bash granted to Steps 1, 3, 4; Step 2 Edit-only)"
+    },
+    {
+      "id": "spike-ix-shipper-verdict-invariant",
+      "phrase": "verdict = \"ship-ready\" if (\n    preflight.verdict == \"pass\"\n    AND version_bump.new_version is not None\n    AND (build_result.exit_code == 0 OR build_result.skipped == True)\n    AND tag_sha is not None\n) else \"blocked\"",
+      "spec_path": "bundled/shipper/SKILL.md",
+      "section": "## Verdict logic (deterministic)",
+      "tag": "Spike IX — shipper deterministic verdict rule (preflight pass AND version bumped AND build ok/skipped AND tag created)"
+    },
+    {
+      "id": "spike-ix-shipper-artifact-invariant",
+      "phrase": "`SHIP_REPORT.md` — 7 canonical sections on happy path (Summary, Pre-flight, Version bump, Build artifact, Tag, Verdict reasoning, Hand-off). Abort variant uses 4 sections (1, 2, 6, 7) when pre-flight fails.",
+      "spec_path": "bundled/shipper/SKILL.md",
+      "section": "## Artifacts",
+      "tag": "Spike IX — shipper SHIP_REPORT.md 7-section happy-path / 4-section abort schema lock"
     }
   ]
 }

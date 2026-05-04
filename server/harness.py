@@ -46,6 +46,7 @@ _PREAMBLE_REL = ".claude/skills/assemble/bundled/_shared/harness-preamble.md"
 # this module-level contract.
 ORCHESTRATOR_ONLY_PROMPTS: frozenset[str] = frozenset({
     "verifier_iter_revisit.md",
+    "shipper_iter_revisit.md",
 })
 
 
@@ -87,6 +88,11 @@ ALLOWED_PROMPT_FILES = (
     "verifier_execute_step2.md",
     "verifier_classify_step3.md",
     "verifier_report_step4.md",
+    # shipper ★ (Spike IX, 4 files — Phase D1 wiring)
+    "shipper_preflight_step1.md",
+    "shipper_version_step2.md",
+    "shipper_build_step3.md",
+    "shipper_tag_step4.md",
 )
 
 
@@ -94,7 +100,7 @@ ALLOWED_PROMPT_FILES = (
 # Spike VI B1 so contract tests can introspect the registered bundles.
 # Order: plan-pack first (most prompts), then debugger, builder, reviewer,
 # verifier (additions appended in chronological Spike order).
-_BUNDLES = ("plan-pack", "debugger", "builder", "reviewer", "verifier")
+_BUNDLES = ("plan-pack", "debugger", "builder", "reviewer", "verifier", "shipper")
 
 # Mirrors `server.inventory._BUNDLED_DIR_TO_STAGE`. The two copies serve
 # different purposes: this one is for harness-level dispatch routing /
@@ -110,6 +116,7 @@ _BUNDLED_DIR_TO_STAGE: dict[str, str] = {
     "builder":   "execute",
     "reviewer":  "review",
     "verifier":  "verify",
+    "shipper":   "ship",
 }
 
 
@@ -126,7 +133,7 @@ def bundle_for_stage(stage: str) -> str | None:
     Examples:
         bundle_for_stage("plan")    -> "plan-pack"
         bundle_for_stage("verify")  -> "verifier"
-        bundle_for_stage("ship")    -> None  (no shipper ★ yet — Spike IX)
+        bundle_for_stage("ship")    -> "shipper"
 
     Args:
         stage: pipeline stage label (e.g. "plan", "execute", "review",

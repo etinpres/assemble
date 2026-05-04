@@ -24,8 +24,12 @@ def test_bundle_for_stage_verify():
     assert bundle_for_stage("verify") == "verifier"
 
 
+def test_bundle_for_stage_ship():
+    # Spike IX Phase D2 — shipper ★ wired into _BUNDLED_DIR_TO_STAGE.
+    assert bundle_for_stage("ship") == "shipper"
+
+
 def test_bundle_for_stage_unknown_returns_none():
-    assert bundle_for_stage("ship") is None  # no shipper ★ yet — Spike IX
     assert bundle_for_stage("nonexistent") is None
     assert bundle_for_stage("") is None
 

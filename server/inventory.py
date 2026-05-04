@@ -308,15 +308,19 @@ _BUNDLED_ROOT_REL = ".claude/skills/assemble/bundled"
 # (which is for harness-level dispatch routing). The two MUST stay in sync
 # for any bundle whose frontmatter might drop `stages:`.
 # A1 carryforward (Spike VIII): see also `server.harness._BUNDLED_DIR_TO_STAGE`.
-# Currently missing: "verifier" (Spike VIII) — verifier declares stages:
-# explicitly in its SKILL.md, so this fallback is unreachable for it. If
-# verifier ever drops stages: from frontmatter, ADD `"verifier": "verify"`
-# here to prevent it falling to "unclassified".
+# Convention going forward (Spike IX onward): every shipped bundle gets a
+# defensive entry here as a scan-time fallback, regardless of whether its
+# SKILL.md declares `stages:` inline. The map is cheap and prevents silent
+# "unclassified" drift if a future SKILL.md edit drops the frontmatter field.
+# Historical note: "verifier" (Spike VIII) was deliberately omitted because
+# its SKILL.md declares `stages: ["verify"]` explicitly; if verifier ever
+# drops `stages:`, ADD `"verifier": "verify"` here to prevent unclassified.
 _BUNDLED_DIR_TO_STAGE: dict[str, str] = {
     "builder": "execute",
     "debugger": "debug",
     "plan-pack": "plan",
     "reviewer": "review",
+    "shipper": "ship",
 }
 
 
