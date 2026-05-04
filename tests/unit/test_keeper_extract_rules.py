@@ -285,6 +285,118 @@ def test_R2_no_overlap_no_candidate(extract_rules, tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# 7a-7e — R2 deny shape tolerance (Codex retro F1, V4 fix)
+#
+# The production parser (server/scope_parser.py) emits deny entries as
+# list[{"path": str, "note": str}] but legacy / hand-authored fixtures
+# use list[str]. _load_deny_patterns must accept both shapes; otherwise
+# R2 silently false-negatives on real V4 parsed_scope.json files.
+# ---------------------------------------------------------------------------
+
+def _write_parsed_scope_raw(run_dir: Path, deny: list) -> None:
+    """Variant of _write_parsed_scope that writes any list shape verbatim
+    (does not enforce list[str]). Used for production-schema fixtures.
+    """
+    scope = {"task_summary": "x", "deny": deny}
+    (run_dir / "parsed_scope.json").write_text(
+        json.dumps(scope), encoding="utf-8"
+    )
+
+
+def test_R2_deny_object_form_matches_diff_file(extract_rules, tmp_path):
+    """Production parser schema: deny entries are {"path": str, "note": str}."""
+    _write_audit_inventory(tmp_path, git_diff_files=["src/auth.py", "README.md"])
+    _write_parsed_scope_raw(
+        tmp_path,
+        deny=[{"path": "src/auth.py", "note": "auth code"}],
+    )
+    non_git = tmp_path / "ng"; non_git.mkdir()
+    result = extract_rules.extract_candidates(tmp_path, cwd=non_git)
+    r2s = [c for c in result["candidates"] if c["rule_id"] == "R2"]
+    assert len(r2s) == 1
+    assert r2s[0]["category"] == "scope-deviation"
+    assert r2s[0]["evidence"] == {
+        "file": "src/auth.py", "deny_pattern": "src/auth.py"
+    }
+
+
+def test_R2_deny_object_form_with_glob_pattern(extract_rules, tmp_path):
+    """Production-schema deny with fnmatch glob pattern."""
+    _write_audit_inventory(
+        tmp_path,
+        git_diff_files=["auth/login.py", "billing/index.py"],
+    )
+    _write_parsed_scope_raw(
+        tmp_path,
+        deny=[{"path": "auth/*", "note": "auth tree"}],
+    )
+    non_git = tmp_path / "ng"; non_git.mkdir()
+    result = extract_rules.extract_candidates(tmp_path, cwd=non_git)
+    r2s = [c for c in result["candidates"] if c["rule_id"] == "R2"]
+    assert len(r2s) == 1
+    assert r2s[0]["evidence"]["file"] == "auth/login.py"
+    assert r2s[0]["evidence"]["deny_pattern"] == "auth/*"
+
+
+def test_R2_deny_string_form_still_works(extract_rules, tmp_path):
+    """Regression-proof: legacy string-only fixture still produces R2.
+
+    Guards against breaking the back-compat path while fixing the
+    object-form path.
+    """
+    _write_audit_inventory(tmp_path, git_diff_files=["src/legacy.py"])
+    _write_parsed_scope_raw(tmp_path, deny=["src/legacy.py"])
+    non_git = tmp_path / "ng"; non_git.mkdir()
+    result = extract_rules.extract_candidates(tmp_path, cwd=non_git)
+    r2s = [c for c in result["candidates"] if c["rule_id"] == "R2"]
+    assert len(r2s) == 1
+    assert r2s[0]["evidence"] == {
+        "file": "src/legacy.py", "deny_pattern": "src/legacy.py"
+    }
+
+
+def test_R2_deny_mixed_form_handled(extract_rules, tmp_path):
+    """Mixed list of strings and dicts — both yield R2 candidates."""
+    _write_audit_inventory(
+        tmp_path,
+        git_diff_files=["src/x.py", "src/y.py"],
+    )
+    _write_parsed_scope_raw(
+        tmp_path,
+        deny=[
+            "src/x.py",
+            {"path": "src/y.py", "note": "y is denied"},
+        ],
+    )
+    non_git = tmp_path / "ng"; non_git.mkdir()
+    result = extract_rules.extract_candidates(tmp_path, cwd=non_git)
+    r2s = [c for c in result["candidates"] if c["rule_id"] == "R2"]
+    assert len(r2s) == 2
+    files = sorted(c["evidence"]["file"] for c in r2s)
+    assert files == ["src/x.py", "src/y.py"]
+
+
+def test_R2_deny_malformed_object_skipped_silently(extract_rules, tmp_path):
+    """Forward-compat: dict without 'path' key, or wrong types, are
+    silently skipped (keeper is observational, never raises)."""
+    _write_audit_inventory(tmp_path, git_diff_files=["src/auth.py"])
+    _write_parsed_scope_raw(
+        tmp_path,
+        deny=[
+            {"description": "missing path key"},
+            {"path": 12345},          # path is not a string
+            {"note": "no path"},
+            None,                     # not str, not dict
+        ],
+    )
+    non_git = tmp_path / "ng"; non_git.mkdir()
+    # Must not raise.
+    result = extract_rules.extract_candidates(tmp_path, cwd=non_git)
+    r2s = [c for c in result["candidates"] if c["rule_id"] == "R2"]
+    assert r2s == []
+
+
+# ---------------------------------------------------------------------------
 # 8-10 — R3 ac-failure
 # ---------------------------------------------------------------------------
 

@@ -112,6 +112,32 @@ def _load_json(path: Path) -> dict | None:
         return None
 
 
+def _load_deny_patterns(parsed_scope: dict) -> list[str]:
+    """Extract deny patterns from parsed_scope.json, tolerating both
+    string-form (legacy / hand-authored) and object-form (production
+    parser output schema: ``{"path": str, "note": str}``).
+
+    Codex retro Finding 1 (Spike X E2): the production parser at
+    ``server/scope_parser.py`` emits object-form deny entries; the
+    earlier list[str]-only path silently false-negatived on real V4
+    ``parsed_scope.json`` files, so keeper missed core deny-list scope
+    deviations. Forward-compat: unknown shapes are skipped silently
+    (keeper is observational and never raises on partial artifacts).
+    """
+    raw = parsed_scope.get("deny", []) or []
+    patterns: list[str] = []
+    for item in raw:
+        if isinstance(item, str):
+            if item:
+                patterns.append(item)
+        elif isinstance(item, dict):
+            path = item.get("path")
+            if isinstance(path, str) and path:
+                patterns.append(path)
+        # else: silently skip unknown shapes (forward-compat)
+    return patterns
+
+
 # ---------------------------------------------------------------------------
 # Rules
 # ---------------------------------------------------------------------------
@@ -257,10 +283,10 @@ def extract_candidates(run_dir: Path, cwd: Path | None = None) -> dict:
     dispatches = _load_jsonl(run_dir / "dispatches.jsonl")
     verify_result = _load_json(run_dir / "verify_result.json")
 
-    deny_patterns_raw = parsed_scope.get("deny", []) or []
-    deny_patterns = [
-        p for p in deny_patterns_raw if isinstance(p, str)
-    ]
+    # Shape-tolerant deny loader — production parser emits object-form
+    # ``{"path": str, "note": str}`` while legacy / hand-authored fixtures
+    # use list[str]. See _load_deny_patterns docstring for Codex F1 ref.
+    deny_patterns = _load_deny_patterns(parsed_scope)
 
     git_probes = audit_inventory.get("git_probes", {}) or {}
     diff_files = git_probes.get("git_diff_files", []) or []
