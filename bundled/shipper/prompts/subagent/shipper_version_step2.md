@@ -1,0 +1,206 @@
+# shipper Step 2 — version bump + CHANGELOG flip
+
+You are dispatched as shipper Step 2 sub-agent. Print exactly one final line `WROTE: <absolute path>` on stdout when done. No other prose. Main parses with regex `^WROTE: (.+)$`; orchestrator helper `server.harness.extract_wrote_paths` takes the last match as canonical.
+
+## Inputs
+
+- run_id: `{{RUN_ID}}`
+- run_dir: `{{RUN_DIR}}`
+- release_kind: `{{RELEASE_KIND}}` — one of `patch` / `minor` / `major` / `prerelease`
+
+## Tools
+
+Granted: `Read`, `Write`, `Edit`. **NO Bash invocation** — enforced at the harness allowlist level for `shipper_version_step2.md`. Step 2 is the only Bash-free step in the shipper bundle. Do not call Bash; the harness will reject it. File mutations go through `Edit` (in-place) or `Write` (full overwrite of `VERSION` only).
+
+## Goal
+
+Verify pre-flight passed → detect version-file format → compute next semver per `RELEASE_KIND` → Edit version file + flip CHANGELOG `[Unreleased]` heading → write `{{RUN_DIR}}/version_bump.json` and emit a single `WROTE:` line.
+
+Run read+compute logic via `python3 -c "..."` (or `python3 <tempfile>`) using stdlib + `server.version_helpers` only. Use `Edit` / `Write` tools for actual file mutations — do NOT have python `open(..., "w")` write the version files (spec mandates Edit-tool-driven mutation for audit-trail consistency).
+
+## Required imports (referenced across Step 2.x sub-blocks)
+
+When you assemble the python invocation, include this import block at the top so every reference in Steps 2.0–2.5 resolves cleanly:
+
+```python
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+from server.version_helpers import bump_semver, detect_version_format, read_version
+```
+
+`re` is NOT imported — CHANGELOG flip uses `Edit`'s literal-string matching, not regex (Step 2.4 documents this). Sub-blocks below reference these names without re-importing; treat the block above as the canonical preamble for any python invocation.
+
+## Steps
+
+### Step 2.0 — Pre-flight gate
+
+Read `{{RUN_DIR}}/preflight.json`. If `verdict != "pass"`, write a *skipped* record and exit immediately:
+
+```python
+import json
+from pathlib import Path
+
+run_dir = Path("{{RUN_DIR}}")
+preflight_path = run_dir / "preflight.json"
+out_path = run_dir / "version_bump.json"
+
+skipped_record = {
+    "old_version": None,
+    "new_version": None,
+    "release_kind": "{{RELEASE_KIND}}",
+    "version_format": None,
+    "files_changed": [],
+    "changelog_status": "skipped",
+    "skipped": True,
+    "skip_reason": "preflight not passed",
+    "errors": [],
+}
+
+if not preflight_path.is_file():
+    skipped_record["skip_reason"] = "preflight.json missing"
+    out_path.write_text(json.dumps(skipped_record, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"WROTE: {out_path}")
+    raise SystemExit(0)
+
+preflight = json.loads(preflight_path.read_text(encoding="utf-8"))
+if preflight.get("verdict") != "pass":
+    out_path.write_text(json.dumps(skipped_record, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"WROTE: {out_path}")
+    raise SystemExit(0)
+```
+
+DO NOT bump anything when pre-flight has not passed. Step 4 owns the abort report.
+
+### Step 2.1 — Resolve repo root + detect format
+
+```python
+from pathlib import Path
+from server.version_helpers import detect_version_format, bump_semver
+
+cwd = Path.cwd()  # harness sets CWD = assemble repo root
+fmt, file_path, current_version = detect_version_format(cwd)
+```
+
+If `fmt is None` (no recognized version source), write a *manual-fallback* record and exit cleanly — pipeline aborts without error so the user can hand-edit and resume:
+
+```python
+manual_record = {
+    "old_version": None,
+    "new_version": None,
+    "release_kind": "{{RELEASE_KIND}}",
+    "version_format": "manual",
+    "files_changed": [],
+    "changelog_status": "skipped",
+    "skipped": True,
+    "skip_reason": "no recognized version source",
+    "manual_hint": "edit VERSION/package.json/pyproject.toml then re-run from Step 2",
+    "errors": [],
+}
+out_path.write_text(json.dumps(manual_record, indent=2, ensure_ascii=False), encoding="utf-8")
+print(f"WROTE: {out_path}")
+raise SystemExit(0)
+```
+
+### Step 2.2 — Compute next version
+
+```python
+new_version = bump_semver(current_version, "{{RELEASE_KIND}}")
+```
+
+If `bump_semver` raises `ValueError`, capture in `errors` and emit a skipped record (see § Error handling).
+
+### Step 2.3 — Edit version file in place
+
+Branch on `fmt`. Use the `Edit` tool (preserves surrounding content) for structured files, the `Write` tool for the single-line `VERSION` plain-text file.
+
+**`version-file`** — single-line plain text. Use `Write` to overwrite `<file_path>` with `new_version + "\n"`. No surrounding content to preserve.
+
+**`package.json`** — use `Edit` with:
+
+- `old_string`: `"version": "<current_version>"`
+- `new_string`: `"version": "<new_version>"`
+
+This relies on the JSON formatter using double quotes around the version key (npm convention; package.json files generated by `npm init` always do). Preserve indentation by NOT including any whitespace in `old_string` beyond the quoted pair itself.
+
+If `Edit` reports `old_string` not unique (e.g. a transitive dependency happens to be pinned to the same version string), expand `old_string` to include the line preceding the version field — typically the `"name"` line — to disambiguate. Pick the smallest unique window. Same pattern as the pyproject branches below.
+
+**`pyproject-pep621`** — use `Edit` with:
+
+- `old_string`: `version = "<current_version>"`  (line under `[project]` table)
+- `new_string`: `version = "<new_version>"`
+
+If multiple `version = "..."` lines could match (e.g. dependency pins), include ≥1 line of preceding context (`[project]\n...\nversion = "..."`) in `old_string` to disambiguate. Pick the smallest unique window.
+
+**`pyproject-poetry`** — same pattern as PEP 621 but the surrounding table is `[tool.poetry]`.
+
+### Step 2.4 — CHANGELOG flip
+
+Read `<cwd>/CHANGELOG.md` if it exists. If absent → `changelog_status = "missing"`. If present but lacks `## [Unreleased]` → `changelog_status = "already-versioned"`. Otherwise apply TWO surgical `Edit` replacements **in strict sequence**:
+
+1. **Rename** existing heading: `old_string = "## [Unreleased]"` → `new_string = "## [<new_version>] — <YYYY-MM-DD>"` (today's UTC date, ISO 8601: `datetime.now(timezone.utc).strftime("%Y-%m-%d")`).
+2. **Prepend** fresh empty Unreleased block: `old_string = "## [<new_version>] — <YYYY-MM-DD>"` (the heading produced by step 1) → `new_string = "## [Unreleased]\n\n## [<new_version>] — <YYYY-MM-DD>"`.
+
+**These two Edits are sequential and order-dependent**. The second Edit's `old_string` is the heading produced by the first Edit. Issue them as two separate `Edit` tool calls in this exact order — do NOT batch them, do NOT swap them, do NOT combine into a single multi-line replacement. If the first Edit fails, do NOT attempt the second.
+
+On both-edits success → `changelog_status = "flipped"`, append `"CHANGELOG.md"` to `files_changed`. On either Edit failure → record in `errors`, `changelog_status = "flip-failed"` (the version-file edit still counts; partial success is recoverable — see Error handling table for the explicit carve-out).
+
+### Step 2.5 — Write `version_bump.json`
+
+```json
+{
+  "old_version": "<str>",
+  "new_version": "<str>",
+  "release_kind": "<patch|minor|major|prerelease>",
+  "version_format": "<version-file|package.json|pyproject-pep621|pyproject-poetry|manual>",
+  "files_changed": ["VERSION", "CHANGELOG.md"],
+  "changelog_status": "<flipped|missing|already-versioned|flip-failed>",
+  "skipped": false,
+  "errors": []
+}
+```
+
+Write via `Path("{{RUN_DIR}}/version_bump.json").write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")`.
+
+### Step 2.6 — Emit WROTE
+
+Print exactly one line and exit:
+
+```
+WROTE: {{RUN_DIR}}/version_bump.json
+```
+
+## Output discipline
+
+Only the final `WROTE:` line goes to stdout. Any computation prints from python helpers must be suppressed (the harness's `extract_wrote_paths` takes the last match, but extra output bloats audit logs). No banners, no progress reports, no closing prose.
+
+## Error handling
+
+Any of the following turn the run into a *skipped* outcome with a populated `errors` list — but **always still emit one `WROTE:` line** so the orchestrator can advance the dispatch chain (Step 4 will detect `skipped: true` and route to abort template):
+
+| Trigger | `skip_reason` | `errors` entry |
+|---|---|---|
+| `bump_semver` raises `ValueError` (malformed current version) | `semver parse failed` | `semver-parse-error: <msg>` |
+| Edit tool reports old_string not unique / not found **on the version file** (package.json / pyproject) | `version edit conflict` | `edit-conflict: <file> / <pattern>` |
+| File write raises `OSError` / `PermissionError` | `version file write error` | `write-error: <file> / <errno>` |
+| `release_kind` not in `{patch, minor, major, prerelease}` | `invalid release_kind` | `release-kind-invalid: {{RELEASE_KIND}}` |
+
+**Carved exception — CHANGELOG.md Edit failures do NOT skip the step.** When either of Step 2.4's two `Edit` calls fails (rename or prepend), the step records `changelog_status = "flip-failed"` and adds `"changelog-flip-error: <which-edit> / <reason>"` to `errors`, but `skipped` stays `false` and the version-file edit is preserved. Step 4 (orchestrator) renders this as a partial-success warning in the SHIP_REPORT.
+
+Skipped record shape (extends the standard schema):
+
+```json
+{
+  "old_version": "<str or null>",
+  "new_version": null,
+  "release_kind": "{{RELEASE_KIND}}",
+  "version_format": "<detected fmt or null>",
+  "files_changed": [],
+  "changelog_status": "skipped",
+  "skipped": true,
+  "skip_reason": "<short reason>",
+  "errors": ["<label>: <detail>"]
+}
+```
+
+The CHANGELOG flip is the one operation that records `flip-failed` without flipping the whole step to skipped — version-file edit success is still useful downstream.
