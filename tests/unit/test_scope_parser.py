@@ -171,3 +171,45 @@ def test_empty_text_returns_scope_missing():
 def test_whitespace_only_returns_scope_missing():
     result = parse_scope_md("   \n\t\n  ")
     assert result["errors"] == ["scope-missing"]
+
+
+# ---------------------------------------------------------------------------
+# I1 — unclosed fence: opening ``` but no closing ```
+# ---------------------------------------------------------------------------
+
+def test_unclosed_fence_emits_error():
+    """Opening ``` fence with no closing ``` must emit completion-fence-unclosed.
+
+    Option A behavior: captured content is preserved as a warning; the
+    downstream verifier Step 1 (500-char cap + len > 0 check) decides what to
+    do with it.
+    """
+    result = parse_scope_md(_load("unclosed_fence.md"))
+    # Error label must be present
+    assert "completion-fence-unclosed" in result["errors"]
+    # Option A: captured content is kept (warning, not destructive truncation)
+    assert result["completion"] == "echo hello\nthis should not be captured"
+
+
+# ---------------------------------------------------------------------------
+# I2 — ## inside fenced block at column 0 truncates section (known limitation)
+# ---------------------------------------------------------------------------
+
+def test_completion_double_hash_inside_fence_truncates():
+    """KNOWN LIMITATION: _NEXT_SECTION_RE fires on ## at column 0 inside a fence.
+
+    The section terminator scan is fence-unaware. Any ``##`` line at column 0
+    inside a bash heredoc terminates _extract_section_text before the closing
+    ``` is reached. This leaves the fence unclosed, which now correctly emits
+    completion-fence-unclosed as a side-effect.
+
+    For B-13 the 500-char single-line completions cannot trigger this; future
+    SCOPE authors using heredoc-style multi-line completions need to indent
+    ``##`` lines or escape them.
+    """
+    result = parse_scope_md(_load("double_hash_inside_fence.md"))
+    # Only the content before the ## line is captured (known truncation)
+    assert result["completion"] == "cat <<EOF"
+    # The unclosed-fence error surfaces because ## terminated the section
+    # before the closing ``` was seen
+    assert "completion-fence-unclosed" in result["errors"]

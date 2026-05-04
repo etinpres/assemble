@@ -228,21 +228,35 @@ def _parse_section_bullets(
     return entries, errors
 
 
-def _extract_completion(text: str) -> tuple[str, bool]:
+def _extract_completion(text: str) -> tuple[str, bool, list[str]]:
     """Extract the bash one-liner from the completion criterion fence.
 
     Looks for ``## Completion criterion`` header, then a triple-backtick bash
-    fence. Returns ``(completion_text, found)`` where ``found`` is False when
-    the fence is absent or empty.
+    fence. Returns ``(completion_text, found, fence_errors)`` where:
+      - ``found`` is False when the fence is absent or empty.
+      - ``fence_errors`` contains ``"completion-fence-unclosed"`` when the
+        opening fence has no matching closing fence. In that case the captured
+        content is still returned (Option A warning-style): the caller decides
+        whether to reject or accept the partial content. The verifier Step 1
+        already validates ``len(completion) > 0`` and applies a 500-char cap,
+        so surfacing the error label gives downstream layers the signal without
+        forcing a destructive truncation here.
+
+    NOTE: section terminator does not respect fence boundaries.
+    Completion lines starting with ``##`` at column 0 will truncate the
+    captured fence. For B-13 the 500-char single-line completions cannot
+    trigger this; future SCOPE authors using heredoc-style multi-line
+    completions need to indent ``##`` lines or escape them.
     """
     comp_m = _COMPLETION_SECTION_RE.search(text)
     if not comp_m:
-        return "", False
+        return "", False, []
 
     section_text = _extract_section_text(text, comp_m)
     lines = section_text.splitlines()
 
     in_fence = False
+    fence_closed = False
     fence_lines: list[str] = []
 
     for line in lines:
@@ -252,11 +266,17 @@ def _extract_completion(text: str) -> tuple[str, bool]:
                 in_fence = True
         else:
             if stripped.startswith("```"):
+                fence_closed = True
                 break
             fence_lines.append(line)
 
     result = "\n".join(fence_lines).strip()
-    return result, bool(result)
+
+    fence_errors: list[str] = []
+    if in_fence and not fence_closed:
+        fence_errors.append("completion-fence-unclosed")
+
+    return result, bool(result), fence_errors
 
 
 # ---------------------------------------------------------------------------
@@ -280,6 +300,9 @@ def parse_scope_md(text: str) -> dict:
       - "scope-missing"                — text empty
       - "allow-section-missing"
       - "completion-empty"
+      - "completion-fence-unclosed"   — opening ``` fence with no closing ```
+                                        (Option A: captured content is kept as a
+                                        warning; caller/verifier decides what to do)
       - "deny-entry-N-grammar"        — entry index N violates strict grammar
       - "allow-entry-N-grammar"       — entry index N violates strict grammar
     """
@@ -321,7 +344,8 @@ def parse_scope_md(text: str) -> dict:
     # If deny section is absent: deny=[], no error (intentional per spec)
 
     # --- Completion criterion ---
-    completion, found = _extract_completion(text)
+    completion, found, fence_errors = _extract_completion(text)
+    errors.extend(fence_errors)
     if not found:
         errors.append("completion-empty")
 
