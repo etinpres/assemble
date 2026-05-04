@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II + Spike III + Spike IV + Spike V + Spike VI + Spike VII + Spike VIII
 
-## [Unreleased] — V4 Spike VIII
+### V4 Spike VIII (2026-05-04, B-13 dogfood ship — verifier ★ bundle + F1 한글 backtick fix)
+
+**First and only ★ bundle to grant Bash tool access; cross-cutting B (AC=bash 실행) self-mechanized.**
 
 ### Added
 
@@ -36,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Dogfood
 
-- B-13: 4-dispatch verifier ★ run + intentional-fail companion. **Pending** — gates the [Unreleased] → release flip.
+- B-13: self-execute 12/12 PASS (commit `c5a39b8`). Primary run `20260504-spikeviii-b13` (Korean+backtick deny entries — F1 fix validated, parsed_scope errors=[]) + intentional-fail companion `20260504-spikeviii-b13-fail` (verdict=fail, exit_code=1, reason="exited 1"). Wall time 42ms. Real-dispatch chain mechanics covered by A9 integration tests (preamble v3 sha + RUN_DIR substitution + allowlist gate).
 
 ### V4 Spike VII (2026-05-04, B-12 dogfood ship — RUN_DIR token + dispatch hardening)
 
