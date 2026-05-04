@@ -17,16 +17,34 @@ Run with `python3 -c "..."` (or write to a temp file then `python3 <file>`) from
 import json
 from pathlib import Path
 
-scope = json.loads(Path("{{RUN_DIR}}/parsed_scope.json").read_text(encoding="utf-8"))
-completion = (scope.get("completion") or "").strip()
-
+scope_path = Path("{{RUN_DIR}}/parsed_scope.json")
 errors = []
-if not completion:
-    errors.append("completion-empty")
-if len(completion) > 500:
-    errors.append("completion-too-long")
-if "\n" in completion:
-    errors.append("completion-multiline")
+completion = ""
+
+try:
+    raw = scope_path.read_text(encoding="utf-8")
+    scope = json.loads(raw)
+except FileNotFoundError:
+    errors.append("parsed-scope-missing")
+    scope = None
+except json.JSONDecodeError:
+    errors.append("parsed-scope-malformed")
+    scope = None
+
+if scope is not None:
+    raw_completion = scope.get("completion")
+    if raw_completion is None:
+        errors.append("completion-empty")
+    elif not isinstance(raw_completion, str):
+        errors.append("completion-non-string")
+    else:
+        completion = raw_completion.strip()
+        if not completion:
+            errors.append("completion-empty")
+        if len(completion) > 500:
+            errors.append("completion-too-long")
+        if "\n" in completion:
+            errors.append("completion-multiline")
 
 result = {
     "completion": completion,
@@ -39,6 +57,16 @@ print(f"WROTE: {out}")
 ```
 
 ## Validation rules
+
+**Input validation** (runs before content rules):
+
+0a. `parsed_scope.json` must exist — else `errors: ["parsed-scope-missing"]`
+0b. `parsed_scope.json` must be valid JSON — else `errors: ["parsed-scope-malformed"]`
+0c. `completion` field must be a string — else `errors: ["completion-non-string"]`
+
+> **Note**: `completion-empty` is also emitted by `server.scope_parser.parse_scope_md` (B1) when the SCOPE.md fence is missing/empty. Downstream consumers can pattern-match on `completion-empty` in either `parsed_scope.json["errors"]` or `extracted_completion.json["errors"]` to skip Step 2 — the collision is intentional.
+
+**Content rules** (only evaluated when input validation passes):
 
 1. completion must be non-empty after `.strip()` — else `errors: ["completion-empty"]`
 2. `len(completion) <= 500` (security cap, see verifier SKILL.md § Security — A4 lands the security model doc)
@@ -56,7 +84,7 @@ If any rule violated, write the JSON with `errors` populated and exit 0. Orchest
 }
 ```
 
-Or with errors:
+Or with errors (possible error labels: `parsed-scope-missing`, `parsed-scope-malformed`, `completion-non-string`, `completion-empty`, `completion-too-long`, `completion-multiline`):
 
 ```json
 {

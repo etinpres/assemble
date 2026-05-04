@@ -83,3 +83,18 @@ def test_prompt_filename_matches_allowlist():
         f"{PROMPT_FILE.name!r} not found in ALLOWED_PROMPT_FILES — "
         "rename guard: sync harness.py if you rename this file"
     )
+
+
+def test_prompt_pins_error_labels():
+    """Prevent typos in error labels — downstream pattern-matches these literals."""
+    body = PROMPT_FILE.read_text(encoding="utf-8")
+    expected = [
+        "parsed-scope-missing",
+        "parsed-scope-malformed",
+        "completion-non-string",
+        "completion-empty",
+        "completion-too-long",
+        "completion-multiline",
+    ]
+    for label in expected:
+        assert label in body, f"missing error label: {label}"
