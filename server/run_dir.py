@@ -46,6 +46,26 @@ def run_artifact_path(run_id: str, filename: str) -> Path:
     return _runs_dir() / run_id / filename
 
 
+def run_dir_path(run_id: str) -> Path:
+    """Return the absolute run directory path for `run_id`. Does not create it.
+
+    Companion to `run_artifact_path` for callers that need just the directory
+    (e.g. `{{RUN_DIR}}` token substitution). Reuses the same basename
+    validation as `run_artifact_path` to keep the safety contract identical —
+    inlined here because the existing `_validate_components` requires a
+    second `filename` arg that doesn't apply.
+    """
+    if not run_id:
+        raise ValueError("unsafe run_id: empty")
+    if "/" in run_id or "\\" in run_id:
+        raise ValueError(f"unsafe run_id: contains separator: {run_id!r}")
+    if run_id.startswith("."):
+        raise ValueError(f"unsafe run_id: starts with '.': {run_id!r}")
+    if run_id != Path(run_id).name:
+        raise ValueError(f"unsafe run_id: not a plain basename: {run_id!r}")
+    return _runs_dir() / run_id
+
+
 def write_run_artifact(run_id: str, filename: str, content: str) -> Path:
     """Atomically write `content` to `<runs>/<run_id>/<filename>`.
 
