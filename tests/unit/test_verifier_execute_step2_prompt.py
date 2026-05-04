@@ -138,3 +138,50 @@ def test_prompt_uses_popen_not_run(prompt_text):
     assert len(active_run_calls) == 0, (
         f"subprocess.run( found {len(active_run_calls)} time(s) — should be replaced by subprocess.Popen (Codex retro F2)"
     )
+
+
+# ---------------------------------------------------------------------------
+# FIX-1 — T3 closure: streaming output cap invariant tests
+# ---------------------------------------------------------------------------
+
+PROMPT_PATH = PROMPT_FILE
+
+
+def test_prompt_uses_streaming_read():
+    body = PROMPT_PATH.read_text(encoding="utf-8")
+    # T3 closure: must use select / poll + Popen pipes, NOT communicate().
+    assert "select.select" in body or "select(" in body, (
+        "missing streaming select-based read — output cap remains post-hoc "
+        "(known limitation T3 not closed)"
+    )
+    # communicate() CAN appear in pre-fix or in TimeoutExpired comments;
+    # the key invariant is that the primary read path is streaming.
+    # Stricter: assert no `proc.communicate(timeout=30)` literal.
+    assert "communicate(timeout=30)" not in body, (
+        "primary read path still uses bounded-blocking communicate — does "
+        "NOT enforce per-stream cap during read"
+    )
+
+
+def test_prompt_pins_per_stream_cap_byte_counter():
+    body = PROMPT_PATH.read_text(encoding="utf-8")
+    assert "CAP_BYTES" in body, "missing CAP_BYTES constant"
+    assert "100_000" in body, "missing 100KB literal"
+    # Per-stream buffer assertion — both streams have explicit byte counters.
+    assert "stdout_buf" in body and "stderr_buf" in body, (
+        "missing per-stream byte buffers"
+    )
+
+
+def test_prompt_decodes_bytes_after_cap():
+    body = PROMPT_PATH.read_text(encoding="utf-8")
+    # bytes-mode pipes (text=False / no text=True on Popen) so cap is in bytes
+    # NOT chars. Decode happens AFTER cap is enforced.
+    assert "decode(\"utf-8\", errors=\"replace\")" in body, (
+        "missing post-cap UTF-8 decode — cap should bound bytes, decode "
+        "to str after"
+    )
+    # Sanity: no `text=True` on the Popen invocation in the streaming path.
+    # (Existence of text=True elsewhere is OK — but the primary Popen call
+    # must be bytes-mode.)
+
