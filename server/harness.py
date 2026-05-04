@@ -56,6 +56,13 @@ ALLOWED_PROMPT_FILES = (
 )
 
 
+# Bundle search order for `_resolve_prompt_path`. Lifted to module scope at
+# Spike VI B1 so contract tests can introspect the registered bundles.
+# Order: plan-pack first (most prompts), then debugger, builder, reviewer
+# (additions appended in chronological Spike order).
+_BUNDLES = ("plan-pack", "debugger", "builder", "reviewer")
+
+
 def _preamble_path() -> Path:
     base = Path(os.environ.get("ASSEMBLE_HOME", str(Path.home())))
     return base / _PREAMBLE_REL
@@ -119,12 +126,14 @@ def _resolve_prompt_path(prompt_file: str) -> Path:
     Honors ASSEMBLE_HOME (mirrors `_preamble_path`) so test fixtures can
     redirect the lookup root.
 
-    Bundle order: plan-pack first (most prompts), debugger second (Spike IV).
+    Bundle order: plan-pack first (most prompts), debugger second (Spike IV),
+    then builder (Spike V), then reviewer (Spike VI). Lifted to module-level
+    `_BUNDLES` at Spike VI B1.
     """
     base = Path(os.environ.get("ASSEMBLE_HOME", str(Path.home()))) / (
         ".claude/skills/assemble/bundled"
     )
-    for bundle in ("plan-pack", "debugger", "builder"):
+    for bundle in _BUNDLES:
         for sub in ("subagent", "orchestrator", ""):
             candidate = base / bundle / "prompts" / sub / prompt_file if sub else base / bundle / "prompts" / prompt_file
             if candidate.exists():
