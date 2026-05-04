@@ -15,6 +15,19 @@ never raises.
 
 Korean characters are fully supported — ensure_ascii=False is the project
 standard.
+
+Cross-bundle consumers:
+  The ``parsed_scope.json`` artifact emitted from this parser is read by
+  multiple ★ bundles. Schema changes (especially to ``allow`` / ``deny``
+  list shape) break every consumer below — update them in lockstep.
+
+  - reviewer ★ (Spike VI): Step 3 reads ``allow`` + ``deny`` to perform the
+    diff-vs-deny check (rejecting changes that touch denied paths).
+  - keeper ★ (Spike X): Rule R2 (scope-deviation detection) in
+    ``server/learnings.py`` reads ``allow`` + ``deny`` lists to flag
+    edits that match deny patterns and surface them as learning candidates.
+  - verifier ★ (Spike VIII): Step 1 reads ``completion`` (and tolerates the
+    ``allow`` / ``deny`` shape) when validating the AC bash one-liner.
 """
 
 import re

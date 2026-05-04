@@ -316,3 +316,26 @@ def test_spike_ix_a1_empty_text_includes_default_build_and_tag_prefix():
     assert result["build"] is None
     assert result["tag_prefix"] == "v"
     assert result["errors"] == ["scope-missing"]
+
+
+# ---------------------------------------------------------------------------
+# Spike X A2 — cross-bundle consumer documentation anchor
+# ---------------------------------------------------------------------------
+
+def test_spike_x_a2_module_docstring_lists_cross_bundle_consumers():
+    """Module docstring must enumerate every cross-bundle consumer of
+    ``parsed_scope.json`` so future schema changes notice all downstream
+    bundles. Pure documentation regression anchor — asserts specific
+    consumer names, not the entire docstring text.
+    """
+    import server.scope_parser as scope_parser
+
+    doc = scope_parser.__doc__ or ""
+    assert "Cross-bundle consumers" in doc, (
+        "scope_parser module docstring must contain a 'Cross-bundle consumers' "
+        "section listing every bundle that reads parsed_scope.json"
+    )
+    assert "reviewer" in doc, "reviewer ★ must be listed as a cross-bundle consumer"
+    assert "keeper" in doc, (
+        "keeper ★ (Spike X) must be listed — Rule R2 reads allow/deny lists"
+    )
