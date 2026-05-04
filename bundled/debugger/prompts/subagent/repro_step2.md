@@ -16,17 +16,17 @@ on stdout when done. No other prose. Main parses with regex `^WROTE: (.+)$`.
 Build the minimal `bash repro.sh` command that reproduces the symptom on
 a clean checkout. Then write:
 
-1. `runs/{{RUN_ID}}/repro.sh` from `templates/repro.sh.template`,
+1. `{{RUN_DIR}}/repro.sh` from `templates/repro.sh.template`,
    substituting `{{RUN_ID}}`, `{{SYMPTOM_SUMMARY}}`, and
    `{{REPRO_COMMAND}}` (the command itself).
-2. `runs/{{RUN_ID}}/BUG_REPORT.md` from `templates/BUG_REPORT.md.template`,
+2. `{{RUN_DIR}}/BUG_REPORT.md` from `templates/BUG_REPORT.md.template`,
    substituting `{{RUN_ID}}`, `{{STARTED_AT}}` (ISO8601 UTC),
    `{{SYMPTOM_SUMMARY}}`, and filling the `## Reproducer` section.
    Other sections stay as `<TBD: …>`.
 
 ## Constraints (harness rule 4)
 
-- Run `bash runs/{{RUN_ID}}/repro.sh` after writing it. Confirm the
+- Run `bash {{RUN_DIR}}/repro.sh` after writing it. Confirm the
   exit code is non-zero (the bug must reproduce). Record the observed
   exit code and the first 3 lines of stderr in the `## Reproducer`
   section.

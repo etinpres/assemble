@@ -10,7 +10,7 @@ You are dispatched as debugger Step 5 sub-agent. Print `WROTE: <absolute path>` 
 
 Produce three artifacts:
 
-1. `runs/{{RUN_ID}}/verify.sh` from `templates/verify.sh.template`. The
+1. `{{RUN_DIR}}/verify.sh` from `templates/verify.sh.template`. The
    command must exit 0 once the fix is applied; non-zero before. (This
    is the cross-cutting AC=bash pattern — a real verifier the user can
    run.)
@@ -27,7 +27,7 @@ Produce three artifacts:
   `## Root cause` evidence trail. New files outside that surface require
   an `ERROR: scope creep — patch touches <file> not in bisect/root-cause
   citations` exit.
-- Run `bash runs/{{RUN_ID}}/verify.sh` after applying the patch. If it
+- Run `bash {{RUN_DIR}}/verify.sh` after applying the patch. If it
   exits non-zero, write `ERROR: verifier failed after fix application`
   and exit. Do NOT write `## Fix & verification` in that case.
 - Do NOT format/reflow code outside the patch surface (rule 3).
