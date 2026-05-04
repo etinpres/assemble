@@ -1,9 +1,11 @@
 """Idea-shaper template substitution + render correctness tests."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
-ASSEMBLE_ROOT = Path.home() / ".claude" / "skills" / "assemble"
+# Repo-relative resolution: tests/unit/test_idea_shaper_template.py → tests/unit/ → tests/ → repo root.
+ASSEMBLE_ROOT = Path(__file__).resolve().parents[2]
 TEMPLATE_PATH = ASSEMBLE_ROOT / "bundled" / "idea-shaper" / "templates" / "IDEA.md.template"
 
 EXPECTED_PLACEHOLDERS = {
@@ -19,11 +21,16 @@ def test_template_exists():
     assert TEMPLATE_PATH.is_file(), f"Missing template at {TEMPLATE_PATH}"
 
 
-def test_template_has_all_5_placeholders():
+def test_template_placeholder_set_matches_expected():
+    """Both directions: missing placeholders AND extra placeholders fail.
+    Catches drift in either direction so the template contract is locked.
+    """
     body = TEMPLATE_PATH.read_text(encoding="utf-8")
-    found = {p for p in EXPECTED_PLACEHOLDERS if p in body}
-    missing = EXPECTED_PLACEHOLDERS - found
-    assert not missing, f"Missing placeholders: {missing}"
+    found = set(re.findall(r"\{\{[A-Z_]+\}\}", body))
+    assert found == EXPECTED_PLACEHOLDERS, (
+        f"placeholders drift — found={found}, expected={EXPECTED_PLACEHOLDERS}, "
+        f"missing={EXPECTED_PLACEHOLDERS - found}, extra={found - EXPECTED_PLACEHOLDERS}"
+    )
 
 
 def test_template_has_5_sections():
@@ -46,8 +53,16 @@ def test_template_substitution_round_trip():
         .replace("{{TASK_SUMMARY}}", "택시 기사 가계부")
     )
     assert "{{" not in rendered, f"Unsubstituted placeholder remains in rendered output:\n{rendered}"
-    assert "택시 기사" in rendered
-    assert "월말 정산" in rendered
+    # Assert each substituted value made it into the rendered output (catches a template bug
+    # where a placeholder is referenced in two locations and one is mistakenly hardcoded).
+    for substituted_value in (
+        "택시 기사",
+        "월말 정산이 손으로 한 시간",
+        "기존 가계부 앱은 직장인용",
+        "위젯 + 다국어",
+        "택시 기사 가계부",
+    ):
+        assert substituted_value in rendered, f"Missing substituted value in rendered output: {substituted_value!r}"
 
 
 def test_template_korean_section_headers():
