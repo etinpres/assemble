@@ -9,12 +9,12 @@ You are dispatched as verifier Step 2 sub-agent. **Bash tool access GRANTED for 
 
 ## Goal
 
-Read `{{RUN_DIR}}/extracted_completion.json`. If `errors` is non-empty, SKIP execution and record `skipped_due_to_extract_error`. Otherwise run the bash one-liner under `subprocess.run(timeout=30)` with a 100KB stdout/stderr cap each. Capture exit_code, stdout, stderr, duration_ms, timed_out, truncated, skipped flags.
+Read `{{RUN_DIR}}/extracted_completion.json`. If `errors` is non-empty, SKIP execution and record `skipped_due_to_extract_error`. Otherwise run the bash one-liner under `subprocess.Popen(start_new_session=True)` with a 100KB stdout/stderr cap each. Capture exit_code, stdout, stderr, duration_ms, timed_out, truncated, skipped flags.
 
-Run with `python3 -c "..."` (or write to a temp file then `python3 <file>`) from the assemble repo root — the harness sets that as CWD. `python3` + stdlib only for the wrapper logic; the inner `subprocess.run` invokes bash for the completion command.
+Run with `python3 -c "..."` (or write to a temp file then `python3 <file>`) from the assemble repo root — the harness sets that as CWD. `python3` + stdlib only for the wrapper logic; the inner `subprocess.Popen` invokes bash for the completion command. Process-group kill on timeout (Codex retro F2/F3 mitigation): `start_new_session=True` puts bash in its own process group so `os.killpg(SIGKILL)` terminates the whole group, preventing `bash -c 'cmd &'` from surviving past the timeout and yielding a false-positive verdict=PASS.
 
 ```python
-import json, subprocess, time
+import json, subprocess, time, os, signal
 from pathlib import Path
 
 extracted_path = Path("{{RUN_DIR}}/extracted_completion.json")
@@ -35,18 +35,40 @@ if extracted["errors"]:
 else:
     cmd = ["bash", "-c", extracted["completion"]]
     t0 = time.monotonic()
+    proc = None
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True,
-                              timeout=30, errors="replace")
-        timed_out = False
-        exit_code = proc.returncode
-        stdout = proc.stdout
-        stderr = proc.stderr
-    except subprocess.TimeoutExpired as exc:
-        timed_out = True
-        exit_code = 124  # GNU coreutils `timeout(1)` standard: 124 = command timed out
-        stdout = (exc.stdout if isinstance(exc.stdout, str) else (exc.stdout.decode("utf-8", errors="replace") if exc.stdout else "")) or ""
-        stderr = (exc.stderr if isinstance(exc.stderr, str) else (exc.stderr.decode("utf-8", errors="replace") if exc.stderr else "")) or ""
+        # start_new_session=True puts the bash process in its own process
+        # group so we can kill the whole group on timeout (Codex retro F2/F3:
+        # `bash -c 'cmd &'` would otherwise exit 0 leaving the backgrounded
+        # process alive, yielding a false-positive verdict=pass).
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            errors="replace",
+            start_new_session=True,
+        )
+        try:
+            stdout, stderr = proc.communicate(timeout=30)
+            timed_out = False
+            exit_code = proc.returncode
+        except subprocess.TimeoutExpired:
+            # Kill the whole process group (Codex F2 mitigation).
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                pass
+            stdout, stderr = proc.communicate()
+            timed_out = True
+            exit_code = 124  # GNU coreutils `timeout(1)` standard: 124 = command timed out
+    finally:
+        # Defensive: if anything else goes wrong, ensure the group is dead.
+        if proc is not None and proc.returncode is None:
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                pass
     duration_ms = int((time.monotonic() - t0) * 1000)
 
     truncated = False
@@ -76,9 +98,9 @@ print(f"WROTE: {out}")
 
 ## Security model — read before executing
 
-This is the only verifier step that runs the SCOPE-author-provided bash command. Mitigations enforced HERE:
+This is the only verifier step that runs the SCOPE-author-provided bash command. Note: prior to Codex retro A8b, this used `subprocess.run` with a single-process timeout kill; migrated to `subprocess.Popen` + `os.killpg` process-group kill (see mitigation 1 below). Mitigations enforced HERE:
 
-1. **Timeout 30s** — `subprocess.run(timeout=30)`. On timeout, exit_code=124 (POSIX standard for timeout), `timed_out: true` recorded.
+1. **Timeout 30s** — Step 2 wraps the bash call in `subprocess.Popen(start_new_session=True)` + `communicate(timeout=30)`. On timeout, the whole process group is killed via `os.killpg(SIGKILL)` (Codex retro F2/F3 — prevents `bash -c 'cmd &'` from surviving past timeout). exit_code=124 (GNU coreutils convention), `timed_out: true` recorded.
 2. **Output cap 100KB** — both stdout and stderr individually capped. `truncated: true` recorded if either trips. Caps the on-disk JSON size and downstream readers' memory; NOT a streaming guard against in-memory buffering during subprocess capture (see SECURITY.md A4 for the streaming-vs-buffered distinction).
 3. **Skip-if-errors** — if Step 1 (A2) reported errors (`completion-empty`, `completion-too-long`, `completion-multiline`, `parsed-scope-missing`, `parsed-scope-malformed`, `completion-non-string`), execution is SKIPPED entirely. All error labels are preserved in `skip_reasons` (full array); `skip_reason` (first element) is provided for convenience.
 4. **Bash scoped to Step 2 ONLY** — Steps 1, 3, 4 do NOT receive Bash tool access (per ALLOWED_PROMPT_FILES allowlist + harness preamble v3 contract). Main Claude does NOT call Bash directly during the dispatch chain.
@@ -121,7 +143,7 @@ Or skipped (example with multiple errors from A2):
 
 ## Constraints
 
-- Bash tool **only** for the completion subprocess invocation (via the python `subprocess.run` call). Do NOT explore the run_dir with ad-hoc shell commands. Do NOT use Bash for `cat` / `ls` / etc.
+- Bash tool **only** for the completion subprocess invocation (via the python `subprocess.Popen` + `communicate` call). Do NOT explore the run_dir with ad-hoc shell commands. Do NOT use Bash for `cat` / `ls` / etc.
 - Do NOT modify run_dir from the wrapper python beyond writing `execution_result.json`. The bash command itself MAY touch the filesystem (including run_dir) per SCOPE author's discretion — the security model trusts the SCOPE author for side-effects within the bash one-liner.
 - Do NOT redact, sanitize, or transform stdout/stderr — preserve verbatim (capped only).
 - Do NOT echo stdout content into your final WROTE message — orchestrator parses ONLY the WROTE: regex.

@@ -30,7 +30,13 @@ template = template_path.read_text(encoding="utf-8")
 
 # Sample stdout/stderr to first 2000 chars
 def sample(s, n=2000):
-    return s[:n] if s else "(empty)"
+    if not s:
+        return "(empty)"
+    truncated = s[:n]
+    # Codex retro F4: escape triple-backtick to prevent fenced-block break-out
+    # (a malicious completion stdout could close our fence early and inject
+    # fake markdown sections to deceive a human reader of VERIFY_REPORT.md)
+    return truncated.replace("```", "` ` `")
 
 # Verdict reasoning prose (2-3 sentences synthesizing reason + exec metadata)
 verdict = verify["verdict"]
@@ -58,6 +64,12 @@ elif verify["exit_code"] not in (0, None):
     recs.append(f"- Inspect stderr (above) for failure mode. exit_code={verify['exit_code']}.")
 if exec_result.get("truncated"):
     recs.append("- Output exceeded 100KB cap — full capture preserved only up to truncation point. Consider redirecting verbose output to a file instead of stdout.")
+# Codex retro F3: warn when completion contains background operator
+completion_str = extracted.get("completion", "")
+if " & " in completion_str or completion_str.endswith("&") or "& " in completion_str:
+    recs.append(
+        "- ⚠️ Completion command contains background operator (`&`) — verdict reflects bash exit code only, not backgrounded process completion. Backgrounded process is killed on timeout via process-group SIGKILL (Step 2 mitigation), but in the success path, exit_code=0 is recorded immediately when bash exits, regardless of backgrounded work."
+    )
 
 recommendations = "\n".join(recs) if recs else "(none — verdict pass)"
 

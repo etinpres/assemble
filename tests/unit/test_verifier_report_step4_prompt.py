@@ -166,3 +166,27 @@ def test_template_pins_seven_sections_order(template_text):
         assert actual_title == expected_title, (
             f"section {i+1}: expected title {expected_title!r}, got {actual_title!r}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Codex retro A8b — F3 + F4 prompt body invariants
+# ---------------------------------------------------------------------------
+
+def test_prompt_warns_on_background_operator(prompt_text):
+    """Codex retro F3: prompt must contain background operator warning logic."""
+    assert "background operator" in prompt_text, (
+        "missing 'background operator' — Codex retro F3 requires warning when completion contains '&'"
+    )
+    assert "& " in prompt_text or " & " in prompt_text or 'endswith("&")' in prompt_text, (
+        "missing '&' detection logic — Codex retro F3 requires checking completion for background operator"
+    )
+
+
+def test_prompt_escapes_triple_backtick(prompt_text):
+    """Codex retro F4: sample() helper must escape triple-backtick to prevent fenced-block break-out."""
+    # The prompt must contain the replace call for triple-backtick escaping.
+    # We check for the string: replace("```"  (the literal triple-backtick escape call)
+    triple_backtick = "```"
+    assert f'replace("{triple_backtick}"' in prompt_text, (
+        f'missing replace("{triple_backtick}" — Codex retro F4 requires sample() to escape triple-backtick'
+    )

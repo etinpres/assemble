@@ -104,3 +104,37 @@ def test_prompt_includes_skip_reasons_array(prompt_text):
     """I2 fix: skip_reasons array and skip_reason convenience scalar must both be present."""
     assert "skip_reasons" in prompt_text, "missing skip_reasons array (I2 fix from A3 review)"
     assert "skip_reason" in prompt_text, "missing skip_reason convenience scalar"
+
+
+# ---------------------------------------------------------------------------
+# Codex retro A8b — F2 process-group kill invariants
+# ---------------------------------------------------------------------------
+
+def test_prompt_uses_process_group_kill(prompt_text):
+    """Codex retro F2: start_new_session=True + os.killpg + signal.SIGKILL must ALL be present."""
+    assert "start_new_session=True" in prompt_text, (
+        "missing start_new_session=True — Codex retro F2 requires process-group isolation"
+    )
+    assert "os.killpg" in prompt_text, (
+        "missing os.killpg — Codex retro F2 requires process-group kill on timeout"
+    )
+    assert "signal.SIGKILL" in prompt_text, (
+        "missing signal.SIGKILL — Codex retro F2 requires SIGKILL for process-group kill"
+    )
+
+
+def test_prompt_uses_popen_not_run(prompt_text):
+    """Codex retro F2: subprocess.Popen must be present; subprocess.run must be ABSENT in the primary recipe."""
+    assert "subprocess.Popen" in prompt_text, (
+        "missing subprocess.Popen — Codex retro F2 switched from subprocess.run to Popen"
+    )
+    # subprocess.run must not appear as the primary invocation recipe.
+    # It may appear in comments or documentation but not as an active call in the code block.
+    # We check that the primary recipe uses Popen by verifying Popen is present and
+    # that any mention of subprocess.run is not an active invocation (not followed by '(').
+    import re
+    # Find all occurrences of subprocess.run( — if any exist it means the old recipe is still active
+    active_run_calls = re.findall(r"subprocess\.run\s*\(", prompt_text)
+    assert len(active_run_calls) == 0, (
+        f"subprocess.run( found {len(active_run_calls)} time(s) — should be replaced by subprocess.Popen (Codex retro F2)"
+    )
