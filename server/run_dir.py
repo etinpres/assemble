@@ -19,6 +19,23 @@ def _runs_dir() -> Path:
     return base / ".claude/channels/assemble/runs"
 
 
+def _validate_basename(label: str, value: str) -> None:
+    """Reject path-traversal / absolute-path injection on a single basename.
+
+    Both `_validate_components` and `run_dir_path` share these rules; keeping
+    them in one place ensures a future rule change (e.g. length cap, unicode
+    normalization) propagates to every call site automatically.
+    """
+    if not value:
+        raise ValueError(f"unsafe {label}: empty")
+    if "/" in value or "\\" in value:
+        raise ValueError(f"unsafe {label}: contains separator: {value!r}")
+    if value.startswith("."):
+        raise ValueError(f"unsafe {label}: starts with '.': {value!r}")
+    if value != Path(value).name:
+        raise ValueError(f"unsafe {label}: not a plain basename: {value!r}")
+
+
 def _validate_components(run_id: str, filename: str) -> None:
     """Reject path-traversal / absolute-path injection on either component.
 
@@ -29,15 +46,8 @@ def _validate_components(run_id: str, filename: str) -> None:
     user-typed task slug) the surface widens to prompt-injection-to-
     arbitrary-file-write. Cheap to guard at the gate.
     """
-    for label, value in (("run_id", run_id), ("filename", filename)):
-        if not value:
-            raise ValueError(f"unsafe {label}: empty")
-        if "/" in value or "\\" in value:
-            raise ValueError(f"unsafe {label}: contains separator: {value!r}")
-        if value.startswith("."):
-            raise ValueError(f"unsafe {label}: starts with '.': {value!r}")
-        if value != Path(value).name:
-            raise ValueError(f"unsafe {label}: not a plain basename: {value!r}")
+    _validate_basename("run_id", run_id)
+    _validate_basename("filename", filename)
 
 
 def run_artifact_path(run_id: str, filename: str) -> Path:
@@ -50,19 +60,11 @@ def run_dir_path(run_id: str) -> Path:
     """Return the absolute run directory path for `run_id`. Does not create it.
 
     Companion to `run_artifact_path` for callers that need just the directory
-    (e.g. `{{RUN_DIR}}` token substitution). Reuses the same basename
-    validation as `run_artifact_path` to keep the safety contract identical —
-    inlined here because the existing `_validate_components` requires a
-    second `filename` arg that doesn't apply.
+    (e.g. `{{RUN_DIR}}` token substitution). Validation delegates to
+    `_validate_basename` so the safety contract stays literally identical to
+    `run_artifact_path` even if rules evolve.
     """
-    if not run_id:
-        raise ValueError("unsafe run_id: empty")
-    if "/" in run_id or "\\" in run_id:
-        raise ValueError(f"unsafe run_id: contains separator: {run_id!r}")
-    if run_id.startswith("."):
-        raise ValueError(f"unsafe run_id: starts with '.': {run_id!r}")
-    if run_id != Path(run_id).name:
-        raise ValueError(f"unsafe run_id: not a plain basename: {run_id!r}")
+    _validate_basename("run_id", run_id)
     return _runs_dir() / run_id
 
 
