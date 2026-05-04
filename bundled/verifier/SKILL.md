@@ -12,4 +12,6 @@ This SKILL.md body is **scaffolding only** (Spike VIII A1). Full When-to-invoke 
 
 Sub-agent prompts (Step 1 extract, Step 2 execute, Step 3 classify, Step 4 report) land in A2/A3/A5/A6. Security model lands in A4 (`SECURITY.md`). Contracts entries + Codex retro land in A8.
 
+> See `SECURITY.md` for threat model + mitigation surface (Step 2 Bash scope, output cap caveats).
+
 DO NOT dispatch this bundle yet — sub-agent prompts are missing until A2~A6.
