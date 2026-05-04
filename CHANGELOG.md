@@ -5,7 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II + Spike III + Spike IV + Spike V + Spike VI + Spike VII + Spike VIII + Spike IX
+## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II + Spike III + Spike IV + Spike V + Spike VI + Spike VII + Spike VIII + Spike IX + Spike X
+
+### V4 Spike X (2026-05-04, B-15 dogfood ship — keeper ★ bundle + Track B cross-bundle learning recall)
+
+**Sixth self-sufficient ★ bundle (orthogonal — meta stage); V4 cross-cutting C (트레이스 자가 점검 + 학습 회수) closure complete. Track B (cross-bundle learning recall via body-prefix fence) preserves preamble sha invariant — ALLOW_LIST {v1,v2,v3} unchanged, all 5 prior ★ bundles auto-receive learnings via dispatch_and_record routing with zero call-site changes.**
+
+### Added (Spike X)
+
+- `bundled/keeper/` ★ bundle: 4 sub-agent prompts (audit / extract / summarize / ledger) + 1 orchestrator helper (iter_revisit) + 2 templates (KEEPER_REPORT 7-section happy + KEEPER_REPORT_ABORT 4-section, 24/7 placeholders) + 2 scripts (extract_rules.py R1-R5 deterministic 5-rule extractor / ledger_update.py imports server.learnings) + SKILL.md (125 lines, 6 sections including §Verdict logic 3-outcome + §CRITICAL anti-bypass) + SECURITY.md (T1-T7 threat table + 6 mitigations + 5 explicit non-goals + audit-evidence trust model)
+- `server/learnings.py` NEW (409 lines) — `STAGE_CATEGORY_PRIORITY` 7-stage map (plan/execute/debug/review/verify/ship/meta) + `select_relevant(stage, k=5, ledger=None)` deterministic top-K (category priority → ts DESC → rule_id ASC) + `render_learnings_fence(entries)` numbered fence with newline-collapse + 197+`…` truncation + ledger I/O (`learnings_path`, `read_ledger`, `read_skiplist`, `write_ledger` atomic via tempfile+fsync+os.replace, `prune_ledger` deterministic 4-stage TTL 30d → skiplist → dedup → FIFO cap 100)
+- `server/git_helpers.py` extended with `git_diff_name_only(cwd, range_spec="HEAD~..HEAD")` — argv-list, range_spec sanity validated
+- `server/harness.py`: `wrap_with_preamble_and_learnings(prompt, run_id, stage, k=5)` NEW (~60 lines) splices `[PRIOR LEARNINGS — 우선 회피]` fence into BODY region (after `\n[TASK]\n` delimiter); preamble bytes UNCHANGED — `_split_preamble_body` still extracts canonical preamble sha. `_PROMPT_TO_STAGE` map (~50 lines) covers all 39 entries in ALLOWED_PROMPT_FILES. `dispatch_and_record` routes through new wrapper — zero call-site changes for existing 5 ★ bundles. `dispatch_prompt` itself unchanged for back-compat.
+- ALLOWED_PROMPT_FILES +4 (4 keeper subagent prompts), ORCHESTRATOR_ONLY_PROMPTS +1 (keeper_iter_revisit.md), `_BUNDLES` += "keeper", `_BUNDLED_DIR_TO_STAGE` += "keeper": "meta" in BOTH inventory.py + harness.py (universal-defense convention)
+- `tests/contracts/contracts.json` +3 entries (spike-x-keeper-allowlist / spike-x-keeper-verdict-invariant / spike-x-keeper-artifact-invariant)
+- `tests/integration/test_keeper_e2e.py` NEW — 6 end-to-end tests covering all 5 R-rules + clean path
+- `tests/integration/test_verify_dispatches_with_learnings.py` NEW — 3 regression tests proving preamble sha invariant under Track B fence injection
+- `docs/dogfood/spike-x-overall-review.md` — Phase E1 superpowers:code-reviewer overall review (SHIP-READY with 2 carryforwards F-X1 R4 TODO move + F-X2 STAGE_CATEGORY_PRIORITY tuple-ize)
+- `docs/dogfood/spike-x-codex-retro.md` — Phase E2 mandatory Codex adversarial retro (1 IMPORTANT V4 fix Finding 1 R2 deny shape applied + 1 MINOR V5 schema versioning)
+- `docs/dogfood/spike-x-b15.md` — B-15 self-execute dogfood 12/12 PASS, 0.26s wall-time (60s budget by 230×)
+
+### Fixed (Spike X Phase E3 Codex retro)
+
+- F1 (Important V4): R2 (scope-deviation) silently false-negatived on real `parsed_scope.json` because the production parser schema emits `deny: list[{"path": str, "note": str}]` but extract_rules.py assumed `deny: list[str]`. `_load_deny_patterns` now accepts both shapes; 5 regression tests added (production schema + string-form back-compat + mixed + malformed-skip).
+- A3 carryforward (write_ledger generator materialization) — defensive `entries = list(entries)` snapshot pattern; closes generator-retry footgun before B5 ledger_update.py consumer landed.
+
+### Spike XI carryforwards (filed but not fixed in V4)
+
+- F-X1 (R4 TODO move false-positive): refactor moving a pre-existing TODO marker emits 1 add + 1 delete = 2 candidates instead of 0. Mitigation: subtract delete count from add count.
+- F-X2 (STAGE_CATEGORY_PRIORITY tuple-ize): `dict[str, list[str]]` is technically mutable; tuple-ize for safety. Cosmetic; propagates across V5.
+
+### V5 candidates (out of V4 scope)
+
+- Codex retro F2: ledger schema versioning (`schema_version` + `hash_version` fields) before V5 multi-run safety changes evidence normalization.
+- Multi-run concurrency safety (file locks, atomic rename + content-hash check).
+- False-positive feedback loop (user-driven learning suppression).
+
+### Test count
+
+- Baseline (Spike IX cleanup `d200a6f`): 563 passed
+- Spike X final: **759 passed, 0 failed** (+196 new tests across 11 commits)
 
 ### V4 Spike IX (2026-05-04, B-14 dogfood ship — shipper ★ bundle + Codex retro 3 amendments)
 
