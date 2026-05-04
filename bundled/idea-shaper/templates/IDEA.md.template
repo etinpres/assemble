@@ -1,0 +1,16 @@
+# IDEA — {{TASK_SUMMARY}}
+
+## User
+{{USER}}
+
+## Problem
+{{PROBLEM}}
+
+## Wedge (왜 지금?)
+{{WEDGE}}
+
+## Non-goals (MVP 제외)
+{{NON_GOALS}}
+
+## Next step
+plan-pack ★ 호출하여 PRD/ARCH/ADR/UI_GUIDE 작성 권장.
