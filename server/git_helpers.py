@@ -27,6 +27,7 @@ yes/no answer rather than the porcelain check itself.
 from __future__ import annotations
 
 import os
+import re
 import signal
 import subprocess
 from pathlib import Path
@@ -120,6 +121,34 @@ def git_branch(cwd: Path) -> dict:
     (git's default). Used by shipper ★ Step 1 for the SHIP_REPORT branch row.
     """
     return _run_git(["rev-parse", "--abbrev-ref", "HEAD"], cwd)
+
+
+_RANGE_SPEC_RE = re.compile(r"[A-Za-z0-9_./~^@-]+(\.\.[A-Za-z0-9_./~^@-]+)?")
+
+
+def git_diff_name_only(cwd: Path, range_spec: str = "HEAD~..HEAD") -> dict:
+    """Run ``git diff --name-only <range_spec>`` in ``cwd``.
+
+    Argv-list invocation. ``range_spec`` is validated up-front against a
+    conservative ref-name character class (``[A-Za-z0-9_./~^@-]`` plus the
+    ``..`` range separator). Argv-list invocation already neutralizes shell
+    interpolation (T8); the regex is defense-in-depth ref-name discipline that
+    keeps caller-controlled strings shaped like git refs.
+
+    Default ``HEAD~..HEAD`` covers the most common "what changed in the last
+    commit" probe used by keeper Step 1 to enumerate post-ship file churn.
+
+    Returns the uniform dict shape ({ok, stdout, stderr, rc}). On invalid
+    ``range_spec`` returns ``ok=False, rc=-1`` without touching subprocess.
+    """
+    if not _RANGE_SPEC_RE.fullmatch(range_spec):
+        return {
+            "ok": False,
+            "stdout": "",
+            "stderr": f"invalid range_spec: {range_spec!r}",
+            "rc": -1,
+        }
+    return _run_git(["diff", "--name-only", range_spec], cwd)
 
 
 def git_tag_exists(cwd: Path, tag_name: str) -> bool:

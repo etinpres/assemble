@@ -19,6 +19,7 @@ import pytest
 from server.git_helpers import (
     git_branch,
     git_create_tag,
+    git_diff_name_only,
     git_head_sha,
     git_status_porcelain,
     git_tag_exists,
@@ -108,6 +109,75 @@ def test_git_branch_returns_branch_name(repo):
     assert result["ok"] is True
     assert result["rc"] == 0
     assert result["stdout"].strip() == "main"
+
+
+# ---------------------------------------------------------------------------
+# git_diff_name_only — empty / one file / multi file / invalid range
+# ---------------------------------------------------------------------------
+
+def test_git_diff_name_only_empty_when_no_second_commit(repo):
+    """Single-commit repo — `HEAD~..HEAD` is invalid (no parent). git's own
+    error path should bubble through: ok=False, rc!=0, empty stdout. The
+    helper does NOT raise — caller inspects the dict.
+    """
+    result = git_diff_name_only(repo, "HEAD~..HEAD")
+    # git rev-parse rejects HEAD~ on root commit → non-zero rc, ok=False
+    assert result["ok"] is False
+    assert result["stdout"] == ""
+
+
+def test_git_diff_name_only_one_file_changed(repo):
+    """Two-commit repo with one file changed in the latest commit."""
+    (repo / "README.md").write_text("v2\n")
+    _git(["add", "README.md"], repo)
+    _git(["commit", "-q", "-m", "second"], repo)
+    result = git_diff_name_only(repo, "HEAD~..HEAD")
+    assert result["ok"] is True
+    assert result["rc"] == 0
+    assert result["stdout"].strip() == "README.md"
+
+
+def test_git_diff_name_only_multiple_files(repo):
+    """Two-commit repo with multiple files changed."""
+    (repo / "a.txt").write_text("a\n")
+    (repo / "b.txt").write_text("b\n")
+    (repo / "nested" ).mkdir()
+    (repo / "nested" / "c.txt").write_text("c\n")
+    _git(["add", "."], repo)
+    _git(["commit", "-q", "-m", "multi"], repo)
+    result = git_diff_name_only(repo, "HEAD~..HEAD")
+    assert result["ok"] is True
+    assert result["rc"] == 0
+    files = sorted(line for line in result["stdout"].splitlines() if line)
+    assert files == ["a.txt", "b.txt", "nested/c.txt"]
+
+
+def test_git_diff_name_only_rejects_invalid_range(repo):
+    """range_spec with shell metacharacters is rejected before subprocess."""
+    result = git_diff_name_only(repo, "HEAD; rm -rf /")
+    assert result["ok"] is False
+    assert result["rc"] == -1
+    assert "invalid range_spec" in result["stderr"]
+
+
+def test_git_diff_name_only_rejects_empty_range(repo):
+    result = git_diff_name_only(repo, "")
+    assert result["ok"] is False
+    assert result["rc"] == -1
+
+
+def test_git_diff_name_only_accepts_default(repo):
+    """Default range_spec=`HEAD~..HEAD` is accepted by the validator
+    (even when the repo has only one commit, the validator still passes —
+    only git's actual diff fails).
+    """
+    # Add a second commit so the default invocation succeeds end-to-end.
+    (repo / "x.txt").write_text("x\n")
+    _git(["add", "x.txt"], repo)
+    _git(["commit", "-q", "-m", "x"], repo)
+    result = git_diff_name_only(repo)  # default arg
+    assert result["ok"] is True
+    assert "x.txt" in result["stdout"]
 
 
 # ---------------------------------------------------------------------------
