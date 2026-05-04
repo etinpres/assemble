@@ -53,6 +53,8 @@ ALLOWED_PROMPT_FILES = (
     "review_step6.md",
     "builder_iter_revisit.md",
     "report_step7.md",
+    # reviewer ★ (Spike VI, files added incrementally B3-B…)
+    "parse_scope_step1.md",
 )
 
 
