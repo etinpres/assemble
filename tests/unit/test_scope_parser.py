@@ -213,3 +213,106 @@ def test_completion_double_hash_inside_fence_truncates():
     # The unclosed-fence error surfaces because ## terminated the section
     # before the closing ``` was seen
     assert "completion-fence-unclosed" in result["errors"]
+
+
+# ---------------------------------------------------------------------------
+# Spike IX A1 — `build` + `tag_prefix` section recognition (additive)
+# ---------------------------------------------------------------------------
+
+def test_spike_ix_a1_with_build_section_captures_command():
+    """`## Build` section with single-backtick-wrapped command → build = '<cmd>'."""
+    result = parse_scope_md(_load("with_build.md"))
+    assert result["build"] == "npm run build"
+    # Default tag_prefix when section missing
+    assert result["tag_prefix"] == "v"
+    # No spurious errors introduced by additive parsing
+    assert "build-too-long" not in result["errors"]
+    assert "build-malformed" not in result["errors"]
+    assert "tag-prefix-too-long" not in result["errors"]
+
+
+def test_spike_ix_a1_without_build_section_defaults_to_none():
+    """SCOPE.md without `## Build` section → build = None (no error)."""
+    result = parse_scope_md(_load("ascii_simple.md"))
+    assert result["build"] is None
+    assert result["tag_prefix"] == "v"
+    # Existing behavior unchanged
+    assert result["errors"] == []
+    assert "build-too-long" not in result["errors"]
+
+
+def test_spike_ix_a1_build_too_long_emits_error_and_nullifies():
+    """build > 500 chars → 'build-too-long' error + build = None."""
+    result = parse_scope_md(_load("build_too_long.md"))
+    assert "build-too-long" in result["errors"]
+    assert result["build"] is None
+
+
+def test_spike_ix_a1_with_tag_prefix_section_captures_string():
+    """`## Tag prefix` section with backtick-wrapped string → tag_prefix = '<str>'."""
+    result = parse_scope_md(_load("with_tag_prefix.md"))
+    assert result["tag_prefix"] == "release-"
+    # build defaults to None when only tag_prefix declared
+    assert result["build"] is None
+    assert "tag-prefix-too-long" not in result["errors"]
+
+
+def test_spike_ix_a1_default_tag_prefix_when_section_missing():
+    """SCOPE.md without `## Tag prefix` section → tag_prefix = 'v' (default)."""
+    result = parse_scope_md(_load("ascii_simple.md"))
+    assert result["tag_prefix"] == "v"
+
+
+def test_spike_ix_a1_tag_prefix_too_long_emits_error_and_defaults():
+    """tag_prefix > 10 chars → 'tag-prefix-too-long' error + tag_prefix = 'v'."""
+    result = parse_scope_md(_load("tag_prefix_too_long.md"))
+    assert "tag-prefix-too-long" in result["errors"]
+    # Falls back to default when over-length
+    assert result["tag_prefix"] == "v"
+
+
+def test_spike_ix_a1_both_sections_present_parse_independently():
+    """Both `## Build` and `## Tag prefix` present → both fields set."""
+    result = parse_scope_md(_load("with_build_and_tag_prefix.md"))
+    assert result["build"] == "python -m build"
+    assert result["tag_prefix"] == "v."
+    # No errors for either field
+    assert "build-too-long" not in result["errors"]
+    assert "build-malformed" not in result["errors"]
+    assert "tag-prefix-too-long" not in result["errors"]
+
+
+def test_spike_ix_a1_build_malformed_emits_error():
+    """`## Build` section content not single-backtick-wrapped → 'build-malformed'."""
+    result = parse_scope_md(_load("build_malformed.md"))
+    assert "build-malformed" in result["errors"]
+    assert result["build"] is None
+
+
+def test_spike_ix_a1_tag_prefix_malformed_emits_error_and_defaults():
+    """`## Tag prefix` content not single-backtick-wrapped → 'tag-prefix-malformed' + default 'v'."""
+    result = parse_scope_md(_load("tag_prefix_malformed.md"))
+    assert "tag-prefix-malformed" in result["errors"]
+    assert result["tag_prefix"] == "v"
+
+
+def test_spike_ix_a1_lowercase_section_headers_recognized():
+    """`## build` (lowercase) round-trips identically to `## Build` per IGNORECASE convention."""
+    text = (
+        "# SCOPE\n\n## Allow list\n\n- `f.py` — note\n\n"
+        "## Completion criterion\n\n```bash\necho ok\n```\n\n"
+        "## build\n\n`npm run build`\n\n## tag prefix\n\n`release-`\n"
+    )
+    result = parse_scope_md(text)
+    assert result["build"] == "npm run build"
+    assert result["tag_prefix"] == "release-"
+    assert "build-malformed" not in result["errors"]
+    assert "tag-prefix-malformed" not in result["errors"]
+
+
+def test_spike_ix_a1_empty_text_includes_default_build_and_tag_prefix():
+    """Empty text → still emits 'scope-missing' but exposes default fields."""
+    result = parse_scope_md("")
+    assert result["build"] is None
+    assert result["tag_prefix"] == "v"
+    assert result["errors"] == ["scope-missing"]

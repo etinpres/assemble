@@ -48,6 +48,22 @@ _COMPLETION_SECTION_RE = re.compile(
     r"^##\s+Completion\s+criterion\s*$", re.MULTILINE | re.IGNORECASE
 )
 
+# Spike IX additions: optional `## Build` and `## Tag prefix` sections.
+# IGNORECASE matches existing _ALLOW_SECTION_RE / _DENY_SECTION_RE / _COMPLETION_SECTION_RE
+# convention; SCOPE authors writing `## build` (lowercase) round-trip identically.
+_BUILD_SECTION_RE = re.compile(r"^##\s+Build\s*$", re.MULTILINE | re.IGNORECASE)
+_TAG_PREFIX_SECTION_RE = re.compile(r"^##\s+Tag\s+prefix\s*$", re.MULTILINE | re.IGNORECASE)
+
+# Length caps mirror those used by Step 3 / Step 4 prompt bodies.
+_BUILD_MAX_LEN = 500
+_TAG_PREFIX_MAX_LEN = 10
+_DEFAULT_TAG_PREFIX = "v"
+
+# Single-backtick-wrapped token: opening backtick, body with no backticks,
+# closing backtick. Whole-line match (after ``.strip()``) — leading/trailing
+# whitespace already trimmed by the caller.
+_BACKTICK_TOKEN_RE = re.compile(r"^`([^`]+)`$")
+
 # Bullet line prefix — ``- `` at column 0
 _BULLET_RE = re.compile(r"^-\s+(.+)$")
 
@@ -279,6 +295,78 @@ def _extract_completion(text: str) -> tuple[str, bool, list[str]]:
     return result, bool(result), fence_errors
 
 
+def _extract_backtick_token(section_text: str) -> Optional[str]:
+    """Extract a single backtick-wrapped token from a section body.
+
+    The body is expected to contain (after whitespace stripping) exactly one
+    line of the form ```<token>``` — a single pair of backticks
+    enclosing a non-empty body that itself contains no backticks. Anything
+    else (multi-line, missing backticks, nested backticks) returns ``None``
+    and the caller surfaces the appropriate ``-malformed`` error label.
+    """
+    stripped = section_text.strip()
+    if not stripped:
+        return None
+    # Reject multi-line content — single-line backtick token only.
+    if "\n" in stripped:
+        return None
+    m = _BACKTICK_TOKEN_RE.match(stripped)
+    if not m:
+        return None
+    return m.group(1)
+
+
+def _parse_build_section(text: str) -> tuple[Optional[str], list[str]]:
+    """Parse the optional ``## Build`` section.
+
+    Returns ``(build, errors)`` where:
+      - ``build`` is the extracted command string or ``None`` (section absent,
+        malformed, empty, or over-length).
+      - ``errors`` is a list of error labels: ``"build-malformed"`` when the
+        section exists but content cannot be parsed as a single backtick-wrapped
+        token; ``"build-too-long"`` when the extracted command exceeds 500 chars.
+    """
+    m = _BUILD_SECTION_RE.search(text)
+    if m is None:
+        return None, []
+
+    section_text = _extract_section_text(text, m)
+    token = _extract_backtick_token(section_text)
+    if token is None:
+        return None, ["build-malformed"]
+
+    if len(token) > _BUILD_MAX_LEN:
+        return None, ["build-too-long"]
+
+    return token, []
+
+
+def _parse_tag_prefix_section(text: str) -> tuple[str, list[str]]:
+    """Parse the optional ``## Tag prefix`` section.
+
+    Returns ``(tag_prefix, errors)`` where:
+      - ``tag_prefix`` defaults to ``"v"`` when the section is missing,
+        malformed, or over-length.
+      - ``errors`` carries ``"tag-prefix-malformed"`` (section exists but
+        content not a single backtick-wrapped token) or ``"tag-prefix-too-long"``
+        (extracted prefix > 10 chars). Default ``"v"`` is returned in either
+        error case so downstream consumers always have a usable value.
+    """
+    m = _TAG_PREFIX_SECTION_RE.search(text)
+    if m is None:
+        return _DEFAULT_TAG_PREFIX, []
+
+    section_text = _extract_section_text(text, m)
+    token = _extract_backtick_token(section_text)
+    if token is None:
+        return _DEFAULT_TAG_PREFIX, ["tag-prefix-malformed"]
+
+    if len(token) > _TAG_PREFIX_MAX_LEN:
+        return _DEFAULT_TAG_PREFIX, ["tag-prefix-too-long"]
+
+    return token, []
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -293,6 +381,8 @@ def parse_scope_md(text: str) -> dict:
           "allow": [{"path": str, "note": str}, ...],
           "deny":  [{"path": str, "note": str}, ...],
           "completion": str,         # bash one-liner from fenced block
+          "build": str | None,       # Spike IX: optional one-line build cmd (≤500)
+          "tag_prefix": str,         # Spike IX: tag prefix (default "v"; ≤10)
           "errors": [str, ...]       # section-level + entry-level errors
         }
 
@@ -305,6 +395,12 @@ def parse_scope_md(text: str) -> dict:
                                         warning; caller/verifier decides what to do)
       - "deny-entry-N-grammar"        — entry index N violates strict grammar
       - "allow-entry-N-grammar"       — entry index N violates strict grammar
+      - "build-malformed"             — Spike IX: ## Build present but content
+                                        not a single backtick-wrapped token
+      - "build-too-long"              — Spike IX: build cmd > 500 chars
+      - "tag-prefix-malformed"        — Spike IX: ## Tag prefix present but
+                                        content not a single backtick-wrapped token
+      - "tag-prefix-too-long"         — Spike IX: tag prefix > 10 chars
     """
     errors: list[str] = []
 
@@ -315,6 +411,8 @@ def parse_scope_md(text: str) -> dict:
             "allow": [],
             "deny": [],
             "completion": "",
+            "build": None,
+            "tag_prefix": _DEFAULT_TAG_PREFIX,
             "errors": ["scope-missing"],
         }
 
@@ -349,10 +447,19 @@ def parse_scope_md(text: str) -> dict:
     if not found:
         errors.append("completion-empty")
 
+    # --- Spike IX optional sections: build + tag_prefix ---
+    build, build_errors = _parse_build_section(text)
+    errors.extend(build_errors)
+
+    tag_prefix, tag_prefix_errors = _parse_tag_prefix_section(text)
+    errors.extend(tag_prefix_errors)
+
     return {
         "task_summary": task_summary,
         "allow": allow_entries,
         "deny": deny_entries,
         "completion": completion,
+        "build": build,
+        "tag_prefix": tag_prefix,
         "errors": errors,
     }
