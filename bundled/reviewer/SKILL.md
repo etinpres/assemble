@@ -1,9 +1,7 @@
 ---
 name: "reviewer"
 description: "Review-stage ★ bundle. External SCOPE.md vs git diff gate. Sub-agents own all reads/writes; main Claude orchestrates only."
-stages:
-  - "review"
-pinned: true
+stages: ["review"]
 ---
 
 # reviewer ★ — external diff vs SCOPE.md gate

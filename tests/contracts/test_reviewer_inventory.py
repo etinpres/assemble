@@ -45,3 +45,24 @@ def test_reviewer_orchestrator_dir_exists():
 def test_reviewer_templates_dir_exists():
     d = REVIEWER / "templates"
     assert d.is_dir(), f"missing {d.relative_to(ASSEMBLE)}"
+
+
+def test_reviewer_in_inventory_scan():
+    """Production scan() correctly classifies reviewer as a review-stage bundle.
+
+    Mirrors test_builder_inventory.py and test_debugger_inventory.py shape.
+    Catches the YAML block-list-vs-inline gap that yaml.safe_load alone misses.
+    """
+    from server.inventory import scan
+
+    inv = scan(force=True)
+    skills = inv.get("skills", {}) if isinstance(inv, dict) else {}
+    rev = skills.get("reviewer")
+    assert rev is not None, f"reviewer missing from inventory; got skills: {list(skills.keys())}"
+    assert rev.get("bundled") is True, f"reviewer not flagged bundled: {rev}"
+    assert rev.get("path", "").endswith("bundled/reviewer/SKILL.md"), f"bad path: {rev.get('path')}"
+    mappings = rev.get("mappings") or []
+    assert mappings, f"reviewer has no stage mappings: source={rev.get('source')}, mappings={mappings}"
+    assert any(m.get("stage") == "review" for m in mappings), (
+        f"no review-stage mapping in reviewer mappings: {mappings}"
+    )

@@ -307,6 +307,7 @@ _BUNDLED_DIR_TO_STAGE: dict[str, str] = {
     "builder": "execute",
     "debugger": "debug",
     "plan-pack": "plan",
+    "reviewer": "review",
 }
 
 
