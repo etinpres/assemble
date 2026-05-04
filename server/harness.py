@@ -113,6 +113,8 @@ ALLOWED_PROMPT_FILES = (
 _BUNDLES = (
     "plan-pack", "debugger", "builder", "reviewer",
     "verifier", "shipper", "keeper",
+    # Spike XI — standard bundles (discover/design/safety stages)
+    "idea-shaper", "design-pack", "guardian",
 )
 
 # Mirrors `server.inventory._BUNDLED_DIR_TO_STAGE`. The two copies serve
@@ -131,6 +133,10 @@ _BUNDLED_DIR_TO_STAGE: dict[str, str] = {
     "verifier":  "verify",
     "shipper":   "ship",
     "keeper":    "meta",
+    # Spike XI — standard bundles
+    "idea-shaper": "discover",
+    "design-pack": "design",
+    "guardian":    "safety",
 }
 
 

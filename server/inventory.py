@@ -321,6 +321,9 @@ _BUNDLED_ROOT_REL = ".claude/skills/assemble/bundled"
 _BUNDLED_DIR_TO_STAGE: dict[str, str] = {
     "builder": "execute",
     "debugger": "debug",
+    "design-pack": "design",
+    "guardian": "safety",
+    "idea-shaper": "discover",
     "keeper": "meta",
     "plan-pack": "plan",
     "reviewer": "review",

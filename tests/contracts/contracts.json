@@ -175,6 +175,48 @@
       "spec_path": "bundled/keeper/SKILL.md",
       "section": "## Artifacts",
       "tag": "Spike X — keeper artifact schema invariant (KEEPER_REPORT.md sections + 3 audit JSONs)"
+    },
+    {
+      "id": "spike-xi-idea-shaper-stage",
+      "phrase": "V4 결정 #1 라인업의 discover stage",
+      "spec_path": "bundled/idea-shaper/SKILL.md",
+      "section": "# idea-shaper — discover stage 표준 번들",
+      "tag": "Spike XI — idea-shaper discover-stage standard bundle declaration"
+    },
+    {
+      "id": "spike-xi-idea-shaper-artifact",
+      "phrase": "`<run_dir>/IDEA.md` (5 sections: User / Problem / Wedge / Non-goals / Task summary)",
+      "spec_path": "bundled/idea-shaper/SKILL.md",
+      "section": "## 산출물",
+      "tag": "Spike XI — idea-shaper IDEA.md 5-section artifact invariant"
+    },
+    {
+      "id": "spike-xi-design-pack-stage",
+      "phrase": "V4 결정 #1 라인업의 design stage",
+      "spec_path": "bundled/design-pack/SKILL.md",
+      "section": "# design-pack — design stage 표준 번들",
+      "tag": "Spike XI — design-pack design-stage standard bundle declaration"
+    },
+    {
+      "id": "spike-xi-design-pack-artifact",
+      "phrase": "`<run_dir>/ANTI_PATTERNS.md` (AI 슬롭 8 항목 deny list, content-fixed)",
+      "spec_path": "bundled/design-pack/SKILL.md",
+      "section": "## 산출물",
+      "tag": "Spike XI — design-pack DESIGN.md + ANTI_PATTERNS.md (8 verbatim entries) artifact invariant"
+    },
+    {
+      "id": "spike-xi-guardian-v4-9-exception",
+      "phrase": "dispatch overhead가 실 작업보다 큼 → ALLOWED_PROMPT_FILES에 entry 추가 X. prompts/subagent/ 디렉토리 자체 없음.",
+      "spec_path": "bundled/guardian/SKILL.md",
+      "section": "## V4 #9 예외 적용 (메인 직접 IO)",
+      "tag": "Spike XI — guardian V4 #9 exception (NO ALLOWED_PROMPT_FILES entry, NO prompts/subagent/ directory)"
+    },
+    {
+      "id": "spike-xi-guardian-artifact",
+      "phrase": "`<run_dir>/GUARDIAN.md` (활성 freeze + deny 명령 + 계획 작업 + 사용자 체크리스트 5 항목)",
+      "spec_path": "bundled/guardian/SKILL.md",
+      "section": "## 산출물",
+      "tag": "Spike XI — guardian GUARDIAN.md artifact invariant (4 placeholders + 5-item checklist)"
     }
   ]
 }
