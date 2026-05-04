@@ -1,0 +1,33 @@
+<!--
+PLACEHOLDERS (substituted via str.replace by ledger_update.py, abort path):
+  RUN_ID, REASON, GENERATED_TS, RUN_SUMMARY, ABORT_INVENTORY_NOTE,
+  SKIP_REASON_DETAIL, NEXT_STEPS_GUIDANCE
+
+ABORT VARIANT: rendered when audit_inventory.verdict == "audit-skipped"
+(Step 1 detected parsed_scope.json missing or no bundle artifacts present).
+4 H2 sections — sections 3-7 of the happy variant are omitted because
+without an audit there are no rules fired, no learnings emitted, and no
+ledger delta to report.
+-->
+
+# KEEPER_REPORT (ABORTED)
+
+**Run ID**: {{RUN_ID}}
+**Verdict**: audit-skipped — {{REASON}}
+**Generated**: {{GENERATED_TS}}
+
+## 1. Run summary
+
+{{RUN_SUMMARY}}
+
+## 2. Audit inventory
+
+{{ABORT_INVENTORY_NOTE}}
+
+## 3. Skip reason
+
+{{SKIP_REASON_DETAIL}}
+
+## 4. Next steps
+
+{{NEXT_STEPS_GUIDANCE}}

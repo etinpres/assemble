@@ -1,0 +1,54 @@
+<!--
+PLACEHOLDERS (substituted via str.replace by ledger_update.py, happy path):
+  RUN_ID, VERDICT, REASON, GENERATED_TS, RUN_SUMMARY, BUNDLES_OBSERVED,
+  ARTIFACTS_PRESENT_COUNT, VERDICTS_COLLECTED, CLEAN_TREE_STATUS, BRANCH,
+  HEAD_SHA_SHORT, GIT_DIFF_FILES_COUNT, RULES_FIRED_TABLE,
+  LEARNINGS_EMITTED_LIST, BEFORE_PRUNE_COUNT, AFTER_PRUNE_COUNT, NET_DELTA,
+  APPENDED_COUNT, DROPPED_TTL, DROPPED_SKIP, DROPPED_DEDUP, DROPPED_CAP,
+  PRUNE_SUMMARY_NOTE, NEXT_RUN_RECALL_PREVIEW
+
+HAPPY VARIANT: rendered when audit_inventory.verdict == "audit-ready". 7 H2
+sections. For audit-skipped runs, the abort variant is used instead.
+-->
+
+# KEEPER_REPORT
+
+**Run ID**: {{RUN_ID}}
+**Verdict**: {{VERDICT}} — {{REASON}}
+**Generated**: {{GENERATED_TS}}
+
+## 1. Run summary
+
+{{RUN_SUMMARY}}
+
+## 2. Audit inventory
+
+- Bundles observed: {{BUNDLES_OBSERVED}}
+- Artifacts present: {{ARTIFACTS_PRESENT_COUNT}} files
+- Verdicts collected: {{VERDICTS_COLLECTED}}
+- Repo state: {{CLEAN_TREE_STATUS}} on {{BRANCH}} ({{HEAD_SHA_SHORT}})
+- Diff files: {{GIT_DIFF_FILES_COUNT}}
+
+## 3. Rules fired
+
+{{RULES_FIRED_TABLE}}
+
+## 4. Learnings emitted
+
+{{LEARNINGS_EMITTED_LIST}}
+
+## 5. Ledger state delta
+
+- Before prune: {{BEFORE_PRUNE_COUNT}} entries
+- After prune: {{AFTER_PRUNE_COUNT}} entries
+- Net delta: {{NET_DELTA}} (appended {{APPENDED_COUNT}}, dropped by TTL {{DROPPED_TTL}} / skiplist {{DROPPED_SKIP}} / dedup {{DROPPED_DEDUP}} / cap {{DROPPED_CAP}})
+
+## 6. Prune summary
+
+{{PRUNE_SUMMARY_NOTE}}
+
+## 7. Next-run recall preview
+
+The next dispatch via `dispatch_and_record` will inject up to top-K (K=5) relevant learnings as a `[PRIOR LEARNINGS]` body-prefix fence (Track B). Stage→category priority (from `server.learnings.STAGE_CATEGORY_PRIORITY`):
+
+{{NEXT_RUN_RECALL_PREVIEW}}
