@@ -1,0 +1,51 @@
+# Verification report — {{RUN_ID}}
+
+**Verdict**: {{VERDICT}}
+**Reason**: {{REASON}}
+
+## 1. Summary
+
+Run `{{RUN_ID}}` verified completion criterion. Result: **{{VERDICT}}** ({{REASON}}).
+Exit code: `{{EXIT_CODE}}`. Duration: `{{DURATION_MS}}ms`.
+
+## 2. Completion command
+
+```bash
+{{COMPLETION}}
+```
+
+(captured from `parsed_scope.json.completion`, length {{COMPLETION_LENGTH}} chars)
+
+## 3. Execution result
+
+| Field | Value |
+|---|---|
+| Exit code | `{{EXIT_CODE}}` |
+| Duration | `{{DURATION_MS}}ms` |
+| Timed out | `{{TIMED_OUT}}` |
+| Output truncated | `{{TRUNCATED}}` |
+| Skipped | `{{SKIPPED}}` |
+
+## 4. Stdout sample
+
+```
+{{STDOUT_SAMPLE}}
+```
+
+(first 2000 chars; full capture in `execution_result.json`)
+
+## 5. Stderr sample
+
+```
+{{STDERR_SAMPLE}}
+```
+
+(first 2000 chars; full capture in `execution_result.json`)
+
+## 6. Verdict reasoning
+
+{{VERDICT_REASONING}}
+
+## 7. Recommendations
+
+{{RECOMMENDATIONS}}
