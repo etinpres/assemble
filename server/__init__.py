@@ -45,6 +45,7 @@ from server.run_dir import (
 )
 from server.harness import (
     wrap_with_preamble,
+    wrap_with_preamble_and_learnings,
     record_dispatch,
     verify_dispatches,
     canonical_preamble_sha256,
@@ -78,7 +79,8 @@ __all__ = [
     "write_run_artifact", "read_run_artifact", "run_artifact_path",
     "run_dir_path", "strip_bash_fence", "update_iteration_state",
     # harness
-    "wrap_with_preamble", "record_dispatch", "verify_dispatches",
+    "wrap_with_preamble", "wrap_with_preamble_and_learnings",
+    "record_dispatch", "verify_dispatches",
     "canonical_preamble_sha256",
     "dispatch_prompt", "dispatch_and_record", "update_dispatch_status",
     "substitute_inputs", "extract_wrote_paths",

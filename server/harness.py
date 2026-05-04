@@ -47,6 +47,7 @@ _PREAMBLE_REL = ".claude/skills/assemble/bundled/_shared/harness-preamble.md"
 ORCHESTRATOR_ONLY_PROMPTS: frozenset[str] = frozenset({
     "verifier_iter_revisit.md",
     "shipper_iter_revisit.md",
+    "keeper_iter_revisit.md",
 })
 
 
@@ -93,6 +94,11 @@ ALLOWED_PROMPT_FILES = (
     "shipper_version_step2.md",
     "shipper_build_step3.md",
     "shipper_tag_step4.md",
+    # keeper ★ (Spike X, 4 files — Phase D1 wiring)
+    "keeper_audit_step1.md",
+    "keeper_extract_step2.md",
+    "keeper_summarize_step3.md",
+    "keeper_ledger_step4.md",
 )
 
 
@@ -100,7 +106,10 @@ ALLOWED_PROMPT_FILES = (
 # Spike VI B1 so contract tests can introspect the registered bundles.
 # Order: plan-pack first (most prompts), then debugger, builder, reviewer,
 # verifier (additions appended in chronological Spike order).
-_BUNDLES = ("plan-pack", "debugger", "builder", "reviewer", "verifier", "shipper")
+_BUNDLES = (
+    "plan-pack", "debugger", "builder", "reviewer",
+    "verifier", "shipper", "keeper",
+)
 
 # Mirrors `server.inventory._BUNDLED_DIR_TO_STAGE`. The two copies serve
 # different purposes: this one is for harness-level dispatch routing /
@@ -202,6 +211,123 @@ def wrap_with_preamble(prompt: str) -> str:
     if pre is None:
         return prompt
     return f"{pre}\n[TASK]\n{prompt}"
+
+
+def wrap_with_preamble_and_learnings(
+    prompt: str,
+    run_id: Optional[str] = None,
+    stage: Optional[str] = None,
+    k: int = 5,
+) -> str:
+    """`wrap_with_preamble` + body-prefix learnings fence injection.
+
+    Spike X Phase D3: when the global keeper ledger has entries relevant to
+    `stage`, splice a `[PRIOR LEARNINGS — 우선 회피]` block into the body
+    region (immediately after `\\n[TASK]\\n`, before the original prompt
+    body). The preamble portion is byte-identical to `wrap_with_preamble`
+    output — the canonical preamble sha256 is preserved, so
+    `verify_dispatches` continues to validate green.
+
+    Degraded paths (return `wrap_with_preamble(prompt)` unchanged — zero
+    behavioral diff vs today's wiring):
+      - `run_id is None` (caller has no run context to scope learnings to).
+      - `stage is None` (caller has no stage hint — default fall-through).
+      - Ledger missing or empty (first run on a clean machine).
+      - `select_relevant` returns `[]` (k<=0, or ledger has no entries).
+      - `render_learnings_fence` returns "" (entries somehow empty post-cap).
+
+    The fence is inserted in the body region only. The `_TASK_DELIM`
+    constant + `_split_preamble_body` boundary stays at the same byte
+    offset → ALLOW_LIST membership unchanged, audit invariants preserved.
+    """
+    if run_id is None or stage is None:
+        return wrap_with_preamble(prompt)
+
+    from server.learnings import (
+        read_ledger,
+        render_learnings_fence,
+        select_relevant,
+    )
+
+    ledger = read_ledger()
+    if not ledger:
+        return wrap_with_preamble(prompt)
+
+    entries = select_relevant(stage, k=k, ledger=ledger)
+    if not entries:
+        return wrap_with_preamble(prompt)
+
+    fence = render_learnings_fence(entries)
+    if not fence:
+        return wrap_with_preamble(prompt)
+
+    wrapped = wrap_with_preamble(prompt)
+    # Splice in the body region, immediately after `\n[TASK]\n`. count=1 so
+    # only the first delimiter at the preamble boundary is affected — if a
+    # prompt body literally contains `[TASK]` later, that occurrence is
+    # left intact.
+    return wrapped.replace(_TASK_DELIM, f"{_TASK_DELIM}{fence}\n\n", 1)
+
+
+# Spike X Phase D3 — every entry in `ALLOWED_PROMPT_FILES` MUST appear here.
+# Maps each subagent prompt to the pipeline stage whose learnings should be
+# spliced into the body when `dispatch_and_record` routes a dispatch through
+# `wrap_with_preamble_and_learnings`. Stage values must be keys of
+# `STAGE_CATEGORY_PRIORITY` in `server.learnings` (plan / execute / debug /
+# review / verify / ship / meta).
+#
+# Coverage is enforced by a regression test
+# (`test_prompt_to_stage_covers_all_allowed`) — adding a new prompt to
+# `ALLOWED_PROMPT_FILES` without an entry here will fail the suite.
+_PROMPT_TO_STAGE: dict[str, str] = {
+    # plan-pack ★ → plan
+    "prd_step2.md": "plan",
+    "prd_step3.md": "plan",
+    "prd_step4.md": "plan",
+    "arch_step8.md": "plan",
+    "adr_step11.md": "plan",
+    "ui_step13.md": "plan",
+    "cross_doc_step9.md": "plan",
+    "iter_emphasis.md": "plan",
+    # debugger ★ → debug
+    "repro_step2.md": "debug",
+    "hypothesis_step3.md": "debug",
+    "root_cause_step4.md": "debug",
+    "fix_step5.md": "debug",
+    "report_step6.md": "debug",
+    "iter_revisit.md": "debug",
+    # builder ★ → execute
+    "scope_step2.md": "execute",
+    "test_step3.md": "execute",
+    "impl_step4.md": "execute",
+    "verify_step5.md": "execute",
+    "review_step6.md": "execute",
+    "builder_iter_revisit.md": "execute",
+    "report_step7.md": "execute",
+    # reviewer ★ → review
+    "parse_scope_step1.md": "review",
+    "diff_collect_step2.md": "review",
+    "classify_files_step3.md": "review",
+    "rule3_check_step4.md": "review",
+    "severity_assess_step5.md": "review",
+    "reviewer_report_step6.md": "review",
+    "reviewer_iter_revisit.md": "review",
+    # verifier ★ → verify
+    "verifier_extract_step1.md": "verify",
+    "verifier_execute_step2.md": "verify",
+    "verifier_classify_step3.md": "verify",
+    "verifier_report_step4.md": "verify",
+    # shipper ★ → ship
+    "shipper_preflight_step1.md": "ship",
+    "shipper_version_step2.md": "ship",
+    "shipper_build_step3.md": "ship",
+    "shipper_tag_step4.md": "ship",
+    # keeper ★ → meta
+    "keeper_audit_step1.md": "meta",
+    "keeper_extract_step2.md": "meta",
+    "keeper_summarize_step3.md": "meta",
+    "keeper_ledger_step4.md": "meta",
+}
 
 
 def _resolve_prompt_path(prompt_file: str) -> Path:
@@ -685,7 +811,28 @@ def dispatch_and_record(
 
     prompt_text = ""
     if status == "dispatched":
-        prompt_text = dispatch_prompt(prompt_file)
+        # Spike X Phase D4: route through `wrap_with_preamble_and_learnings`
+        # so the keeper-curated [PRIOR LEARNINGS] fence is spliced into the
+        # body region whenever the global ledger has stage-relevant entries.
+        # Empty ledger (or run_id/stage missing) → byte-identical to the
+        # pre-Spike-X path that called `dispatch_prompt(prompt_file)`.
+        # The allowlist check is duplicated from `dispatch_prompt` —
+        # belt-and-braces. Inlining is cleaner than calling `dispatch_prompt`
+        # then splicing because we need the raw `text` separately for the
+        # learnings-aware wrapper (which calls `wrap_with_preamble`
+        # internally).
+        if prompt_file not in ALLOWED_PROMPT_FILES:
+            raise ValueError(
+                f"prompt_file {prompt_file!r} not allowed. "
+                f"See SKILL.md §CRITICAL anti-bypass + ALLOWED_PROMPT_FILES "
+                f"in server.harness "
+                f"(current allowlist: {len(ALLOWED_PROMPT_FILES)} files)."
+            )
+        text = _resolve_prompt_path(prompt_file).read_text(encoding="utf-8")
+        stage = _PROMPT_TO_STAGE.get(prompt_file)
+        prompt_text = wrap_with_preamble_and_learnings(
+            text, run_id=run_id, stage=stage
+        )
 
     record_dispatch(
         run_id,

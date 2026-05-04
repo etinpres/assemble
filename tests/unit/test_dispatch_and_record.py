@@ -27,8 +27,20 @@ def tmp_assemble(tmp_path, monkeypatch):
 
 
 def test_dispatched_path_calls_both(tmp_assemble):
+    """Spike X Phase D4: dispatched path now routes through
+    `wrap_with_preamble_and_learnings` (was `dispatch_prompt`) so the
+    [PRIOR LEARNINGS] fence can be spliced in when the global ledger has
+    stage-relevant entries. Mocks updated accordingly — `_resolve_prompt_path`
+    is the new file-loader hook, `wrap_with_preamble_and_learnings` is the
+    new wrap+learnings hook. Behavior contract unchanged: dispatched path
+    returns the wrapped prompt and `record_dispatch` is called once."""
     _, rid = tmp_assemble
-    with patch("server.harness.dispatch_prompt", return_value="WRAPPED") as dp, \
+    fake_path = type("FakePath", (), {"read_text": lambda self, encoding="utf-8": "BODY"})()
+    with patch("server.harness._resolve_prompt_path", return_value=fake_path) as rp, \
+         patch(
+             "server.harness.wrap_with_preamble_and_learnings",
+             return_value="WRAPPED",
+         ) as wp, \
          patch("server.harness.record_dispatch") as rd:
         out = server.dispatch_and_record(
             rid,
@@ -38,7 +50,13 @@ def test_dispatched_path_calls_both(tmp_assemble):
             description="iter1 PRD redraft",
         )
     assert out == "WRAPPED"
-    dp.assert_called_once_with("iter_emphasis.md")
+    rp.assert_called_once_with("iter_emphasis.md")
+    wp.assert_called_once()
+    # wrap_with_preamble_and_learnings receives raw body + run_id + stage
+    wp_args, wp_kwargs = wp.call_args.args, wp.call_args.kwargs
+    assert wp_args[0] == "BODY"
+    assert wp_kwargs["run_id"] == rid
+    assert wp_kwargs["stage"] == "plan"  # iter_emphasis.md → plan
     rd.assert_called_once()
     rd_kwargs = rd.call_args.kwargs
     assert rd_kwargs["prompt_file"] == "iter_emphasis.md"
