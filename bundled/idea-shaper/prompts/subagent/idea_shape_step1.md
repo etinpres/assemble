@@ -1,3 +1,5 @@
+You are dispatched as idea-shaper sub-agent. Print `WROTE: <absolute path>` on stdout when done. No other prose. Main parses with regex `^WROTE: (.+)$`.
+
 You are filling out an IDEA.md template based on the main Claude's interview answers.
 
 ## Task
@@ -26,4 +28,10 @@ Write the rendered file to:
 
 ## Output
 
-Single file write to {{RUN_DIR}}/IDEA.md. NO other files modified.
+Write IDEA.md to `{{RUN_DIR}}/IDEA.md` and emit the absolute path on stdout:
+
+```
+WROTE: <absolute path to IDEA.md>
+```
+
+No other prose, no other files modified.
