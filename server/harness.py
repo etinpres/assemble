@@ -189,8 +189,13 @@ def dispatch_prompt(prompt_file: str) -> str:
 # through the next `\n## ` header. The save block (typically under
 # `## Final step`) is intentionally NOT touched so `.replace("{{KEY}}", var)`
 # instructions inside embedded python blocks survive for sub-agent execution.
+#
+# Spike VII Track A: group(1) captures the matched newline-or-SOF prefix
+# plus the `## Inputs…\n` header so the original bytes can be reconstructed
+# exactly. The `(?:^|\n)` alternation handles prompts that open with
+# `## Inputs` at character 0 (no preceding newline).
 _INPUTS_SECTION_RE = re.compile(
-    r"(\n## Inputs[^\n]*\n)(.*?)(\n## )", re.DOTALL
+    r"((?:^|\n)## Inputs[^\n]*\n)(.*?)(\n## )", re.DOTALL
 )
 
 
@@ -213,15 +218,26 @@ def substitute_inputs(prompt_text: str, inputs: dict) -> str:
         (helper degrades gracefully — caller can still use the prompt).
       - The dict values are coerced to `str()` for safety.
 
+    Spike VII Track A: when `RUN_ID` is present and `RUN_DIR` is not,
+    `RUN_DIR` is auto-derived as the absolute run dir path. Caller can
+    pass `RUN_DIR` explicitly to override (e.g. dogfood / tests).
+
     Returns the prompt text with substitutions applied.
     """
     if not inputs:
         return prompt_text
+    enriched = dict(inputs)
+    if "RUN_ID" in enriched and "RUN_DIR" not in enriched:
+        # Local import: server.run_dir already imports from server, harness
+        # is imported by server/__init__.py — module-level import would
+        # risk a circular at import time.
+        from server.run_dir import run_dir_path
+        enriched["RUN_DIR"] = str(run_dir_path(str(enriched["RUN_ID"])))
     match = _INPUTS_SECTION_RE.search(prompt_text)
     if match is None:
         return prompt_text
     header, body, next_marker = match.group(1), match.group(2), match.group(3)
-    for k, v in inputs.items():
+    for k, v in enriched.items():
         body = body.replace("{{" + k + "}}", str(v))
     return (
         prompt_text[: match.start()]
