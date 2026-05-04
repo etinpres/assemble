@@ -5,7 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II + Spike III + Spike IV + Spike V + Spike VI + Spike VII + Spike VIII
+## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II + Spike III + Spike IV + Spike V + Spike VI + Spike VII + Spike VIII + Spike IX
+
+### V4 Spike IX (2026-05-04, B-14 dogfood ship — shipper ★ bundle + Codex retro 3 amendments)
+
+**Fifth self-sufficient ★ bundle (orthogonal — ship stage); V4 stage-cover guarantee complete (plan + execute + debug + review + verify + ship). Local-only build/tag scope; publish/push opt-in hand-off.**
+
+### Added (Spike IX)
+
+- `bundled/shipper/` ★ bundle: 4 sub-agent prompts (preflight read-only git + version Edit-only + build streaming Popen + tag local-only) + 1 orchestrator helper (iter_revisit) + 2 templates (SHIP_REPORT 7-section + SHIP_REPORT_ABORT 4-section, 24/9 placeholders) + SKILL.md (143 lines, 12 sections including §Hand-off + §Build-command trust model) + SECURITY.md (T1-T9 threat table + 8 mitigations + Spike IX Codex retro F1 build-command-trust-model section)
+- `server/scope_parser.py` extended for `## Build` (≤500 chars, IGNORECASE) + `## Tag prefix` (≤10 chars, default "v") sections — 11 new tests + 7 fixtures, backwards-compat preserved
+- `server/version_helpers.py` NEW — `bump_semver` (patch/minor/major/prerelease auto-increment) + `compute_next` + `detect_version_format` (VERSION → package.json → pyproject-pep621/poetry priority) + `read_version` — 26 tests using tempfile + real files
+- `server/git_helpers.py` NEW — argv-list git probes (`shell=False`, T8 mitigation up-front): `git_status_porcelain` / `git_head_sha` / `git_branch` / `git_tag_exists` (returns bool) / `git_create_tag` (extended ref-format validation post-Codex F3) / `git_tag_sha` — 25 tests including argv-list grep gate
+- `server/harness.py`: ALLOWED_PROMPT_FILES +4 (4 shipper subagent prompts), `_BUNDLED_DIR_TO_STAGE` + `_BUNDLES` extended with shipper, ORCHESTRATOR_ONLY_PROMPTS +1 (shipper_iter_revisit.md)
+- `server/inventory.py`: `_BUNDLED_DIR_TO_STAGE` mirrored shipper:ship; carve-out comment reframed to universal-defense convention
+- `tests/contracts/contracts.json` +3 entries (spike-ix-shipper-allowlist / spike-ix-shipper-verdict-invariant / spike-ix-shipper-artifact-invariant) — phrases verified literal substrings of SKILL.md
+- `tests/unit/test_shipper_dispatch_path.py` NEW — 12 integration tests covering dispatch chain + preamble v3 sha (8d22a29c...089a9) + record_dispatch row count (4-rows-per-iter step-name convention `step1.iter1.preflight` etc.) + cross-bundle inventory sync
+- `docs/dogfood/spike-ix-codex-retro.md` — Phase E mandatory retro (3 amendments F1+F2+F3 applied, 2 deferred F4+F5)
+- `docs/dogfood/spike-ix-b14.md` — B-14 self-execute dogfood (11/12 AC PASS; AC8 row count PARTIAL → Spike X plan amend)
+
+### Fixed (Spike IX Phase E Codex retro)
+
+- F1 (Critical → documentation amendment): SECURITY.md "local-only" overstatement reframed; Step 3 build command trust model explicitly documented (matches `make`/`npm test`/CI runner trust paradigm)
+- F2 (Important): streaming cap kill condition changed from "both streams capped" to "either stream capped" — kill latency bounded to ≤500ms regardless of which stream floods (was: stalled until 300s timeout on stdout-only flood)
+- F3 (Important): `git_create_tag` validation extended to full git check-ref-format forbidden character class (`~^:?*[\\` + control chars + `.lock` suffix + leading/trailing/double slash + `@`/`@{` refspec syntax) — 12 new test cases
 
 ### V4 Spike VIII (2026-05-04, B-13 dogfood ship — verifier ★ bundle + F1 한글 backtick fix)
 
