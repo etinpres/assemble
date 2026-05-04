@@ -1,4 +1,5 @@
 # tests/unit/test_substitute_inputs_run_dir.py
+import pytest
 from server.harness import substitute_inputs
 
 
@@ -65,3 +66,21 @@ text.replace("{{RUN_DIR}}", run_dir)
     # Final step block intact (placeholders preserved for sub-agent)
     assert 'text.replace("{{RUN_ID}}", run_id)' in out
     assert 'text.replace("{{RUN_DIR}}", run_dir)' in out
+
+
+def test_unsafe_run_id_raises_when_run_dir_absent(monkeypatch, tmp_path):
+    """Auto-derive path triggers run_dir_path basename validation."""
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    with pytest.raises(ValueError, match="unsafe run_id"):
+        substitute_inputs(_PROMPT, {"RUN_ID": "../escape"})
+
+
+def test_unsafe_run_id_skipped_when_run_dir_explicit(monkeypatch, tmp_path):
+    """Explicit RUN_DIR bypasses validation — caller takes responsibility."""
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    out = substitute_inputs(_PROMPT, {
+        "RUN_ID": "../escape",  # would normally raise
+        "RUN_DIR": "/safe/manual",
+    })
+    assert "RUN_ID: `../escape`" in out
+    assert "RUN_DIR: `/safe/manual`" in out

@@ -24,6 +24,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from server.run_dir import run_dir_path
+
 
 _PREAMBLE_REL = ".claude/skills/assemble/bundled/_shared/harness-preamble.md"
 
@@ -221,6 +223,10 @@ def substitute_inputs(prompt_text: str, inputs: dict) -> str:
     Spike VII Track A: when `RUN_ID` is present and `RUN_DIR` is not,
     `RUN_DIR` is auto-derived as the absolute run dir path. Caller can
     pass `RUN_DIR` explicitly to override (e.g. dogfood / tests).
+    If `RUN_ID` is present and `RUN_DIR` is absent, `RUN_ID` must satisfy
+    `run_dir.run_dir_path` validation — empty / containing `/` `\\` /
+    starting with `.` raises `ValueError`. Pass an explicit `RUN_DIR` to
+    skip this validation.
 
     Returns the prompt text with substitutions applied.
     """
@@ -228,10 +234,6 @@ def substitute_inputs(prompt_text: str, inputs: dict) -> str:
         return prompt_text
     enriched = dict(inputs)
     if "RUN_ID" in enriched and "RUN_DIR" not in enriched:
-        # Local import: server.run_dir already imports from server, harness
-        # is imported by server/__init__.py — module-level import would
-        # risk a circular at import time.
-        from server.run_dir import run_dir_path
         enriched["RUN_DIR"] = str(run_dir_path(str(enriched["RUN_ID"])))
     match = _INPUTS_SECTION_RE.search(prompt_text)
     if match is None:
