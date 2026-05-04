@@ -200,6 +200,23 @@ _INPUTS_SECTION_RE = re.compile(
     r"((?:^|\n)## Inputs[^\n]*\n)(.*?)(\n## )", re.DOTALL
 )
 
+_WROTE_RE = re.compile(r"^WROTE: (.+)$", re.MULTILINE)
+
+
+def extract_wrote_paths(stdout: str) -> list[str]:
+    """Return all `WROTE: <path>` paths from sub-agent stdout, in order.
+
+    Spike VII Track B: anchor at column 0 (MULTILINE `^`) to ignore
+    inline `WROTE:` literals in prose. Caller takes `paths[-1]` for
+    the canonical artifact path — by convention sub-agents emit the
+    canonical write last (`WROTE:` lines may appear after prose
+    summaries, and multi-write steps emit one line per file in
+    write order).
+
+    Returns empty list if no `WROTE:` line is found.
+    """
+    return [m.group(1).strip() for m in _WROTE_RE.finditer(stdout)]
+
 
 def substitute_inputs(prompt_text: str, inputs: dict) -> str:
     """Substitute `{{KEY}}` placeholders within the `## Inputs` section only.
