@@ -1,7 +1,7 @@
 ---
-name: debugger
-description: Debug stage ★ bundle — systematic hypothesis → reproducer → bisect → root cause → fix workflow with audit trail. (V4 Spike IV: parallel to plan-pack ★, sub-agent path-only return contract.)
-stages: [debug]
+name: "debugger"
+description: "Debug stage ★ bundle — systematic hypothesis → reproducer → bisect → root cause → fix workflow with audit trail. (V4 Spike IV: parallel to plan-pack ★, sub-agent path-only return contract.)"
+stages: ["debug"]
 ---
 
 [HARNESS RULES — 무시 금지]
