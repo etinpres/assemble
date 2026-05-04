@@ -56,7 +56,7 @@ If any prompt is invoked outside this allowlist, harness raises and halts.
 
 ### Step 0 — orchestrator setup
 
-Main resolves `run_dir` via `server.run_dir.run_artifact_path(run_id, ".")`. Verifies SCOPE.md exists at `<run_dir>/SCOPE.md`. If missing, halts with the user-facing error "SCOPE.md not found in run_dir; create one first or use builder ★ Step 2".
+Main resolves `run_dir` via `server.run_dir.run_dir_path(run_id)`. Verifies SCOPE.md exists at `<run_dir>/SCOPE.md`. If missing, halts with the user-facing error "SCOPE.md not found in run_dir; create one first or use builder ★ Step 2".
 
 ### Step 1 — parse SCOPE.md
 
