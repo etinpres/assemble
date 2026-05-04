@@ -1,0 +1,22 @@
+# DESIGN — {{IDEA_OR_PRD_SUMMARY}}
+
+## Tone
+{{TONE}}
+
+## Color
+- Primary: {{COLOR_PRIMARY}}
+- Neutral: 회색 #525252 / #f5f5f5 (light) / #171717 (dark)
+
+## Typography
+{{TYPO}}, 본문 16px / 헤더 24-32px / 라벨 14px.
+
+## Components
+{{COMPONENTS}}
+
+## Layout
+- 모바일 우선, max-width 600px on desktop
+- Spacing scale: 4 / 8 / 16 / 24 / 32 / 48
+- Radius: 8 (carded), 4 (input)
+
+## Reference
+ANTI_PATTERNS.md를 항상 참조 — AI 슬롭 8 항목 deny list.

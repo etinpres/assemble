@@ -1,0 +1,14 @@
+# AI 슬롭 안티패턴 — {{TONE}} 디자인 deny list
+
+이 8개 패턴은 모든 화면에서 *사용 금지*:
+
+1. **gradient-text** (`background-clip: text`) — 모든 헤더가 무지개색
+2. **glass morphism / backdrop-blur** — 모든 카드가 투명 유리
+3. **보라색 일색** — primary가 보라/네온이면 즉시 의심
+4. **의미 없는 emoji 폭격** — 모든 라벨에 ✨/🚀/💎
+5. **Lorem ipsum / placeholder 잔재** — "Lorem ipsum" / "Sample text" / "placeholder@example.com"
+6. **TODO 미완성** — "TODO: 채워주세요" / "// add later"
+7. **광고 카피체** — "혁신적인" / "차세대" / "AI 기반"
+8. **회색 그라데이션 박스** — 콘텐츠 자리 채우기용 빈 회색 카드
+
+reviewer ★ 번들이 review 단계에서 이 표를 자동 검증할 수 있음 (현재는 수동 점검).

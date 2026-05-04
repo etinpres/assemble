@@ -101,6 +101,8 @@ ALLOWED_PROMPT_FILES = (
     "keeper_ledger_step4.md",
     # idea-shaper (Spike XI, A2 — standard bundle)
     "idea_shape_step1.md",
+    # design-pack (Spike XI, B2 — standard bundle)
+    "design_draft_step1.md",
 )
 
 
@@ -333,6 +335,9 @@ _PROMPT_TO_STAGE: dict[str, str] = {
     # STAGE_CATEGORY_PRIORITY so learnings recall now uses discover-tuned
     # category ranking instead of falling back to plan).
     "idea_shape_step1.md": "discover",
+    # design-pack → design (Spike XI B2; design stage already in
+    # STAGE_CATEGORY_PRIORITY since A2-fix2).
+    "design_draft_step1.md": "design",
 }
 
 
