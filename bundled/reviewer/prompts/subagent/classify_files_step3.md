@@ -4,12 +4,12 @@ You are dispatched as reviewer Step 3 sub-agent. Print `WROTE: <absolute path>` 
 ## Inputs
 
 - run_id: `{{RUN_ID}}`
-- parsed_scope_path: `runs/{{RUN_ID}}/parsed_scope.json`
-- diff_inventory_path: `runs/{{RUN_ID}}/diff_inventory.json`
+- parsed_scope_path: `{{RUN_DIR}}/parsed_scope.json`
+- diff_inventory_path: `{{RUN_DIR}}/diff_inventory.json`
 
 ## Goal
 
-For every file in `diff_inventory.json`, classify against allow + deny lists in `parsed_scope.json`. Write `runs/{{RUN_ID}}/classification.json`.
+For every file in `diff_inventory.json`, classify against allow + deny lists in `parsed_scope.json`. Write `{{RUN_DIR}}/classification.json`.
 
 ## Classification rules
 

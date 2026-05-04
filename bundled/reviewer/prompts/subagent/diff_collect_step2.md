@@ -9,7 +9,7 @@ You are dispatched as reviewer Step 2 sub-agent. Print `WROTE: <absolute path>` 
 
 ## Goal
 
-Run `git diff` for the given range, write summary JSON to `runs/{{RUN_ID}}/diff_inventory.json` and the raw diff to `runs/{{RUN_ID}}/raw.diff`.
+Run `git diff` for the given range, write summary JSON to `{{RUN_DIR}}/diff_inventory.json` and the raw diff to `{{RUN_DIR}}/raw.diff`.
 
 ## Steps
 
@@ -17,7 +17,7 @@ Run `git diff` for the given range, write summary JSON to `runs/{{RUN_ID}}/diff_
 2. Resolve `{{DIFF_RANGE}}` → `range`. If empty/falsy → `range = "HEAD"`.
 3. Run `git diff --numstat {range}` → parse into `[{"path": ..., "added": N, "removed": M}, ...]`.
 4. Run `git diff --name-status {range}` → augment each entry with `status` (one of `A`, `M`, `D`, `R...`, etc.).
-5. Run `git diff {range}` → save full output to `runs/{{RUN_ID}}/raw.diff`.
+5. Run `git diff {range}` → save full output to `{{RUN_DIR}}/raw.diff`.
 6. Compute totals: `total_files`, `total_added`, `total_removed`.
 7. Write JSON:
 
@@ -29,7 +29,7 @@ Run `git diff` for the given range, write summary JSON to `runs/{{RUN_ID}}/diff_
     {"path": "server/run_dir.py", "added": 12, "removed": 0, "status": "M"}
   ],
   "totals": {"files": 1, "added": 12, "removed": 0},
-  "raw_diff_path": "runs/{{RUN_ID}}/raw.diff",
+  "raw_diff_path": "{{RUN_DIR}}/raw.diff",
   "errors": []
 }
 ```

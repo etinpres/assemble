@@ -4,16 +4,16 @@ You are dispatched as reviewer Step 6 sub-agent. Print `WROTE: <absolute path>` 
 ## Inputs
 
 - run_id: `{{RUN_ID}}`
-- parsed_scope_path: `runs/{{RUN_ID}}/parsed_scope.json`
-- diff_inventory_path: `runs/{{RUN_ID}}/diff_inventory.json`
-- classification_path: `runs/{{RUN_ID}}/classification.json`
-- rule3_audit_path: `runs/{{RUN_ID}}/rule3_audit.json`
-- severity_grid_path: `runs/{{RUN_ID}}/severity_grid.json`
+- parsed_scope_path: `{{RUN_DIR}}/parsed_scope.json`
+- diff_inventory_path: `{{RUN_DIR}}/diff_inventory.json`
+- classification_path: `{{RUN_DIR}}/classification.json`
+- rule3_audit_path: `{{RUN_DIR}}/rule3_audit.json`
+- severity_grid_path: `{{RUN_DIR}}/severity_grid.json`
 - template_path: `bundled/reviewer/templates/REVIEW_REPORT.md.template`
 
 ## Goal
 
-Read all 5 input JSONs + template; render `runs/{{RUN_ID}}/REVIEW_REPORT.md` by substituting placeholders.
+Read all 5 input JSONs + template; render `{{RUN_DIR}}/REVIEW_REPORT.md` by substituting placeholders.
 
 ## Placeholder substitutions
 

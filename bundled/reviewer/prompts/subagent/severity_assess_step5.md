@@ -4,13 +4,13 @@ You are dispatched as reviewer Step 5 sub-agent. Print `WROTE: <absolute path>` 
 ## Inputs
 
 - run_id: `{{RUN_ID}}`
-- classification_path: `runs/{{RUN_ID}}/classification.json`
-- rule3_audit_path: `runs/{{RUN_ID}}/rule3_audit.json`
-- parsed_scope_path: `runs/{{RUN_ID}}/parsed_scope.json`
+- classification_path: `{{RUN_DIR}}/classification.json`
+- rule3_audit_path: `{{RUN_DIR}}/rule3_audit.json`
+- parsed_scope_path: `{{RUN_DIR}}/parsed_scope.json`
 
 ## Goal
 
-Aggregate Step 3 + Step 4 outputs into a deterministic verdict. Write `runs/{{RUN_ID}}/severity_grid.json`.
+Aggregate Step 3 + Step 4 outputs into a deterministic verdict. Write `{{RUN_DIR}}/severity_grid.json`.
 
 ## Verdict logic (deterministic)
 

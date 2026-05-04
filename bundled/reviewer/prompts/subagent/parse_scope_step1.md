@@ -4,11 +4,11 @@ You are dispatched as reviewer Step 1 sub-agent. Print `WROTE: <absolute path>` 
 ## Inputs
 
 - run_id: `{{RUN_ID}}`
-- scope_path: `runs/{{RUN_ID}}/SCOPE.md`
+- scope_path: `{{RUN_DIR}}/SCOPE.md`
 
 ## Goal
 
-Read `runs/{{RUN_ID}}/SCOPE.md`, parse its three structured sections, and write the result to `runs/{{RUN_ID}}/parsed_scope.json`.
+Read `{{RUN_DIR}}/SCOPE.md`, parse its three structured sections, and write the result to `{{RUN_DIR}}/parsed_scope.json`.
 
 ## SCOPE.md expected layout
 
@@ -34,7 +34,7 @@ Read `runs/{{RUN_ID}}/SCOPE.md`, parse its three structured sections, and write 
 
 ## Output JSON shape
 
-Write `runs/{{RUN_ID}}/parsed_scope.json` with this structure:
+Write `{{RUN_DIR}}/parsed_scope.json` with this structure:
 
 ```json
 {

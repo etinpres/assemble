@@ -8,13 +8,13 @@ You are dispatched as reviewer Step 4 sub-agent. Print `WROTE: <absolute path>` 
 ## Inputs
 
 - run_id: `{{RUN_ID}}`
-- raw_diff_path: `runs/{{RUN_ID}}/raw.diff`
-- classification_path: `runs/{{RUN_ID}}/classification.json`
-- parsed_scope_path: `runs/{{RUN_ID}}/parsed_scope.json`
+- raw_diff_path: `{{RUN_DIR}}/raw.diff`
+- classification_path: `{{RUN_DIR}}/classification.json`
+- parsed_scope_path: `{{RUN_DIR}}/parsed_scope.json`
 
 ## Goal
 
-For every file in `classification.json`, audit the actual hunks in `raw.diff` for Rule 3 conformance. Write `runs/{{RUN_ID}}/rule3_audit.json`.
+For every file in `classification.json`, audit the actual hunks in `raw.diff` for Rule 3 conformance. Write `{{RUN_DIR}}/rule3_audit.json`.
 
 ## Per-file verdict
 
