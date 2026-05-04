@@ -154,6 +154,27 @@
       "spec_path": "bundled/shipper/SKILL.md",
       "section": "## Artifacts",
       "tag": "Spike IX — shipper SHIP_REPORT.md 7-section happy-path / 4-section abort schema lock"
+    },
+    {
+      "id": "spike-x-keeper-allowlist",
+      "phrase": "- `keeper_audit_step1.md` — Bash GRANTED for read-only git probes\n- `keeper_extract_step2.md` — Bash GRANTED for canned `python3 .../extract_rules.py <run_dir>` invocation\n- `keeper_summarize_step3.md` — NO Bash\n- `keeper_ledger_step4.md` — Bash GRANTED for canned `python3 .../ledger_update.py <run_dir>` invocation",
+      "spec_path": "bundled/keeper/SKILL.md",
+      "section": "## CRITICAL — orchestrator-only enforcement",
+      "tag": "Spike X — keeper allowlist invariant (4 sub-agent prompts)"
+    },
+    {
+      "id": "spike-x-keeper-verdict-invariant",
+      "phrase": "verdict = \"audit-clean\" if (\n    audit_inventory.verdict == \"audit-ready\"\n    AND total_learnings_emitted == 0\n) else \"audit-flagged\" if (\n    audit_inventory.verdict == \"audit-ready\"\n    AND total_learnings_emitted >= 1\n) else \"audit-skipped\"",
+      "spec_path": "bundled/keeper/SKILL.md",
+      "section": "## Verdict logic (deterministic — 3 outcomes)",
+      "tag": "Spike X — keeper 3-outcome verdict invariant (audit-clean / audit-flagged / audit-skipped)"
+    },
+    {
+      "id": "spike-x-keeper-artifact-invariant",
+      "phrase": "- `<run_dir>/audit_inventory.json` — Step 1 output\n- `<run_dir>/learning_candidates.json` — Step 2 output (deterministic rule extractor)\n- `<run_dir>/learnings_to_emit.json` — Step 3 output (LLM-summarized)\n- `<run_dir>/KEEPER_REPORT.md` — Step 4 output (7 sections happy / 4 abort)",
+      "spec_path": "bundled/keeper/SKILL.md",
+      "section": "## Artifacts",
+      "tag": "Spike X — keeper artifact schema invariant (KEEPER_REPORT.md sections + 3 audit JSONs)"
     }
   ]
 }

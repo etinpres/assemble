@@ -117,6 +117,7 @@ _BUNDLED_DIR_TO_STAGE: dict[str, str] = {
     "reviewer":  "review",
     "verifier":  "verify",
     "shipper":   "ship",
+    "keeper":    "meta",
 }
 
 
