@@ -63,9 +63,24 @@ def run_dir_path(run_id: str) -> Path:
     (e.g. `{{RUN_DIR}}` token substitution). Validation delegates to
     `_validate_basename` so the safety contract stays literally identical to
     `run_artifact_path` even if rules evolve.
+
+    Spike VII follow-up (Codex retro Critical 1): also guard against
+    symlink escape. Basename validation only protects against path-
+    traversal in `run_id` itself; if `runs/<run_id>` already exists and
+    is a symlink pointing outside the canonical runs root, sub-agents
+    receiving `{{RUN_DIR}}` would write arbitrary locations. Mirrors
+    `write_run_artifact`'s defense-in-depth check (line ~63).
     """
     _validate_basename("run_id", run_id)
-    return _runs_dir() / run_id
+    target = _runs_dir() / run_id
+    if target.exists():
+        runs_root = _runs_dir().resolve()
+        resolved = target.resolve()
+        if not str(resolved).startswith(str(runs_root) + os.sep):
+            raise ValueError(
+                f"run_dir target escapes runs root: {resolved}"
+            )
+    return target
 
 
 def write_run_artifact(run_id: str, filename: str, content: str) -> Path:

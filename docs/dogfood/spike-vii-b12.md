@@ -24,7 +24,7 @@
 | 10a | Self-execute wall ≤ 300s | n/a | this run was real-dispatch |
 | 10b | Real-dispatch wall ≤ 600s | PASS | ~230s (well under budget) |
 | 11 | Zero `runs/{{RUN_ID}}/` patterns survive in prompts | PASS | regression test 2/2 PASS |
-| 12 | `{{RUN_DIR}}` placeholder substituted in dispatched prompts | PASS | Inputs section has absolute `/Users/...` path, no `{{RUN_DIR}}` literal |
+| 12 | `{{RUN_DIR}}` placeholder substituted in dispatched prompts (Inputs section only — body placeholders intentionally preserved for sub-agent resolution) | PASS | Inputs section has absolute `/Users/...` path, no `{{RUN_DIR}}` literal in Inputs; body `{{RUN_DIR}}/X` references preserved per `test_body_run_dir_placeholder_left_for_subagent` |
 
 **12/12 PASS** — Spike VII ships.
 

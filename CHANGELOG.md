@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Track A — `{{RUN_DIR}}` absolute-path token (CRITICAL)**:
   - `server.run_dir.run_dir_path(run_id) -> Path` — new sibling of `run_artifact_path`; returns absolute run dir without creating it. Shares `_validate_basename` helper (extracted from `_validate_components`) so the safety contract stays identical even if validation rules evolve.
   - `server.harness.substitute_inputs` auto-derives `RUN_DIR` from `RUN_ID` when caller omits it — zero orchestrator call-site changes. Caller may pass `RUN_DIR` explicitly to override (dogfood / tests).
-  - 32 prompt occurrences across 4 ★ bundles migrated `runs/{{RUN_ID}}/X` → `{{RUN_DIR}}/X`: reviewer (23 in 6 files), builder (5 in 3 files), debugger (5 in 2 files), plan-pack (already clean — uses `write_run_artifact` directly).
+  - 32 prompt occurrences across 4 ★ bundles migrated `runs/{{RUN_ID}}/X` → `{{RUN_DIR}}/X`: reviewer (23 in 6 files), builder (4 in 3 files), debugger (5 in 2 files), plan-pack (already clean — uses `write_run_artifact` directly).
   - Reviewer SKILL.md doc fix: line 59 `run_artifact_path(run_id, ".")` (which would have raised `ValueError`) → `run_dir_path(run_id)`.
   - Regression test `tests/unit/test_run_dir_token_invariant.py` forbids `runs/{{RUN_ID}}/` in any prompt; contracts.json entry `spike-vii-rundir-invariant` pins it. Commits `28d10cc` (A1) + `65a06dd` (A1 refactor) + `3ffbf96` + `b5e2b55` (B1 + import hoist + RUN_ID validation contract test) + `4af2687` (C1 reviewer) + `bf2a984` (C2 builder) + `22874f5` (C3 debugger) + `3dcb15e` (D1) + `a68904c` (F1).
 

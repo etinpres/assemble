@@ -214,6 +214,16 @@ def extract_wrote_paths(stdout: str) -> list[str]:
     write order).
 
     Returns empty list if no `WROTE:` line is found.
+
+    Wiring status (Spike VII follow-up — Codex retro Important 3):
+    this is a forward-utility for orchestrator code. The Spike VII
+    B-12 dogfood inspected sub-agent output paths directly via
+    filesystem checks rather than parsing stdout, so no production
+    orchestrator currently calls this helper. Bundled SKILL.md prompts
+    document the parser contract (e.g. reviewer prompts cite this
+    helper by name) so when an orchestrator wires it up — likely
+    Spike VIII verifier ★ or shipper ★ — the contract is already
+    pinned. Until then, the only callers are tests.
     """
     return [m.group(1).strip() for m in _WROTE_RE.finditer(stdout)]
 
@@ -247,13 +257,13 @@ def substitute_inputs(prompt_text: str, inputs: dict) -> str:
 
     Body-placeholder contract (intentional, do not "fix"): only the
     Inputs section is substituted. Body references like
-    `Read \`{{RUN_DIR}}/SCOPE.md\`` outside the Inputs section are
+    "Read {{RUN_DIR}}/SCOPE.md" outside the Inputs section are
     preserved verbatim. Sub-agents resolve them by reading the Inputs
     section. This is required so save-block patterns
-    (`text.replace("{{RUN_DIR}}", run_dir)` inside `## Final step`
+    (text.replace("{{RUN_DIR}}", run_dir) inside ## Final step
     python blocks) survive substitution intact. See
-    `tests/unit/test_substitute_inputs_run_dir.py
-    ::test_body_run_dir_placeholder_left_for_subagent` for the pinned
+    tests/unit/test_substitute_inputs_run_dir.py
+    ::test_body_run_dir_placeholder_left_for_subagent for the pinned
     contract.
 
     Returns the prompt text with substitutions applied.
@@ -263,6 +273,19 @@ def substitute_inputs(prompt_text: str, inputs: dict) -> str:
     enriched = dict(inputs)
     if "RUN_ID" in enriched and "RUN_DIR" not in enriched:
         enriched["RUN_DIR"] = str(run_dir_path(str(enriched["RUN_ID"])))
+    elif "RUN_DIR" in enriched:
+        # Spike VII follow-up (Codex retro Important 4): explicit RUN_DIR
+        # bypasses run_dir_path validation by design (override is for
+        # dogfood / tests). Add minimal sanity floor: must be absolute
+        # and free of `..` traversal — guards against the worst-case
+        # untrusted-input scenario without forcing the canonical
+        # channels-root containment that would defeat the override.
+        rd = str(enriched["RUN_DIR"])
+        if not rd.startswith("/") or ".." in rd.split("/"):
+            raise ValueError(
+                f"unsafe explicit RUN_DIR: must be absolute path "
+                f"with no '..' segments, got {rd!r}"
+            )
     match = _INPUTS_SECTION_RE.search(prompt_text)
     if match is None:
         return prompt_text

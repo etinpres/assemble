@@ -122,6 +122,20 @@ def test_inputs_after_preamble_still_matched(monkeypatch, tmp_path):
 # Inputs section. Pin that intent so a future "fix the leftover placeholders"
 # refactor doesn't break the design.
 
+def test_explicit_run_dir_must_be_absolute(monkeypatch, tmp_path):
+    """Spike VII fu: explicit RUN_DIR override sanity floor."""
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    with pytest.raises(ValueError, match="unsafe explicit RUN_DIR"):
+        substitute_inputs(_PROMPT, {"RUN_DIR": "relative/dir"})
+
+
+def test_explicit_run_dir_rejects_dotdot_segment(monkeypatch, tmp_path):
+    """Spike VII fu: explicit RUN_DIR override rejects path traversal."""
+    monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
+    with pytest.raises(ValueError, match="unsafe explicit RUN_DIR"):
+        substitute_inputs(_PROMPT, {"RUN_DIR": "/safe/../etc"})
+
+
 def test_body_run_dir_placeholder_left_for_subagent(monkeypatch, tmp_path):
     """Body references to {{RUN_DIR}} outside ## Inputs are NOT substituted.
 
