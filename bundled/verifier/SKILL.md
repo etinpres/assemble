@@ -6,12 +6,122 @@ stages: ["verify"]
 
 # verifier ★ — completion criterion runner
 
-## Status
+## When to invoke
 
-This SKILL.md body is **scaffolding only** (Spike VIII A1). Full When-to-invoke / Inputs / Artifacts / Verdict logic / CRITICAL orchestrator-only / Step-by-step / Iteration audit invariant / Sub-agent matrix / Identity guards lands in Task A7.
+Use after `parsed_scope.json` exists in the run_dir (built by reviewer ★ Step 1 or builder ★ Step 2 or hand-authored after running `server.scope_parser.parse_scope_md`) when an independent, deterministic verdict on the SCOPE author's completion criterion is needed. verifier ★ is the orthogonal sibling of reviewer ★ — same `parsed_scope.json` input contract, but executes the bash one-liner and emits exit-code-driven pass/fail rather than diff/scope auditing.
 
-Sub-agent prompts (Step 1 extract, Step 2 execute, Step 3 classify, Step 4 report) land in A2/A3/A5/A6. Security model lands in A4 (`SECURITY.md`). Contracts entries + Codex retro land in A8.
+## Inputs
 
-> See `SECURITY.md` for threat model + mitigation surface (Step 2 Bash scope, output cap caveats).
+- `run_id` — resolves run_dir to `~/.claude/channels/assemble/runs/<run_id>/`.
+- `<run_dir>/parsed_scope.json` — must exist with non-empty `completion` field.
+- (No `<base>..<tip>` git range — verifier is purely a completion-criterion runner.)
 
-DO NOT dispatch this bundle yet — sub-agent prompts are missing until A2~A6.
+## Artifacts
+
+run_dir = `~/.claude/channels/assemble/runs/<rid>/`. One primary artifact:
+
+- `VERIFY_REPORT.md` — 7 canonical sections (Summary, Completion command, Execution result, Stdout sample, Stderr sample, Verdict reasoning, Recommendations) with verdict line in Section 1.
+
+Plus 3 intermediate JSONs for audit trail: `extracted_completion.json`, `execution_result.json`, `verify_result.json`.
+
+## Verdict logic (deterministic)
+
+```python
+verdict = "pass" if (
+    execution_result.exit_code == 0
+    AND not execution_result.skipped
+    AND not execution_result.timed_out
+) else "fail"
+```
+
+Reason text:
+- `pass` → "completion command exited 0"
+- `skipped` → "skipped: <comma-joined skip_reasons>"
+- `timed_out` → "timed out (30s budget)"
+- `exit_code != 0` → "exited <N>"
+
+Truncated stdout/stderr does NOT auto-fail — `truncated: true` is metadata for VERIFY_REPORT, not a verdict input.
+
+## CRITICAL — orchestrator-only enforcement
+
+Main Claude does NOT read `parsed_scope.json` content, `execution_result.json` content, or call Bash directly. Main only:
+- Resolves run_dir from `run_id`.
+- Verifies `parsed_scope.json` exists + has non-empty `completion` field via `server.run_dir.read_run_artifact` if needed (sanity check ONLY — full validation lives in Step 1).
+- Dispatches sub-agents in sequence (Step 1 → Step 2 → Step 3 → Step 4).
+- Records each dispatch via `server.harness.record_dispatch` (writes to `dispatches.jsonl`).
+
+All reads, parsing, execution, classification, and report rendering happen in sub-agents. The 4 sub-agent prompts are exactly:
+
+- `verifier_extract_step1.md` — parsed_scope.json → extracted_completion.json
+- `verifier_execute_step2.md` — bash execution + capture (Bash tool GRANTED for this step ONLY)
+- `verifier_classify_step3.md` — execution_result.json → verify_result.json (deterministic verdict)
+- `verifier_report_step4.md` — VERIFY_REPORT.md render from 3 prior JSONs + template
+
+If any prompt is invoked outside this allowlist, harness raises and halts. See `server.harness.ALLOWED_PROMPT_FILES`.
+
+## Step-by-step workflow
+
+### Step 0 — orchestrator setup
+
+Main resolves `run_dir` via `server.run_dir.run_dir_path(run_id)`. Verifies `parsed_scope.json` exists at `<run_dir>/parsed_scope.json`. If missing, halts with the user-facing error "parsed_scope.json not found in run_dir; run reviewer ★ Step 1 first or hand-author after `server.scope_parser.parse_scope_md`".
+
+### Step 1 — extract completion bash
+
+Dispatch `verifier_extract_step1.md` with `RUN_ID`. Sub-agent reads parsed_scope.json, validates completion field (non-empty after strip, len ≤ 500, single line, plus input-robustness errors for missing/malformed JSON / non-string completion), writes `extracted_completion.json`.
+
+### Step 2 — execute completion bash
+
+Dispatch `verifier_execute_step2.md` with `RUN_ID`. **Bash tool access GRANTED for this step ONLY** (Steps 1, 3, 4 do NOT receive Bash). Sub-agent:
+- skips execution if `extracted_completion.json["errors"]` is non-empty (records `skipped: true` + `skip_reasons` array + `skip_reason` scalar)
+- otherwise runs `subprocess.run(["bash", "-c", completion], timeout=30, capture_output=True, text=True)` with 100KB stdout/stderr cap each
+- writes `execution_result.json` (skipped/skip_reasons/skip_reason/exit_code/stdout/stderr/duration_ms/timed_out/truncated)
+
+See `SECURITY.md` for the full threat model + mitigation surface.
+
+### Step 3 — classify execution result
+
+Dispatch `verifier_classify_step3.md` with `RUN_ID`. Sub-agent reads execution_result.json, applies the deterministic verdict rule above (NO LLM judgment), writes `verify_result.json` (verdict/reason/exit_code/duration_ms/truncated/timed_out/skipped).
+
+### Step 4 — render VERIFY_REPORT.md
+
+Dispatch `verifier_report_step4.md` with `RUN_ID`. Sub-agent reads all 3 prior JSONs + the template at `bundled/verifier/templates/VERIFY_REPORT.md.template`, substitutes 14 placeholders via `str.replace`, writes `VERIFY_REPORT.md` with all 7 canonical sections.
+
+### Step 5 — iteration round-trip (optional)
+
+If user revises `parsed_scope.json` (e.g. amends completion command) and asks for re-verification, load `verifier_iter_revisit.md` (orchestrator helper) and re-run Steps 2~4 (Step 1 only re-runs if parsed_scope changed). Each iteration appends `## Iteration N` to VERIFY_REPORT.md without overwriting prior trail.
+
+## Iteration audit invariant
+
+Every iteration produces exactly **4** rows in `dispatches.jsonl` with step names `step1.iter{N}.extract`, `step2.iter{N}.execute`, `step3.iter{N}.classify`, `step4.iter{N}.report`. Step 1 is skipped on subsequent iterations unless parsed_scope.json changed; in that case the row count is 4, otherwise 3.
+
+## Sub-agent matrix
+
+See `## CRITICAL — orchestrator-only enforcement` above for the canonical 4-file allowlist. Roles use `general-purpose` as the default sub-agent type for all 4 steps.
+
+| Step | Prompt file | Sub-agent type | Tools granted |
+|---|---|---|---|
+| 1 | `verifier_extract_step1.md` | `general-purpose` | Read, Write |
+| 2 | `verifier_execute_step2.md` | `general-purpose` | Read, Write, **Bash** |
+| 3 | `verifier_classify_step3.md` | `general-purpose` | Read, Write |
+| 4 | `verifier_report_step4.md` | `general-purpose` | Read, Write |
+
+Iteration helper `verifier_iter_revisit.md` is loaded by main directly (NOT in subagent allowlist).
+
+## Security
+
+See `SECURITY.md` for threat model + mitigation surface. Key mitigations:
+- Length cap 500 (Step 1)
+- Timeout 30s (Step 2)
+- Output cap 100KB stdout/stderr each (Step 2)
+- Bash scoped to Step 2 only
+- Skip-if-errors (Step 2 honors Step 1's error labels)
+
+The `Bash tool access GRANTED` substring marker in `verifier_execute_step2.md` is the canonical grep target for security audits.
+
+## Identity guards
+
+- ✅ orchestrator-only: main Claude does NOT read parsed_scope content, execution result content, or call Bash directly during the dispatch chain.
+- ✅ harness preamble v3 prepended on every dispatch (canonical sha `858e9ff1cdc05ca73bb4009aab3acfc841169b30873d2fb00f2dfd546b86e159`).
+- ✅ `record_dispatch` mandatory — minimum 4 rows in dispatches.jsonl per run.
+- ✅ Bash tool scoped to Step 2 sub-agent ONLY (allowlist + harness preamble v3).
+- ✅ Deterministic verdict — no LLM-judged pass/fail.
