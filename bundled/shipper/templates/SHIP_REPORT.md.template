@@ -1,0 +1,79 @@
+<!--
+PLACEHOLDERS (substituted via str.replace by shipper_tag_step4.md):
+  {{RUN_ID}}, {{VERDICT}}, {{TAG_NAME}}, {{TAG_SHA}}, {{TAG_SHA_SHORT}},
+  {{NEW_VERSION}}, {{OLD_VERSION}}, {{TIMESTAMP}}, {{CLEAN_TREE}},
+  {{BRANCH}}, {{HEAD_SHA}}, {{VERIFY_VERDICT}}, {{RELEASE_KIND}},
+  {{VERSION_FORMAT}}, {{FILES_CHANGED}}, {{CHANGELOG_STATUS}},
+  {{BUILD_COMMAND}}, {{BUILD_EXIT_CODE}}, {{BUILD_DURATION_MS}},
+  {{BUILD_TRUNCATED}}, {{BUILD_TIMED_OUT}}, {{TAG_MESSAGE}},
+  {{VERDICT_REASON}}, {{HANDOFF_COMMANDS}}
+-->
+
+# SHIP REPORT — {{RUN_ID}}
+
+**Verdict**: {{VERDICT}}
+**Tag**: `{{TAG_NAME}}` ({{TAG_SHA_SHORT}})
+**New version**: `{{NEW_VERSION}}`
+**Generated**: {{TIMESTAMP}}
+
+## Summary
+
+Run `{{RUN_ID}}` produced verdict **{{VERDICT}}** at {{TIMESTAMP}}.
+Tag `{{TAG_NAME}}` ({{TAG_SHA_SHORT}}) was created locally for version `{{NEW_VERSION}}`
+(previously `{{OLD_VERSION}}`). No remote push performed — see §Hand-off for next steps.
+
+## Pre-flight
+
+| Field | Value |
+|---|---|
+| Clean tree | `{{CLEAN_TREE}}` |
+| Branch | `{{BRANCH}}` |
+| Head SHA | `{{HEAD_SHA}}` |
+| Verify verdict | `{{VERIFY_VERDICT}}` |
+
+(captured from `preflight.json`)
+
+## Version bump
+
+| Field | Value |
+|---|---|
+| Old version | `{{OLD_VERSION}}` |
+| New version | `{{NEW_VERSION}}` |
+| Release kind | `{{RELEASE_KIND}}` |
+| Version format | `{{VERSION_FORMAT}}` |
+| Files changed | {{FILES_CHANGED}} |
+| Changelog status | `{{CHANGELOG_STATUS}}` |
+
+(captured from `version_bump.json`)
+
+## Build artifact
+
+| Field | Value |
+|---|---|
+| Command | `{{BUILD_COMMAND}}` |
+| Exit code | `{{BUILD_EXIT_CODE}}` |
+| Duration | `{{BUILD_DURATION_MS}}ms` |
+| Output truncated | `{{BUILD_TRUNCATED}}` |
+| Timed out | `{{BUILD_TIMED_OUT}}` |
+
+(captured from `build_result.json`; full stdout/stderr in same file)
+
+## Tag
+
+| Field | Value |
+|---|---|
+| Name | `{{TAG_NAME}}` |
+| SHA | `{{TAG_SHA}}` |
+| Message | {{TAG_MESSAGE}} |
+
+(captured from `tag_result.json`; created locally — not pushed)
+
+## Verdict reasoning
+
+{{VERDICT_REASON}}
+
+## Hand-off
+
+The following next-step commands are **user-owned** — shipper does not run them:
+
+{{HANDOFF_COMMANDS}}

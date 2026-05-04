@@ -1,0 +1,45 @@
+<!--
+PLACEHOLDERS (substituted via str.replace by shipper_tag_step4.md, abort path):
+  {{RUN_ID}}, {{VERDICT}}, {{TIMESTAMP}}, {{CLEAN_TREE}},
+  {{BRANCH}}, {{HEAD_SHA}}, {{VERIFY_VERDICT}}, {{VERDICT_REASON}},
+  {{HANDOFF_COMMANDS}}
+
+ABORT VARIANT: rendered when Step 1 pre-flight verdict=fail.
+Sections 3 (Version bump), 4 (Build artifact), 5 (Tag) are omitted —
+no version bump, no build, no tag was created. See admonition below §Pre-flight.
+-->
+
+# SHIP REPORT (ABORT) — {{RUN_ID}}
+
+**Verdict**: {{VERDICT}}
+**Generated**: {{TIMESTAMP}}
+
+## Summary
+
+Run `{{RUN_ID}}` aborted at pre-flight (verdict **{{VERDICT}}**) at {{TIMESTAMP}}.
+No version bump applied. No build executed. No tag created.
+See §Verdict reasoning for the concrete signal that triggered abort, and §Hand-off
+for the recommended fix-then-re-run path.
+
+## Pre-flight
+
+| Field | Value |
+|---|---|
+| Clean tree | `{{CLEAN_TREE}}` |
+| Branch | `{{BRANCH}}` |
+| Head SHA | `{{HEAD_SHA}}` |
+| Verify verdict | `{{VERIFY_VERDICT}}` |
+
+(captured from `preflight.json`)
+
+> ⚠️ Sections 3–5 (Version bump / Build artifact / Tag) skipped — pre-flight failed.
+
+## Verdict reasoning
+
+{{VERDICT_REASON}}
+
+## Hand-off
+
+Pre-flight failed — fix the underlying issue, then re-run shipper. Recommended next steps:
+
+{{HANDOFF_COMMANDS}}
