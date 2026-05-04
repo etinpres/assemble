@@ -87,7 +87,7 @@
     },
     {
       "id": "spike-vi-reviewer-allowlist",
-      "phrase": "`parse_scope_step1.md`, `diff_collect_step2.md`,\n  `classify_files_step3.md`, `rule3_check_step4.md`,\n  `severity_assess_step5.md`, `report_step6.md`",
+      "phrase": "`parse_scope_step1.md`, `diff_collect_step2.md`,\n  `classify_files_step3.md`, `rule3_check_step4.md`,\n  `severity_assess_step5.md`, `reviewer_report_step6.md`",
       "spec_path": "bundled/reviewer/SKILL.md",
       "section": "## CRITICAL — orchestrator-only enforcement",
       "tag": "Spike VI — reviewer 6-file subagent allowlist contract"

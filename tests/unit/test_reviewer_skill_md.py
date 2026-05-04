@@ -30,7 +30,7 @@ def test_skill_md_lists_all_six_subagent_prompts():
         "classify_files_step3.md",
         "rule3_check_step4.md",
         "severity_assess_step5.md",
-        "report_step6.md",
+        "reviewer_report_step6.md",
     ]
     missing = [p for p in prompts if p not in text]
     assert not missing, f"reviewer SKILL.md missing prompt names: {missing}"

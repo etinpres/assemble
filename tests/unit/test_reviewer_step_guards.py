@@ -35,6 +35,6 @@ def test_severity_writes_severity_grid_json_and_verdict_logic():
 
 
 def test_report_writes_review_report_md():
-    text = (SUBAGENT / "report_step6.md").read_text()
+    text = (SUBAGENT / "reviewer_report_step6.md").read_text()
     assert "REVIEW_REPORT.md" in text
     assert "{{VERDICT}}" in text

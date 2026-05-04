@@ -48,7 +48,7 @@ All reads, parsing, and writes happen in sub-agents. The 6 sub-agent prompts are
 
 - `parse_scope_step1.md`, `diff_collect_step2.md`,
   `classify_files_step3.md`, `rule3_check_step4.md`,
-  `severity_assess_step5.md`, `report_step6.md`
+  `severity_assess_step5.md`, `reviewer_report_step6.md`
 
 If any prompt is invoked outside this allowlist, harness raises and halts.
 
@@ -82,7 +82,7 @@ Dispatch `severity_assess_step5.md`. Sub-agent reads classification.json + rule3
 
 ### Step 6 — write REVIEW_REPORT.md
 
-Dispatch `report_step6.md`. Sub-agent reads all 5 prior JSONs + the template, writes `REVIEW_REPORT.md`.
+Dispatch `reviewer_report_step6.md`. Sub-agent reads all 5 prior JSONs + the template, writes `REVIEW_REPORT.md`.
 
 ### Step 7 — iteration round-trip (optional)
 
