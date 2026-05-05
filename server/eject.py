@@ -136,15 +136,19 @@ def validate_dest_name(name: str) -> str:
     """
     if name in _RESERVED_NAMES:
         raise EjectError(
-            f"reserved destination name not allowed: {name!r}"
+            f"reserved destination name not allowed: {name!r} "
+            f"(예약어 — 'assemble' / '_shared' 사용 불가)"
         )
     if "/" in name or "\\" in name or ".." in name:
         raise EjectError(
-            f"destination name contains path separator or traversal: {name!r}"
+            f"destination name contains path separator or traversal: {name!r} "
+            f"(경로 구분자 '/' '\\' 또는 '..' 사용 불가)"
         )
     if not _NAME_RE.match(name):
         raise EjectError(
-            f"destination name does not match {_NAME_PATTERN}: {name!r}"
+            f"destination name does not match {_NAME_PATTERN}: {name!r} "
+            f"(영문 소문자로 시작, 이후 [a-z0-9_-] 만 허용, 길이 ≤ 64. "
+            f"한글·대문자·공백 불가)"
         )
     return name
 
@@ -183,6 +187,16 @@ def dry_run_plan(
     sums each file's ``stat().st_size``. Warnings include a notice when
     the destination already contains a ``SKILL.md`` (overwrite would clobber
     the user's prior edits unless they used the backup branch).
+
+    The ``except OSError`` swallow on the size accumulator below is
+    defensive code for genuine race conditions (file unlinked or
+    permissions flipped *between* ``is_file()`` and ``stat()``). It is
+    NOT reachable via ``chmod``-based attacks because ``pathlib``'s
+    ``is_file()`` propagates ``EACCES`` (pathlib's ``_IGNORED_ERROS`` set
+    is ``{ENOENT, ENOTDIR, EBADF, ELOOP}`` on CPython 3.10/3.11/3.12 — no
+    ``EACCES``). The race-window swallow is exercised deterministically
+    by ``test_dry_run_plan_swallows_stat_oserror_in_race_condition`` via
+    a ``Path.stat`` monkeypatch.
     """
     src = resolve_source(bundle_name, home=home)
     dest = resolve_dest(dest_name, home=home)
@@ -194,9 +208,9 @@ def dry_run_plan(
             try:
                 total_bytes += p.stat().st_size
             except OSError:
-                # Unreadable file → surface via warning rather than crash.
+                # Race-window swallow only; see docstring above.
                 # apply_eject will fail loudly via shutil.copytree if the
-                # condition persists.
+                # condition persists into the actual copy.
                 pass
     dest_exists = dest.is_dir()
     warnings: list[str] = []
@@ -242,6 +256,18 @@ def apply_eject(plan: EjectPlan, *, overwrite: bool = False) -> EjectPlan:
     step 5 can rename it directly to ``dest`` without an intermediate
     move. This keeps step 5 a single ``os.rename`` (atomic on a single
     filesystem).
+
+    Implementation notes:
+
+    * The ``except BaseException`` on the cleanup branch is intentional —
+      ``KeyboardInterrupt``/``SystemExit`` mid-copy must still trigger
+      temp-dir cleanup. The bare ``raise`` preserves the original
+      exception type and traceback.
+    * Backup-name collision (two ejects within the same wall-second on
+      the same dest with ``overwrite=True``): the second attempt raises
+      ``OSError(ENOTEMPTY)`` from step 4's rename — loud, not silent.
+      Documented in ``docs/eject-flow.md`` § Limitations. Workaround:
+      wait one second, or remove the prior ``.bak.<ts>`` manually.
     """
     src = plan.src
     dest = plan.dest

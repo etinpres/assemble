@@ -317,73 +317,77 @@ def test_apply_eject_inventory_integration(tempdir_assemble_home):
 
 
 # ---------------------------------------------------------------------------
-# 18: M2 carryforward — unreadable file in dry_run_plan
+# 18: M2 carryforward — race-condition simulation for OSError swallow branch
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skipif(
-    hasattr(os, "geteuid") and os.geteuid() == 0,
-    reason="chmod 000 ineffective when running as root",
-)
-def test_dry_run_plan_handles_unreadable_file_gracefully(tempdir_assemble_home):
-    """chmod 000 on the PARENT DIR of a file → ``Path.stat()`` on the file
-    raises ``PermissionError``, which dry_run_plan must swallow:
-    file still appears in ``plan.files``, but its bytes are NOT counted
-    in ``total_bytes`` (silent OSError swallow per impl).
+def test_dry_run_plan_swallows_stat_oserror_in_race_condition(
+    tempdir_assemble_home, monkeypatch
+):
+    """The ``except OSError: pass`` branch in ``dry_run_plan`` swallows
+    stat() failures *between* the ``is_file()`` check and the
+    ``p.stat().st_size`` accumulator — i.e., a genuine race condition
+    where the file's permission/existence changes mid-walk.
 
-    POSIX ``stat()`` on a regular file requires *directory search permission*
-    on the parent, NOT read permission on the file itself. So we chmod the
-    PARENT DIR (a dedicated subdir holding ONLY this file) — chmod 000 on
-    the file alone is a no-op for stat() on macOS/Linux.
+    Why monkeypatch instead of chmod:
 
-    Uses try/finally to restore parent dir mode 0o755 so tempdir cleanup works.
+    * ``pathlib.Path.is_file()`` calls ``self.stat()`` internally and
+      propagates ``PermissionError`` (EACCES) — pathlib's _IGNORED_ERROS
+      set is ``{ENOENT, ENOTDIR, EBADF, ELOOP}``. EACCES is NOT in that
+      set on Python 3.10/3.11/3.12. Verified:
+      ``pathlib._IGNORED_ERROS == (2, 20, 9, 62)`` — no EACCES (13).
+    * Therefore ``chmod 0o400`` on a parent directory makes ``is_file()``
+      raise PermissionError BEFORE ``p.stat().st_size`` is reached, and
+      the swallow branch is unreachable via that attack. (Confirmed
+      empirically on macOS APFS Python 3.10.)
+    * The swallow branch IS still defensive code for genuine races
+      (e.g., file unlinked or permission flipped between ``is_file()``'s
+      stat and the accumulator's stat). To exercise it
+      deterministically, we monkeypatch ``Path.stat`` so that the FIRST
+      call on a target file (driven by ``is_file()``) succeeds but the
+      SECOND call (driven by ``p.stat().st_size`` inside the try block)
+      raises ``PermissionError``.
+
+    This pins the swallow branch's behavior: file appears in
+    ``plan.files`` but its bytes are excluded from ``total_bytes``.
     """
     bundle_a = tempdir_assemble_home / ".claude/skills/assemble/bundled/a"
-    # Dedicated subdir holding ONLY the unreadable file — so chmod-ing
-    # this dir does not affect any other test fixture files.
-    locked_dir = bundle_a / "locked"
-    locked_dir.mkdir()
-    unreadable = locked_dir / "unreadable.bin"
-    unreadable.write_bytes(b"X" * 1024)  # 1KB known size
+    target_file = bundle_a / "race.bin"
+    target_file.write_bytes(b"Y" * 2048)  # 2KB known size
 
-    # Baseline: total_bytes WITH the unreadable file readable
-    plan_before = dry_run_plan("a", "x-skill-2")
+    # Baseline: total_bytes WITH the target stat-able both calls
+    plan_before = dry_run_plan("a", "race-skill-baseline")
     bytes_with_readable = plan_before.total_bytes
-    assert unreadable in plan_before.files
+    assert target_file in plan_before.files
+    assert bytes_with_readable >= 2048
 
-    try:
-        # Mode 0o400 = read-only on dir, no execute (search) bit.
-        # rglob() can still LIST entries (needs read), but stat() on each
-        # child raises PermissionError (needs search/execute on parent).
-        # On platforms where this is what's needed to exercise the
-        # OSError-swallow branch in dry_run_plan, total_bytes will exclude
-        # the unreadable file's bytes.
-        os.chmod(locked_dir, 0o400)
-        # Sanity check: stat() on the file should now raise PermissionError
-        # because the parent dir lacks search (execute) permission.
-        try:
-            unreadable.stat().st_size
-            pytest.skip("chmod 0o400 on parent dir had no effect (permissive FS / root)")
-        except PermissionError:
-            pass
+    # Patch Path.stat so the SECOND call on target_file raises.
+    # First call (driven by is_file) succeeds → file enters plan.files.
+    # Second call (driven by p.stat().st_size) raises → swallow branch fires.
+    from pathlib import Path
 
-        # Run dry_run_plan and verify the swallow branch was hit.
-        # NOTE: ``Path.is_file()`` does NOT swallow PermissionError on
-        # PermissionDenied — it re-raises. On platforms where rglob/is_file
-        # propagates the error before ``p.stat().st_size`` is called
-        # (i.e., the OSError-swallow branch is unreachable via this attack),
-        # we can't directly assert exclusion — keep a runtime skip as
-        # documented in the spec.
-        try:
-            plan = dry_run_plan("a", "x-skill")
-        except PermissionError:
-            pytest.skip(
-                "is_file() propagates PermissionError on this platform — "
-                "OSError-swallow branch in dry_run_plan unreachable via chmod"
-            )
-        # File listed but its 1024 bytes are NOT in total_bytes
-        if unreadable not in plan.files:
-            pytest.skip("rglob skipped file under 0o400 dir (is_file stat failed)")
-        assert plan.total_bytes == bytes_with_readable - 1024
-    finally:
-        os.chmod(locked_dir, 0o755)
+    original_stat = Path.stat
+    target_key = str(target_file)
+    call_counts: dict[str, int] = {}
+
+    def stat_with_race(self, *args, **kwargs):
+        # Plain str(self) — using self.exists() / self.resolve() would call
+        # stat() recursively and blow the stack.
+        key = str(self)
+        if key == target_key:
+            call_counts[key] = call_counts.get(key, 0) + 1
+            if call_counts[key] >= 2:
+                raise PermissionError(
+                    "simulated race: target became unreadable between is_file() and stat()"
+                )
+        return original_stat(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", stat_with_race)
+
+    plan = dry_run_plan("a", "race-skill")
+
+    # File listed (is_file's stat call passed) but bytes excluded (swallow fired)
+    assert target_file in plan.files
+    assert plan.total_bytes == bytes_with_readable - 2048
+    # Sanity: the second-call-and-beyond stat on target_file actually fired
+    assert call_counts.get(target_key, 0) >= 2
