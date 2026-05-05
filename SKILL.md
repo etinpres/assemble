@@ -34,6 +34,20 @@ build_sequence_prompt, parse_sequence_response,
 
 User-facing text is picked via `ASSEMBLE_LOCALE` (default `en`; `ko` ships in-tree). When you address the user directly, match their conversation language. The menu labels and stage descriptions rendered by `build_stage_options` / `load_stages` already respect the locale — don't translate those manually.
 
+## Sub-commands
+
+After §1 Boot extracts the task token, additionally check for sub-command keywords. If matched, route to the corresponding flow doc and STOP §2~§7 default concierge flow:
+
+| Keyword (first arg token) | Flow doc | Spike |
+|---|---|---|
+| `eject` | `~/.claude/skills/assemble/docs/eject-flow.md` | XII |
+| (future) `roles` | (deferred) | — |
+| (future) `import` | (deferred) | V5 |
+
+Behavior: if first token after `/assemble` is a sub-command keyword, read the flow doc and follow it line-by-line. Default concierge flow (§2 inventory refresh through §7 list) is bypassed.
+
+If no sub-command keyword matches, proceed to §1 Boot's existing `resume`/`list`/task-string routing.
+
 ## 1. Boot
 
 Strip the trailing `assemble`/leading `/assemble` token to extract the task.
