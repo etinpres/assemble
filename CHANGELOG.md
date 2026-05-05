@@ -5,7 +5,69 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II + Spike III + Spike IV + Spike V + Spike VI + Spike VII + Spike VIII + Spike IX + Spike X + Spike XI
+## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II + Spike III + Spike IV + Spike V + Spike VI + Spike VII + Spike VIII + Spike IX + Spike X + Spike XI + Spike XII
+
+### V4 Spike XII (2026-05-05, B-17 dogfood ship — `/assemble eject` command, V4 #9 IO exception)
+
+**`/assemble eject <bundle>` — copies a bundled skill from `~/.claude/skills/assemble/bundled/<bundle>/` to user-controlled `~/.claude/skills/<name>/` so users can fork+customize freely without mutating the bundled copy. V4 release-gate (Spike XIII blank-Mac dogfood) prerequisite. V4 #9 main-IO exception (same scope as guardian standard bundle): NO sub-agent dispatch, NO ALLOWED_PROMPT_FILES entries, NO _PROMPT_TO_STAGE entries, NO _BUNDLES entries, NO wrap_with_preamble involvement. Pure-additive — eject is a standalone module that other code does not import.**
+
+### Added (Spike XII)
+
+- `server/eject.py` — pure-copy bundle-to-user-skill module, ~150 LoC code body (288 lines incl. extensive docstrings). 9 public symbols: `EjectError` (Exception subclass), `EjectPlan` (NamedTuple, 7 fields: src/dest/bundle_name/files/total_bytes/dest_exists/warnings), `assemble_root` (env-var-aware), `available_bundles`, `resolve_source`, `validate_dest_name` (3 guards: reserved/separator/regex `^[a-z][a-z0-9_-]{0,63}$`), `resolve_dest`, `dry_run_plan` (read-only walk), `apply_eject` (atomic 7-step temp+rename, backup-on-overwrite to `.bak.<int(time.time())>`).
+- `tests/unit/test_eject.py` — 17 spec tests + 1 M2 carryforward (parametrize splits 23 collected) + 1 follow-up test (overwrite-fail invariant). 22 passed + 1 macOS APFS platform skip.
+- `tests/dogfood/spike_xii_b17.py` + `tests/dogfood/__init__.py` — B-17 self-execute dogfood probe, 12/12 AC PASS in 0.018s (≤30s budget by 1666×). Tempdir-rooted ASSEMBLE_HOME, real bundles untouched.
+- `docs/eject-flow.md` — orchestrator instructions: 5-step flow (parse → resolve → confirm → apply → post-eject hint) + Limitations section (harness-internal references, backup collision OSError(ENOTEMPTY), `.bak.<ts>` no auto-cleanup).
+- `SKILL.md` § Sub-commands router branch — inserts between §0 Prerequisites and §1 Boot. Routing table: `eject` → `docs/eject-flow.md` (Spike XII); future `roles` (deferred) and `import` (V5). V3 concierge §1-§7 default flow unchanged.
+- `docs/dogfood/spike-xii-b17.md` — B-17 dogfood verdict report with per-AC table + tempdir layout + V4 identity snapshot.
+- `docs/dogfood/spike-xii-overall-review.md` — Phase E `superpowers:code-reviewer` SHIP-READY verdict + 7 minor carryforwards.
+- `docs/specs/2026-05-05-v4-spike-xii-design.md` (581 lines) + `docs/plans/2026-05-05-v4-spike-xii.md` (406 lines) — single spike-start commit `720c065`.
+
+### Test count
+
+- Spike XI ship baseline (`10e2810`): 789 passed
+- Phase A (`dcd3495`): 789 passed (no test changes — module only)
+- Phase B (`6c18cad`): 811 passed + 1 skipped (+22 new green)
+- Phase B follow-up (`4839891`): 812 passed + 1 skipped (+1 from issue 3 new test)
+- Phase C-F: **812 passed, 1 skipped** maintained (sub-command router, dogfood probe standalone, ship commits doc-only)
+
+### Plan-vs-reality reconciliation (M-XII1 carryforward closed in this ship commit)
+
+Plan said "789 + 17 = 806". Reality is 812 + 1 skipped due to:
+- parametrize splits: test #10 (3 cases) + test #11 (4 cases) — adds +5 over collapsed counts
+- M2 carryforward test #18 — adds +1
+- Phase B follow-up test #19 (overwrite=True + copytree fails) — adds +1
+- Total: 17 spec tests inflate to 22 collected + 1 platform-skip
+
+### Critical invariants preserved
+
+- canonical preamble v3 sha unchanged: `8d22a29c9712d2c0c05bc2145ca5ad56c7e19705087dde4dd625908f7ec089a9`
+- ALLOW_LIST = {v1, v2, v3} unchanged
+- ALLOWED_PROMPT_FILES = 42 entries unchanged (eject adds 0 dispatchable prompts)
+- _PROMPT_TO_STAGE = 42 entries unchanged
+- _BUNDLES = 10 entries unchanged (eject is not a bundle, it's a sub-command)
+- _BUNDLED_DIR_TO_STAGE = 10 entries unchanged in BOTH server/harness.py + server/inventory.py
+- STAGE_CATEGORY_PRIORITY = 10 stages unchanged
+- 7 ★ bundle prompts unchanged (plan-pack/debugger/builder/reviewer/verifier/shipper/keeper)
+- 3 표준 bundle prompts unchanged (idea-shaper/design-pack/guardian)
+- V3 concierge §1-§7 default flow textually unchanged (Sub-commands § is purely additive)
+- orchestrator-only V4 #9 — eject is the explicit IO exception (single source of truth: `docs/eject-flow.md`), main never executes Bash; sub-agents own all Bash-granted steps in ★ bundles
+- universal-defense convention unchanged
+- harness.py / inventory.py public API unchanged (eject is a pure additive module that other code does not import)
+
+### V4 release-gate progression
+
+- ✅ V4 결정 #1 라인업 10/10 완성 (Spike XI ship)
+- ✅ /assemble eject 명령 (Spike XII ship, this commit) — last-mile infrastructure for user autonomy
+- ⏳ Phase G 빈손 컴 dogfood (Spike XIII) — V4 release gate, next
+
+### Spike XIII candidates (deferred from Spike XII)
+
+- F-XII1: Symlink mode (`--link`) for live-track of bundle updates — V5
+- F-XII2: Auto-rename on conflict (`--name auto`) — V5
+- F-XII3: Frontmatter rewrite on copy (flip `name:` to dest name) — V5
+- F-XII4: Trace ledger entry for eject events (keeper ★ visibility) — V5
+- F-XII5: Pre-existing `.bak.<ts>` cleanup helper — V5
+- M-XII2 through M-XII7 — see `docs/dogfood/spike-xii-overall-review.md` for the full carryforward list
 
 ### V4 Spike XI (2026-05-04, B-16 dogfood ship — 3 standard bundles, V4 결정 #1 라인업 10/10 완성)
 
