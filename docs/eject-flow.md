@@ -1,5 +1,12 @@
 # /assemble eject — flow
 
+> **Routing guard (메인 Claude 전용):** This file is reached ONLY via the
+> SKILL.md § Sub-commands router after the `eject` keyword matches. Once
+> you start reading this flow, **do NOT fall through to §2~§7 of the V3
+> concierge default flow.** Execute Steps 1–5 below in order and stop.
+> If the user types `/assemble <free-form task>` (no `eject` keyword),
+> the SKILL.md router never lands here in the first place.
+
 ## Args
    eject <bundle> [--name <custom-name>] [--dry-run] [--force]
 
@@ -51,3 +58,28 @@ This is documentation, not enforcement. eject's job is to produce a faithful cop
 Backup-name collision: if a user runs `apply_eject(..., overwrite=True)` twice within the same wall-second, the second backup attempt will raise OSError(ENOTEMPTY) on the rename to `<dest>.bak.<int(time.time())>` because the prior backup still exists. Acceptable failure mode (loud, not silent). Workaround: wait one second between consecutive overwrite ejects, or remove the prior `.bak.<ts>` directory manually.
 
 `.bak.<timestamp>` survivors are NOT auto-cleaned. User must remove manually.
+
+### Default-name `inventory.scan()` collapse (verified Spike XII cleanup)
+
+If the user accepts the default destination name (`--name` omitted, so `dest_name == bundle_name`), `inventory.scan()` will report ONLY the source bundled copy under that name — the ejected user copy is silently shadowed. Verified empirically for `/assemble eject idea-shaper` against master `b03e29b`:
+
+```
+disk:
+  ~/.claude/skills/assemble/bundled/idea-shaper/SKILL.md   (source)
+  ~/.claude/skills/idea-shaper/SKILL.md                    (ejected)
+
+scan()['skills']['idea-shaper'] →
+  path=~/.claude/skills/assemble/bundled/idea-shaper/SKILL.md
+  bundled=True
+  (ejected user copy NOT visible)
+```
+
+Root cause: `enumerate_skill_paths()` returns both SKILL.md files in alphabetical order — `assemble/bundled/idea-shaper/...` sorts BEFORE `idea-shaper/...`. `scan()` then applies first-wins dedupe by `name:` frontmatter (`server/inventory.py:470`). Both files share `name: "idea-shaper"`, so the bundled wins.
+
+**Workarounds (recommended order):**
+
+1. **Pass `--name <custom>` on eject** — easiest; e.g., `eject idea-shaper --name my-idea-shaper`. The ejected copy is then dedupe-distinct and appears in `scan()` with `bundled=False`.
+2. **Edit ejected SKILL.md frontmatter** post-eject — change `name: "idea-shaper"` → `name: "<custom>"` so the dedupe sees a different key. Filesystem path can stay the same.
+3. **(Not implemented for V4)** Override the bundled copy by removing/renaming `assemble/bundled/<bundle>/`. Discouraged because it breaks the V4 결정 #1 자급자족 보증. V5 may expose `--shadow-bundled` for power users.
+
+Step 5 post-eject hint should mention this whenever `dest_name == bundle_name`. Step 1 parse SHOULD log a `notice:` line if `--name` was omitted, suggesting custom-name workaround so the user is not surprised by a missing entry on the next `/assemble` run.
