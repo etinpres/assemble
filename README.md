@@ -1,4 +1,6 @@
-# /assemble — Tool Concierge for Claude Code
+# Agents, /assemble
+
+*Tool Concierge for Claude Code*
 
 [🇰🇷 한국어](README.ko.md)
 
