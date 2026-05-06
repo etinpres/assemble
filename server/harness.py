@@ -216,11 +216,30 @@ def wrap_with_preamble(prompt: str) -> str:
     If the preamble file is missing, the prompt is returned unchanged and a
     one-line warning is printed to stderr (no exception — bundled SKILLs
     should still function in degraded mode).
+
+    Spike XIV Phase A (C1 fix): when `os.environ['ASSEMBLE_HOME']` is set at
+    call time, prepend a `[ENV]` hint line to the *body* region (NOT the
+    preamble). This propagates the orchestrator's home directory into the
+    sub-agent dispatch so `server.*` imports inherit the same root. The
+    preamble portion stays byte-identical — canonical preamble v3 sha
+    (`8d22a29c…089a9`) preserved → ALLOW_LIST membership unchanged.
     """
     pre = _load_preamble()
     if pre is None:
         return prompt
-    return f"{pre}\n[TASK]\n{prompt}"
+    asm_home = os.environ.get("ASSEMBLE_HOME")
+    if asm_home:
+        # body region: ASSEMBLE_HOME pin이 있으면 본문 첫 줄에 명시.
+        # preamble portion은 미변경 → canonical sha 보존.
+        body = (
+            f"[ENV] 이 dispatch는 ASSEMBLE_HOME={asm_home} 환경에서 실행됨. "
+            f"sub-agent가 server.* 모듈을 import 할 때 메인과 동일 home 보장. "
+            f"코드에서 `os.environ['ASSEMBLE_HOME']` 또는 Path 조립 시 이 값 우선.\n\n"
+            f"{prompt}"
+        )
+    else:
+        body = prompt
+    return f"{pre}\n[TASK]\n{body}"
 
 
 def wrap_with_preamble_and_learnings(

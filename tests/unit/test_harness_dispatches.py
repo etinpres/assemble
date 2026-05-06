@@ -69,6 +69,14 @@ def test_record_dispatch_preamble_sha_matches_canonical(tmp_path, monkeypatch):
 
 
 def test_record_dispatch_body_sha_correct(tmp_path, monkeypatch):
+    """Spike XIV Phase A: when ASSEMBLE_HOME is set, wrap_with_preamble
+    prepends an `[ENV]` line to the body. The recorded body_sha256 must
+    match the *post-injection* body bytes (the actual on-the-wire body),
+    not the raw input prompt. The audit constant is the preamble_sha256
+    (covered by `test_record_dispatch_preamble_sha_matches_canonical`);
+    this test pins that body_sha256 reflects what gets sent to the
+    sub-agent verbatim.
+    """
     monkeypatch.setenv("ASSEMBLE_HOME", str(tmp_path))
     _stub_preamble(tmp_path)
     h = _reload_harness()
@@ -76,8 +84,13 @@ def test_record_dispatch_body_sha_correct(tmp_path, monkeypatch):
     prompt = h.wrap_with_preamble(body)
     h.record_dispatch("rid-003", "s", prompt)
     rows = _read_jsonl(_runs_root(tmp_path) / "rid-003" / "dispatches.jsonl")
-    assert rows[0]["body_sha256"] == hashlib.sha256(body.encode("utf-8")).hexdigest()
-    assert rows[0]["body_bytes"] == len(body.encode("utf-8"))
+    # Recompute expected body bytes by splitting the actual wrapped prompt
+    # at the canonical [TASK] delimiter — this includes the [ENV] line.
+    _, expected_body = h._split_preamble_body(prompt)
+    assert rows[0]["body_sha256"] == hashlib.sha256(expected_body.encode("utf-8")).hexdigest()
+    assert rows[0]["body_bytes"] == len(expected_body.encode("utf-8"))
+    # Sanity: the original body content survives the wrap (prepended, not replaced).
+    assert body in expected_body
 
 
 def test_record_dispatch_appends_multiple(tmp_path, monkeypatch):
