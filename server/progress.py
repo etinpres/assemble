@@ -43,6 +43,57 @@ def load_progress(run_id: str) -> dict | None:
 
 VALID_STATUS = {"pending","in_progress","done","skipped","manual","back"}
 TERMINAL_STATUS = {"done","skipped","manual"}
+VALID_ORTHOGONAL_STAGES = {"safety", "meta"}
+
+
+def _ensure_orthogonal_field(p: dict) -> None:
+    """Backwards-compat: schema 확장 — 'orthogonal_stages' field 없으면 생성."""
+    if "orthogonal_stages" not in p:
+        p["orthogonal_stages"] = {}
+
+
+def mark_orthogonal_stage(run_id: str, stage: str, status: str,
+                          tool_used: str | None = None,
+                          notes: str = "") -> dict:
+    """Mark an orthogonal stage (safety, meta) — separate from main sequence.
+
+    orthogonal stages 는 V4 결정 #1 라인업 의 가로축 (sequence 8) + 세로축
+    (orthogonal 2). main sequence 와 독립적으로 활성/완료될 수 있음.
+    """
+    if stage not in VALID_ORTHOGONAL_STAGES:
+        raise ValueError(
+            f"orthogonal stage must be one of {VALID_ORTHOGONAL_STAGES}, "
+            f"got {stage!r}. main-sequence stages use mark_stage()."
+        )
+    if status not in VALID_STATUS:
+        raise ValueError(f"bad status: {status}")
+    if status == "back":
+        raise ValueError("'back' is sequence-only — orthogonal stages have no cursor")
+
+    def upd(p: dict) -> dict:
+        _ensure_orthogonal_field(p)
+        now = datetime.now().isoformat()
+        entry = p["orthogonal_stages"].get(stage, {
+            "stage": stage, "status": "pending", "tool_used": None,
+            "started_at": None, "ended_at": None, "notes": "",
+        })
+
+        if status == "in_progress" and entry["started_at"] is None:
+            entry["started_at"] = now
+        if status in TERMINAL_STATUS:
+            if entry["started_at"] is None:
+                entry["started_at"] = now
+            entry["ended_at"] = now
+            if tool_used:
+                entry["tool_used"] = tool_used
+        entry["status"] = status
+        if notes:
+            entry["notes"] = notes
+        p["orthogonal_stages"][stage] = entry
+        p["updated_at"] = now
+        return p
+
+    return update_json_locked(_progress_path(run_id), upd)
 
 
 def mark_stage(run_id: str, stage: str, status: str,
@@ -52,6 +103,10 @@ def mark_stage(run_id: str, stage: str, status: str,
     'back' is a cursor command, not a persisted status — it moves
     current_stage_index without overwriting the stage's recorded status.
     """
+    if stage in VALID_ORTHOGONAL_STAGES:
+        # auto-route: orthogonal stages 는 mark_orthogonal_stage 로 forwarding
+        return mark_orthogonal_stage(run_id, stage, status, tool_used, notes)
+
     if status not in VALID_STATUS:
         raise ValueError(f"bad status: {status}")
 
