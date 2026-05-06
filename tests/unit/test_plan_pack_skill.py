@@ -602,7 +602,9 @@ def test_workflow_step_9_four_way_includes_antipattern_audit():
 
 def test_workflow_iteration_step_6_includes_ui_guide():
     body = _body()
-    step6 = _section(body, "### Step 6")
+    # Anchor on the H2 parent so all `### Step 6 *` sub-sections (including
+    # the Phase C `### Recommendation policy` insert) are sliced together.
+    step6 = _section(body, "## Step 6 — iteration round-trip")
     # Iteration must now re-run UI_GUIDE (Step 13) alongside PRD (Steps 2+3),
     # ARCH (Step 8), and ADR (Step 11)
     assert "Step 13" in step6 or "UI_GUIDE" in step6
@@ -654,7 +656,9 @@ def test_workflow_iteration_scope_discipline():
     constructing iteration sub-agent prompts.
     """
     body = _body()
-    step6 = _section(body, "### Step 6")
+    # Anchor on the H2 parent so all `### Step 6 *` sub-sections (including
+    # the Phase C `### Recommendation policy` insert) are sliced together.
+    step6 = _section(body, "## Step 6 — iteration round-trip")
     # Step 6 must document scope discipline for iteration
     lower = step6.lower()
     assert ("scope discipline" in lower or "scope creep" in lower), (
@@ -723,7 +727,9 @@ def test_step6_has_iteration_scope_discipline_preserved():
     block (B-4 fix) must remain verbatim — it now applies to every iteration
     in the loop, not only the first."""
     body = _body()
-    step6 = _section(body, "### Step 6")
+    # Anchor on the H2 parent so all `### Step 6 *` sub-sections (including
+    # the Phase C `### Recommendation policy` insert) are sliced together.
+    step6 = _section(body, "## Step 6 — iteration round-trip")
     assert "PRD `## Core features` is the authoritative scope" in step6, (
         "Iteration scope discipline block (33b3056) was modified or "
         "removed during the B-5 multi-iteration rewrite — regression"
@@ -734,7 +740,9 @@ def test_step6_step4_cites_platform_limit_research():
     """B-5 Item B-1: Step 6 step 4 must cite docs/research/2026-04-29-platform-limit.md
     so the parallel-dispatch caveat is empirically grounded, not folklore."""
     body = _body()
-    step6 = _section(body, "### Step 6")
+    # Anchor on the H2 parent so all `### Step 6 *` sub-sections (including
+    # the Phase C `### Recommendation policy` insert) are sliced together.
+    step6 = _section(body, "## Step 6 — iteration round-trip")
     assert "docs/research/2026-04-29-platform-limit.md" in step6, (
         "Step 6 step 4 missing platform-limit research citation — "
         "B-5 Item B-1 caveat tightening spec drift"

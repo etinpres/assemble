@@ -19,28 +19,28 @@
       "id": "B-5-A-scope-discipline-preserved",
       "phrase": "PRD `## Core features` is the authoritative scope",
       "spec_path": "bundled/plan-pack/SKILL.md",
-      "section": "### Step 6",
+      "section": "## Step 6 — iteration round-trip",
       "tag": "B-5 regression guard — preserves 33b3056 iteration scope discipline block verbatim"
     },
     {
       "id": "B-5-B1-platform-limit-citation",
       "phrase": "docs/research/2026-04-29-platform-limit.md",
       "spec_path": "bundled/plan-pack/SKILL.md",
-      "section": "### Step 6",
+      "section": "## Step 6 — iteration round-trip",
       "tag": "B-5 Item B-1 — platform-limit research citation in Step 6 step 4"
     },
     {
       "id": "B-5-finding1-verbatim-preservation",
       "phrase": "Existing\n   > sections that are not the explicit target of the iteration emphasis\n   > MUST be returned verbatim",
       "spec_path": "bundled/plan-pack/SKILL.md",
-      "section": "### Step 6",
+      "section": "## Step 6 — iteration round-trip",
       "tag": "B-5 Finding #1 — iteration verbatim preservation clause"
     },
     {
       "id": "B-5-finding2-no-rename",
       "phrase": "MUST NOT be renamed unless the\n   > rename IS the requested change",
       "spec_path": "bundled/plan-pack/SKILL.md",
-      "section": "### Step 6",
+      "section": "## Step 6 — iteration round-trip",
       "tag": "B-5 Finding #2 — iteration no-rename clause"
     },
     {
@@ -61,7 +61,7 @@
       "id": "iv-B2-iter1-audit-invariant",
       "phrase": "every iteration produces exactly\n4 rows in `dispatches.jsonl` for `step6.iter{N}.<DOC>`",
       "spec_path": "bundled/plan-pack/SKILL.md",
-      "section": "### Step 6",
+      "section": "## Step 6 — iteration round-trip",
       "tag": "Spike IV §1.1 — iter1 4-row audit invariant (carryforward A; future doc-list expansion must update both workflow and invariant)"
     },
     {

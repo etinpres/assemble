@@ -338,6 +338,42 @@ the exit-side wording).
 - **yes → emphasis interview + 4-way parallel re-dispatch + cross-doc
   re-review**.
 
+### Recommendation policy
+
+각 prompt 호출 직전, orchestrator 가 `iteration_state.json` 의
+counts (`resolved`, `new`, `unresolved`) 와 `iteration_count` 를 읽고
+다음 알고리즘으로 default-recommended option 선택:
+
+```python
+def recommend_iter_continue(iteration_count, resolved, new, unresolved):
+    if iteration_count >= 7:
+        return "no"   # max iteration reached, ★ guideline
+    if iteration_count <= 3:
+        # 초기 iteration — 거의 항상 yes 권장
+        if new > 0 or unresolved > 0:
+            return "yes"
+        if resolved < 5:  # 이슈 자체가 적으면 더 고민할 거리 없음
+            return "no"
+        return "yes"
+    # iteration_count 4~6
+    if new > 0:
+        return "yes"
+    if unresolved > 0:
+        return "yes"
+    if resolved >= 8:  # 충분히 정제됨
+        return "no"
+    return "yes"  # 의심스럽다면 yes
+```
+
+`AskUserQuestion` options 빌드 시:
+- recommended option 의 description 끝에 ` (추천 — 사유: <iteration_count=N, resolved=X, new=Y>)` 추가
+- 추천 사유에 **"dogfood 시간 한계" 또는 "시간 부족" 같은 추측 사유 박지 말 것**.
+  객관 counts 만 표기.
+- 사용자는 추천 무시 가능 — 추천은 default highlight 일 뿐 강제 X.
+
+`iteration_state.json` 이 missing 또는 malformed 일 때 default = `yes`
+(보수적 — multi-iteration 약속 보존).
+
 ### Step 6 yes-path detail — iteration N (N ≥ 1)
 
 After user picks "yes — 강조점 인터뷰 + 네 문서 재작성 + 문서 간 재검증 (추천)":
