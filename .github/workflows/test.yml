@@ -22,11 +22,13 @@ jobs:
       - name: Install pytest + pyyaml
         run: python -m pip install --upgrade pip pytest pyyaml
       - name: Mount repo at ~/.claude/skills/assemble
-        # 20+ tests resolve assets via `Path.home() / ".claude/skills/assemble"`.
-        # Symlinking the workspace there lets unit + contract tests run unchanged
-        # in CI without introducing a separate path-resolution shim.
+        # 20+ tests resolve assets via `Path.home() / ".claude/skills/assemble"`,
+        # and `inventory.enumerate_skill_paths` rejects resolved paths that
+        # escape the `~/.claude` tree via symlink. So we copy the workspace
+        # rather than symlink it — `cp -R` keeps the resolved path inside
+        # `~/.claude/skills/assemble/`, which `_under()` accepts.
         run: |
           mkdir -p "$HOME/.claude/skills"
-          ln -s "$GITHUB_WORKSPACE" "$HOME/.claude/skills/assemble"
+          cp -R "$GITHUB_WORKSPACE" "$HOME/.claude/skills/assemble"
       - name: Run tests
         run: python -m pytest tests -v --ignore=tests/dogfood
