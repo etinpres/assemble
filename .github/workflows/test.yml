@@ -19,7 +19,14 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install pytest
-        run: python -m pip install --upgrade pip pytest
+      - name: Install pytest + pyyaml
+        run: python -m pip install --upgrade pip pytest pyyaml
+      - name: Mount repo at ~/.claude/skills/assemble
+        # 20+ tests resolve assets via `Path.home() / ".claude/skills/assemble"`.
+        # Symlinking the workspace there lets unit + contract tests run unchanged
+        # in CI without introducing a separate path-resolution shim.
+        run: |
+          mkdir -p "$HOME/.claude/skills"
+          ln -s "$GITHUB_WORKSPACE" "$HOME/.claude/skills/assemble"
       - name: Run tests
-        run: python -m pytest tests -v
+        run: python -m pytest tests -v --ignore=tests/dogfood
