@@ -5,7 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II + Spike III + Spike IV + Spike V + Spike VI + Spike VII + Spike VIII + Spike IX + Spike X + Spike XI + Spike XII + Spike XIII (NEEDS-FIX, no ship) + Spike XIV (V4 release gate passed)
+## [Unreleased]
+
+## [4.0.0] — 2026-05-06 — V4 release gate passed (paradigm completion)
+
+V4 paradigm 완성. V3 컨시어지 router 위에 자급자족 번들 라이브러리 (10/10 ★ + 표준
+배합) + harness 4원칙 prompt 주입 + cross-cutting 강화 (SCOPE.md / AC=bash 강제 /
+트레이스 자가 점검 + 학습 회수). Spike XIV 가 Spike XIII NEEDS-FIX cleanup 으로
+V4 release gate 통과.
+
+이 release 누적 범위: V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass
+(C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure
+(iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached
+on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II +
+Spike III + Spike IV + Spike V + Spike VI + Spike VII + Spike VIII + Spike IX +
+Spike X + Spike XI + Spike XII + Spike XIII (NEEDS-FIX, no ship, Spike XIV
+cleanup) + Spike XIV (V4 release gate passed).
 
 ### V4 Spike XII (2026-05-05, B-17 dogfood ship — `/assemble eject` command, V4 #9 IO exception)
 
