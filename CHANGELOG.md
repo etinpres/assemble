@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II + Spike III + Spike IV + Spike V + Spike VI + Spike VII + Spike VIII + Spike IX + Spike X + Spike XI + Spike XII
+## [Unreleased] — V4 Phase A + B-1 + B-2 + B-3 + B-4 + B-5 + Quality Pass (C+D) + Hygiene Pass (E+F) + B-5 Findings (#1 #2 #4) + B-5 Finding #3 closure (iter2 + iter3 supplemental) + B-5 Item B-7 (dispatches.jsonl) + cap-reached on-disk closure (synthetic) + MED/LOW ambiguity hygiene + Spike I + Spike II + Spike III + Spike IV + Spike V + Spike VI + Spike VII + Spike VIII + Spike IX + Spike X + Spike XI + Spike XII + Spike XIII (NEEDS-FIX, no ship) + Spike XIV (V4 release gate passed)
 
 ### V4 Spike XII (2026-05-05, B-17 dogfood ship — `/assemble eject` command, V4 #9 IO exception)
 
@@ -68,6 +68,116 @@ Plan said "789 + 17 = 806". Reality is 812 + 1 skipped due to:
 - F-XII4: Trace ledger entry for eject events (keeper ★ visibility) — V5
 - F-XII5: Pre-existing `.bak.<ts>` cleanup helper — V5
 - M-XII2 through M-XII7 — see `docs/dogfood/spike-xii-overall-review.md` for the full carryforward list
+
+### V4 Spike XIII (2026-05-06, NEEDS-FIX — no ship, Spike XIV cleanup follow-up)
+
+**Phase G blank-Mac dogfood (V4 release gate). B-18 자동 sanity probe 12/12 PASS, B-19 lived dogfood 90분 23초 완주 후 V4 paradigm 약속과 실제 동작 사이 5+ gap 발견 (2 Critical + 4 Important + 3 Minor). Verdict: NEEDS-FIX. Spike XIV로 cleanup.**
+
+### Identified defects (closed in Spike XIV)
+
+- C1 ASSEMBLE_HOME env 비전파 (별도 세션 sub-agent dispatch에 미상속)
+- C2 V4 #11 parallel violation 시스템적 (★ paradigm 통합 1 dispatch 단축)
+- I1 iter1 default = "no" — plan-pack ★ multi-iteration 약속 위배
+- I2 interview 단축 패턴 (메인 자가 결정, C2와 같은 root cause)
+- I3 orthogonal stage marker (mark_stage('safety'/'meta')) ValueError
+- I4 SKILL.md doc drift (dispatch_prompt 시그니처 stale)
+- M1/M2/M3 cosmetic carryforwards (V5)
+
+### Source
+
+- Spec: `docs/specs/2026-05-06-v4-spike-xiii-design.md` (commit `4799781`)
+- Verdict: `docs/dogfood/spike-xiii-b19.md` (commit `6b989a2`)
+
+---
+
+### V4 Spike XIV (2026-05-06, B-20a 18/18 PASS + B-20b SHIP-WITH-MINOR-CARRYFORWARDS — V4 release gate passed)
+
+**Spike XIII NEEDS-FIX cleanup spike. Paradigm hybrid (Option 3) — default = full ★ paradigm 보존 + opt-in quick mode (사용자 명시 동의 시만 단축 1 dispatch). 5 결함 모두 close + B-20 재검증 PASS → V4 release gate 통과.**
+
+### Added (Spike XIV)
+
+- `server/harness.py::wrap_with_preamble` — Phase A C1 fix: `[ENV]` line auto-injected into dispatch body region when `os.environ['ASSEMBLE_HOME']` is set. Preamble portion stays byte-identical (canonical v3 sha `8d22a29c…089a9` preserved). 별도 세션 sub-agent dispatch가 home 경로 자동 상속.
+- `server/progress.py::mark_orthogonal_stage` — Phase D I3 fix: orthogonal stages (safety, meta) tracking. progress.json schema 확장 (`orthogonal_stages` field, lazy creation, back-compat). `mark_stage('safety'/'meta')` auto-route. `'back'` status orthogonal raise.
+- 7 ★ bundle SKILL.md mode-gate + Quick mode flow + dispatch contract 강화 (Phase B C2/I2 fix) — plan-pack / builder / debugger / reviewer / verifier / shipper / keeper. AskUserQuestion으로 stage 진입 직후 [full / quick] 사용자 명시 동의 강제. 메인 자가 단축 결정 시스템적 차단. 4원칙 #1 ("불확실하면 추측 금지, 사용자 질문 우선") 시스템적 강제.
+- 7 quick prompt files: `bundled/<bundle>/prompts/subagent/<bundle>_quick.md` (plan_pack_quick / builder_quick / debugger_quick / reviewer_quick / verifier_quick / shipper_quick / keeper_quick). 단일 dispatch fallback. 산출물 schema preserved.
+- `bundled/keeper/templates/KEEPER_REPORT.md.template` § "Mode usage" — quick 카운트 표시 + 사용자 가시화.
+- `bundled/plan-pack/SKILL.md` § "Recommendation policy" (Phase C I1 fix) — Step 6 default-recommended option algorithm. iter ≤ 3 + (new>0 or unresolved>0) → yes. iter ≥ 7 → no. 추측 사유 default 추천 금지.
+- `bundled/design-pack/SKILL.md:34` + `bundled/idea-shaper/SKILL.md:33` (Phase E I4 fix) — dispatch_prompt 1-arg basename 시그니처 정정.
+- `tests/unit/test_wrap_with_preamble_assemble_home.py` (4 tests) — Phase A 회귀 검증
+- `tests/unit/test_mode_gate_consistency.py` (5 tests) — Phase B 7 ★ vs 3 표준 일관성
+- `tests/unit/test_plan_pack_step6_recommendation.py` (3 tests) — Phase C section 존재 + 알고리즘 + 추측 사유 금지 wording
+- `tests/unit/test_mark_orthogonal_stage.py` (6 tests) — Phase D safety/meta 마킹 + auto-route + back-compat
+- `tests/unit/test_skillmd_dispatch_prompt_signature.py` (2 tests) — Phase E enforcement (regex-based drift 사전 차단)
+- `tests/dogfood/spike_xiv_b20a.py` + `docs/dogfood/spike-xiv-b20a.md` — B-20a 자동 sanity probe (18 AC, 0.6s, all PASS)
+- `docs/dogfood/spike-xiv-b20b-capture-guide.md` — B-20b lived dogfood guide (C20~C25 신규)
+- `docs/dogfood/spike-xiv-b20b.md` — B-20b verdict + carryforwards (SHIP-WITH-MINOR-CARRYFORWARDS)
+- `docs/specs/2026-05-06-v4-spike-xiv-design.md` (592 lines) + `docs/plans/2026-05-06-v4-spike-xiv.md` (483 lines) — single spike-start commit `a7cea33`
+
+### Changed (Spike XIV)
+
+- `server/harness.py` — `ALLOWED_PROMPT_FILES` 42 → 49 (7 quick prompt basenames added). `_PROMPT_TO_STAGE` 42 → 49.
+- `server/progress.py` — additive only (`VALID_ORTHOGONAL_STAGES`, `_ensure_orthogonal_field`, `mark_orthogonal_stage`, `mark_stage` auto-route).
+- 6 lock-in test 정정 (Phase B quick prompt 추가로 인한 자동 영향) — count assertions: test_keeper_templates / test_keeper_ledger_update_script / test_keeper_e2e (H2 7→8), test_plan_pack_anti_fallback (§CRITICAL 8-count exclude quick), test_parse_scope_step1_prompt (full-mode 6-count exclude quick), test_shipper_inventory (4-count exclude quick).
+- 2 lock-in 정정 (Phase C `### Recommendation policy` 추가로 인한 자동 영향) — `tests/contracts/contracts.json` (5 entry section anchor `### Step 6` → `## Step 6 — iteration round-trip`), `tests/unit/test_plan_pack_skill.py` (4 _section calls 동일).
+- 3 pre-existing tests in test_harness.py / test_harness_dispatches.py 정정 (Phase A 새 contract 정합성 회복 — preamble portion split for byte-comparison, body_sha256 from post-wrap body).
+
+### Test count
+
+- Spike XII ship baseline (`b03e29b` + cleanup `ea15ea1`): **813 passed**
+- T0 (`a7cea33`, spec + plan): 813 passed
+- T1 (`c53efef`, Phase A): 817 passed (+4)
+- T2 (`55e88ae`, Phase B mode-gate): 822 passed (+5)
+- T3 (`fe9a841`, Phase B keeper template): 822 passed
+- T4 (`ed426f9`, Phase C plan-pack Step 6): 825 passed (+3)
+- T5 (`14ee5a7`, Phase D mark_orthogonal_stage): 831 passed (+6)
+- T6 (`0ba8f96`, Phase E SKILL.md drift): 831 passed
+- T7 (`c7f590b`, Phase E enforcement): **833 passed** (+2)
+- T8 (`d543502`, Phase F B-20a): 833 passed (probe = script, pytest collection 아님)
+- T9 (`8d13b1e`, Phase F B-20b guide): 833 passed
+- T10 (`48cfb2d`, Phase F B-20b verdict): 833 passed
+- T11 (this ship): 833 passed
+
+### B-20a automated sanity probe (자동, 18 AC PASS)
+
+- `python tests/dogfood/spike_xiv_b20a.py` → exit 0, 18/18 PASS, ~0.6s wall-time
+- 12 AC = Spike XIII B-18 verbatim (inventory / menu / frontmatter / bidirectional integrity / WROTE: / preamble sha / ALLOW_LIST / counts)
+- 6 AC 신규: AC13/AC18 (Phase A C1) / AC14 (Phase B C2/I2) / AC15 (Phase C I1) / AC16 (Phase D I3) / AC17 (Phase E I4)
+- VERDICT: SHIP
+
+### B-20b lived dogfood (사용자 운전, 41m 41s)
+
+- 별도 Claude Code 세션, 빈손 ASSEMBLE_HOME (Spike XIII B-19 setup script 재사용)
+- task: md2pdf — Python CLI (md → PDF), Run ID `20260506-151623-a69b`
+- Sequence: plan → execute → verify (3 stages, 메인 추천 + 사용자 approve)
+- plan: ★ plan-pack quick mode (1 dispatch, R-F2 quick 검증)
+- execute: ★ builder full mode (7 dispatch, R-F2 full 검증) + verify.sh 2 retry (venv → DYLD env)
+- verify: ★ verifier full mode (4 dispatch)
+- 산출물: 2-page · 29KB PDF ✅
+- VERDICT: **SHIP-WITH-MINOR-CARRYFORWARDS**
+- 5 fix 재발 검증: C1/C2-I2/I4 lived 재발 X. I1/I3 lived uncovered (시퀀스 축약 + quick mode), 자동 probe 에서 PASS.
+- Critical re-occurrence: 0, Important re-occurrence: 0
+- 5 carryforwards (V5 또는 Spike XV)
+
+### Critical invariants preserved
+
+- canonical preamble v3 sha unchanged: `8d22a29c9712d2c0c05bc2145ca5ad56c7e19705087dde4dd625908f7ec089a9`
+- ALLOW_LIST = {v1, v2, v3} unchanged (no v4 bump — wording 강화는 SKILL.md 머리말 측에서 이동, preamble 본문 미변경)
+- ALLOWED_PROMPT_FILES = 42 → 49 entries (Phase B 합법 확장: 7 quick prompts)
+- _PROMPT_TO_STAGE = 42 → 49 entries (각 stage 매핑)
+- _BUNDLES = 10 entries unchanged
+- _BUNDLED_DIR_TO_STAGE = 10 entries unchanged
+- STAGE_CATEGORY_PRIORITY = 10 stages unchanged
+- 7 ★ bundle structural prompts unchanged (mode-gate 머리말 + Quick mode flow tail-section 추가, 본문 step 들 미변경)
+- V3 concierge §1-§7 default flow textually unchanged
+- V4 결정 16개 그대로 (#1 라인업 10/10, #6 release gate, #9 orchestrator-only, #11 parallel)
+
+### Source
+
+- Spec: `docs/specs/2026-05-06-v4-spike-xiv-design.md` (commit `a7cea33`)
+- Plan: `docs/plans/2026-05-06-v4-spike-xiv.md` (commit `a7cea33`)
+- 11 commits since Spike XIII final (`6b989a2`): `a7cea33` (T0) → `48cfb2d` (T10) + this ship commit
+- Parent memory: `project_assemble_v4_spec.md`
+- Sibling memory: `project_assemble_v4_spike_xiii.md`
 
 ### V4 Spike XI (2026-05-04, B-16 dogfood ship — 3 standard bundles, V4 결정 #1 라인업 10/10 완성)
 
