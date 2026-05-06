@@ -55,4 +55,10 @@ The next dispatch via `dispatch_and_record` will inject up to top-K (K=5) releva
 
 ## Mode usage
 
-(populated by T3)
+| stage | mode | dispatches | rationale |
+|---|---|---|---|
+| (예: plan) | (full 또는 quick) | (예: 13) | (예: 시간 부족) |
+
+각 stage 별 mode 사용 row 는 keeper 가 run 종료 시점에 dispatches.jsonl audit 로
+부터 자동 집계하여 추가. quick 카운트 ≥ 1 시 노란색 경고 표시. 빈손 사용자가
+다음 run 에서 더 시간 확보 권장.
