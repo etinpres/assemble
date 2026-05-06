@@ -52,6 +52,12 @@ The preamble also adds 3 V4-specific rules on top of Karpathy's 4:
 - **Rule 6** — user-stated task is a *seed*, not a contract; ★ bundle full pipelines are the contract
 - **Rule 7** — sub-agents may not read other skills' infrastructure code (server/ modules, hooks/, settings.json)
 
+### Why prepending, not just rules
+
+The decision to route the preamble through sub-agent prompts (rather than just publishing rules in `CLAUDE.md` and `SKILL.md`) came from a concrete conversation between this skill's author and Claude itself. The author asked: *"honestly, what fraction of the rules written in `CLAUDE.md` and `SKILL.md` does Claude end up ignoring?"* Claude's answer: **30–40%**. The author followed up: *"then writing more and more rules into more `.md` files is kind of pointless, isn't it?"* Claude agreed, and proposed the inverse — instead of writing rules and hoping they're read, **prepend the rules into every dispatched sub-agent's prompt so they cannot be ignored without literally rewriting them**. That conversation kicked off V4 development.
+
+The 30–40% acknowledgement is what makes prepending non-negotiable in V4: even with perfect rules in `CLAUDE.md`, roughly a third of them won't reach the executing turn. The bundle library exists to close that gap — by putting the rules where they actually fire (inside the prompt the sub-agent receives), audited byte-for-byte against the canonical preamble sha.
+
 ## Install
 
 ```bash
