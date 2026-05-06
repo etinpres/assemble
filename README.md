@@ -1,5 +1,7 @@
 # /assemble — Tool Concierge for Claude Code
 
+[🇰🇷 한국어](README.ko.md)
+
 [![tests](https://github.com/etinpres/assemble/actions/workflows/test.yml/badge.svg)](https://github.com/etinpres/assemble/actions/workflows/test.yml)
 [![license](https://img.shields.io/github/license/etinpres/assemble)](LICENSE)
 [![python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
