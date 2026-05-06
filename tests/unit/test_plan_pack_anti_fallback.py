@@ -65,15 +65,22 @@ def test_skill_md_critical_block_lists_8_prompt_files():
 def test_skill_md_critical_allowlist_matches_disk():
     """Spike II F11: §CRITICAL 8-file allowlist must match prompts/ directory.
 
-    If a 9th prompt file is added (e.g., new step in Spike III/IV) without
-    updating §CRITICAL, this test fails and forces an atomic update of the
-    rule wording. Prevents silent allowlist drift.
+    If a new prompt file is added without updating §CRITICAL, this test fails
+    and forces an atomic update of the rule wording. Prevents silent allowlist
+    drift.
+
+    Spike XIV Phase B: `plan_pack_quick.md` was added under prompts/subagent/
+    as the paradigm-hybrid quick mode fallback. Excluded from the §CRITICAL
+    8-file allowlist because §CRITICAL pins the *full mode* pipeline contract;
+    quick mode has its own §"Quick mode flow" section in SKILL.md.
     """
     prompts_dir = Path.home() / ".claude/skills/assemble/bundled/plan-pack/prompts"
     on_disk = sorted(p.stem for p in prompts_dir.rglob("*.md"))
-    assert len(on_disk) == 8, (
-        f"prompts/ now has {len(on_disk)} files; update §CRITICAL allowlist"
+    full_mode_files = [n for n in on_disk if n != "plan_pack_quick"]
+    assert len(full_mode_files) == 8, (
+        f"prompts/ full-mode files now: {len(full_mode_files)}; "
+        f"update §CRITICAL allowlist"
     )
     text = SKILL.read_text(encoding="utf-8")
-    for name in on_disk:
+    for name in full_mode_files:
         assert name in text, f"prompts/{name}.md not in §CRITICAL allowlist"

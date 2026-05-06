@@ -98,9 +98,17 @@ def test_prompt_invokes_helper():
 
 
 def test_prompt_file_count_unchanged():
-    """Exactly 6 prompt files must exist in subagent dir (rename guard)."""
-    files = [p for p in SUBAGENT_DIR.glob("*.md") if p.name != ".gitkeep"]
+    """Exactly 6 full-mode prompt files must exist in subagent dir (rename guard).
+
+    Spike XIV Phase B: `reviewer_quick.md` was added as the paradigm-hybrid
+    single-dispatch fallback. Excluded from the full-mode 6-file count because
+    full-mode and quick-mode are distinct contracts.
+    """
+    files = [
+        p for p in SUBAGENT_DIR.glob("*.md")
+        if p.name != ".gitkeep" and p.name != "reviewer_quick.md"
+    ]
     assert len(files) == 6, (
-        f"Expected 6 reviewer subagent prompts, found {len(files)}: "
+        f"Expected 6 reviewer subagent full-mode prompts, found {len(files)}: "
         f"{[p.name for p in files]}"
     )

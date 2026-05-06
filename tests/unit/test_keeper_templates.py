@@ -63,14 +63,16 @@ def test_abort_template_exists():
 
 
 def test_happy_template_7_h2_count():
-    """Happy variant must have exactly 7 H2 sections (1. Run summary,
+    """Happy variant must have exactly 8 H2 sections (1. Run summary,
     2. Audit inventory, 3. Rules fired, 4. Learnings emitted, 5. Ledger
-    state delta, 6. Prune summary, 7. Next-run recall preview).
+    state delta, 6. Prune summary, 7. Next-run recall preview, plus
+    "Mode usage" appended in Spike XIV Phase B for paradigm hybrid).
     """
     body = HAPPY.read_text(encoding="utf-8")
     count = _h2_count(body)
-    assert count == 7, (
-        f"happy template must have exactly 7 H2 sections, got {count}"
+    assert count == 8, (
+        f"happy template must have exactly 8 H2 sections "
+        f"(7 base + Mode usage), got {count}"
     )
 
 

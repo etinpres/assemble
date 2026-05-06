@@ -200,8 +200,8 @@ def test_empty_entries_writes_audit_clean_report(
     body = out.read_text(encoding="utf-8")
     assert "audit-clean" in body
     assert "Verdict**: audit-clean" in body
-    # Happy variant — 7 H2 sections.
-    assert body.count("\n## ") == 7
+    # Happy variant — 8 H2 sections (Spike XIV Phase B added § "Mode usage").
+    assert body.count("\n## ") == 8
 
 
 # ---------------------------------------------------------------------------
@@ -422,7 +422,7 @@ def test_skiplist_drops_matching_evidence_hash(
 
 
 # ---------------------------------------------------------------------------
-# 10 — KEEPER_REPORT 7 H2 sections on happy path
+# 10 — KEEPER_REPORT 8 H2 sections on happy path (Spike XIV Phase B added § "Mode usage")
 # ---------------------------------------------------------------------------
 
 def test_keeper_report_7_h2_sections_on_happy_path(
@@ -433,7 +433,8 @@ def test_keeper_report_7_h2_sections_on_happy_path(
     out = ledger_update.update_ledger_and_report(tmp_path)
     body = out.read_text(encoding="utf-8")
     h2_count = sum(1 for line in body.splitlines() if line.startswith("## "))
-    assert h2_count == 7
+    # Spike XIV Phase B: was 7, now 8 (added § "Mode usage" tail-section).
+    assert h2_count == 8
 
 
 # ---------------------------------------------------------------------------

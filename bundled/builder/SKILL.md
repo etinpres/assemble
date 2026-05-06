@@ -4,6 +4,25 @@ description: "Execute stage ★ bundle — TDD-first red→green pipeline (test_
 stages: ["execute"]
 ---
 
+## Mode gate (V4 Spike XIV — paradigm enforcement)
+
+★ 번들 진입 직후 (Step 0 직전), 메인은 다음 AskUserQuestion 을 무조건 발사:
+
+  "이번 stage 모드 — 어떻게 진행할까?"
+
+  옵션:
+    1. full mode (추천) — spec 명시 N-step pipeline 그대로. 정확·완성도 우선.
+       예상 시간: 15~25분. dispatch 수: 7회.
+    2. quick mode — 통합 1 dispatch 로 압축. 시간 부족 시만 선택.
+       precision 손실 + iteration 권장량 미달 위험. KEEPER_REPORT 에 카운트 기록.
+
+`full` 선택 시 → 아래 Step 0~N 순서대로 spec 그대로 진행.
+`quick` 선택 시 → §"Quick mode flow" 단축 분기로 진입.
+
+**메인 자가 판단 금지** — 시간 부족 추측·budget 추측·맥락 추측 모두 사용자
+질문 강제 trigger. 4원칙 #1 ("불확실하면 추측 금지, 사용자 질문 우선") 시스템적
+강제.
+
 [HARNESS RULES — 무시 금지]
 1. 불확실하면 추측 금지, 사용자 질문 우선
 2. 과설계 금지, YAGNI
@@ -102,6 +121,8 @@ If `IMPL_REPORT.md` already exists with `status: complete`, treat as iteration
 mode (Step 8 re-entry with new task).
 
 ### Step dispatch contract (Steps 2/3/4/5/6/7)
+
+**사용자 명시 동의 없이 단축 금지** — N-step pipeline 의 각 step 은 별도 sub-agent dispatch 로 진행. 메인이 단축 결정 시 4원칙 #1 위반. Mode-gate 가 quick 으로 답한 경우만 §"Quick mode flow" 분기 허용.
 
 For each dispatch step:
 
@@ -203,3 +224,35 @@ All tiers use the same shell contract. Distinction documented in SCOPE.md, not i
 Every Step 8 re-entry produces exactly one row in `dispatches.jsonl` with
 `step="step8.iter{N}.<target>"` via `dispatch_and_record`. Main must not
 call bare `dispatch_prompt` + `record_dispatch` for Step 8.
+
+## Quick mode flow
+
+Mode-gate 가 `quick` 으로 답한 경우만 진입 (full 이면 이 section 미사용).
+
+### 단일 dispatch 단축
+
+`server.dispatch_prompt('builder_quick.md')` 로 단일 sub-agent dispatch:
+
+```python
+prompt = server.dispatch_and_record(
+    run_id,
+    prompt_file="builder_quick.md",
+    step="builder.quick",
+    description="builder quick mode — single-dispatch fallback",
+)
+# Substitute placeholders in prompt, then dispatch via Agent (general-purpose).
+# Sub-agent must produce the FULL artifact schema (all sections that full mode
+# would write across N steps), in a single pass.
+```
+
+dispatches.jsonl audit row 의 `description` 필드에 `mode=quick` 메타 명시
+(KEEPER_REPORT 가 카운트 집계 시 사용).
+
+### 산출물 schema 보존
+
+Quick mode 라도 산출물 (예: PRD.md / IMPL_REPORT.md / DEBUGGER_LOG.md 등) 의
+sections schema 는 full mode 와 동일. precision 만 떨어질 뿐 schema 미준수 X.
+
+### 사용자 가시화
+
+KEEPER_REPORT § "Mode usage" 가 quick 카운트 표시. 다음 run 에서 시간 확보 권장.

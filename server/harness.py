@@ -103,6 +103,14 @@ ALLOWED_PROMPT_FILES = (
     "idea_shape_step1.md",
     # design-pack (Spike XI, B2 — standard bundle)
     "design_draft_step1.md",
+    # Spike XIV Phase B — paradigm hybrid quick mode fallback (1 per ★ bundle, 7 total)
+    "builder_quick.md",
+    "debugger_quick.md",
+    "keeper_quick.md",
+    "plan_pack_quick.md",
+    "reviewer_quick.md",
+    "shipper_quick.md",
+    "verifier_quick.md",
 )
 
 
@@ -363,6 +371,15 @@ _PROMPT_TO_STAGE: dict[str, str] = {
     # design-pack → design (Spike XI B2; design stage already in
     # STAGE_CATEGORY_PRIORITY since A2-fix2).
     "design_draft_step1.md": "design",
+    # Spike XIV Phase B — paradigm hybrid quick mode fallback (1 per ★ bundle).
+    # Each maps to its bundle's canonical stage.
+    "plan_pack_quick.md": "plan",
+    "builder_quick.md": "execute",
+    "debugger_quick.md": "debug",
+    "reviewer_quick.md": "review",
+    "verifier_quick.md": "verify",
+    "shipper_quick.md": "ship",
+    "keeper_quick.md": "meta",
 }
 
 

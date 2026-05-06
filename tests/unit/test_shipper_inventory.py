@@ -147,14 +147,23 @@ def test_inventory_bundled_dir_to_stage_has_shipper():
 
 
 def test_allowed_prompt_files_grew_by_exactly_four_for_shipper():
-    """AC D.1 — ALLOWED_PROMPT_FILES contains exactly 4 shipper-prefixed entries.
+    """AC D.1 — ALLOWED_PROMPT_FILES contains exactly 4 full-mode shipper-prefixed
+    entries (plus 1 quick-mode entry from Spike XIV Phase B).
 
     Guards against accidental over-broad addition (e.g. someone adding
     shipper_iter_revisit.md to the subagent allowlist by mistake).
+
+    Spike XIV Phase B: `shipper_quick.md` was added as the paradigm-hybrid
+    single-dispatch fallback. Excluded from the full-mode 4-file count because
+    full-mode (4 step prompts) and quick-mode (1 fallback prompt) are distinct
+    contracts.
     """
-    shipper_entries = [p for p in ALLOWED_PROMPT_FILES if p.startswith("shipper_")]
-    assert len(shipper_entries) == 4, (
-        f"expected exactly 4 shipper_* entries in ALLOWED_PROMPT_FILES, "
-        f"got {len(shipper_entries)}: {shipper_entries}"
+    shipper_full_mode = [
+        p for p in ALLOWED_PROMPT_FILES
+        if p.startswith("shipper_") and p != "shipper_quick.md"
+    ]
+    assert len(shipper_full_mode) == 4, (
+        f"expected exactly 4 shipper_* full-mode entries in ALLOWED_PROMPT_FILES, "
+        f"got {len(shipper_full_mode)}: {shipper_full_mode}"
     )
-    assert set(shipper_entries) == set(SHIPPER_SUBAGENT_PROMPTS)
+    assert set(shipper_full_mode) == set(SHIPPER_SUBAGENT_PROMPTS)

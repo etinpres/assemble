@@ -52,3 +52,7 @@ sections. For audit-skipped runs, the abort variant is used instead.
 The next dispatch via `dispatch_and_record` will inject up to top-K (K=5) relevant learnings as a `[PRIOR LEARNINGS]` body-prefix fence (Track B). Stage→category priority (from `server.learnings.STAGE_CATEGORY_PRIORITY`):
 
 {{NEXT_RUN_RECALL_PREVIEW}}
+
+## Mode usage
+
+(populated by T3)

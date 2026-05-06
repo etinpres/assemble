@@ -460,8 +460,8 @@ def test_scope_deviation_seeded_R2_emits_one_entry(
     assert rows[0]["category"] == "scope-deviation"
 
     report = (run_dir / "KEEPER_REPORT.md").read_text(encoding="utf-8")
-    # Happy variant — exactly 7 H2 sections.
-    assert report.count("\n## ") == 7
+    # Happy variant — exactly 8 H2 sections (Spike XIV Phase B added § "Mode usage").
+    assert report.count("\n## ") == 8
     assert "audit-flagged" in report
 
 
